@@ -1,5 +1,6 @@
 import axios from "axios"
 import * as SecureStore from "expo-secure-store"
+import { router } from "expo-router"
 
 // ← Change this to your Next.js server URL
 // For local dev: use your Mac's local network IP (e.g. http://192.168.1.5:3000)
@@ -20,6 +21,19 @@ api.interceptors.request.use(async (config) => {
   if (token) config.headers["Authorization"] = `Bearer ${token}`
   return config
 })
+
+// On 401, clear the session and send the user back to sign-in
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      await SecureStore.deleteItemAsync("session_token")
+      await SecureStore.deleteItemAsync("user_data")
+      router.replace("/(auth)/signin")
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Auth endpoints
 export const authApi = {

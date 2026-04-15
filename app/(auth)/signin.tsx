@@ -3,12 +3,11 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from "react-native"
-import { useRouter } from "expo-router"
+import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
 
 export default function SignIn() {
-  const router = useRouter()
   const { signIn } = useAuthStore()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")

@@ -1,9 +1,7 @@
-export function formatCurrency(amount: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
+export function formatCurrency(amount: number) {
+  const abs = Math.abs(amount)
+  const formatted = abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return `$${formatted}`
 }
 
 export function getInitials(name?: string | null, email?: string | null): string {
@@ -15,9 +13,9 @@ export function getInitials(name?: string | null, email?: string | null): string
 }
 
 export function formatDate(date: Date | string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  }).format(new Date(date))
+  const d = new Date(date)
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 }
 
 export function formatRelativeTime(date: Date | string) {

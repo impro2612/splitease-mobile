@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, RefreshControl, ActivityIndicator, Alert,
 } from "react-native"
-import { useRouter } from "expo-router"
+import { router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -14,7 +14,6 @@ import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 
 export default function Groups() {
-  const router = useRouter()
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
@@ -25,7 +24,7 @@ export default function Groups() {
 
   const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["groups"],
-    queryFn: () => groupsApi.list().then((r) => r.data),
+    queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
 
   const createMutation = useMutation({

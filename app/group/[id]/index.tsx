@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, ActivityIndicator, RefreshControl, Alert,
 } from "react-native"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -17,7 +17,7 @@ type Tab = "expenses" | "balances" | "members"
 
 export default function GroupDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const router = useRouter()
+
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>("expenses")

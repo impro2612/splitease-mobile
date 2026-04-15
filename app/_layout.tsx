@@ -18,8 +18,14 @@ export default function RootLayout() {
   const { loadSession, loading } = useAuthStore()
 
   useEffect(() => {
-    loadSession().then(() => SplashScreen.hideAsync())
+    loadSession()
   }, [])
+
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync().catch(() => {})
+    }
+  }, [loading])
 
   if (loading) return null
 
@@ -30,7 +36,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#0a0a1a" } }}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="group/[id]/index" options={{ headerShown: false }} />
         </Stack>
         <Toast />
       </GestureHandlerRootView>

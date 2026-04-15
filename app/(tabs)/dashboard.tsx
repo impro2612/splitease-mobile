@@ -2,7 +2,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   RefreshControl, ActivityIndicator,
 } from "react-native"
-import { useRouter } from "expo-router"
+import { router } from "expo-router"
 import { useQuery } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
@@ -13,11 +13,10 @@ import { SafeAreaView } from "react-native-safe-area-context"
 
 export default function Dashboard() {
   const { user } = useAuthStore()
-  const router = useRouter()
 
   const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["groups"],
-    queryFn: () => groupsApi.list().then((r) => r.data),
+    queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
 
   // Calculate totals across all groups
