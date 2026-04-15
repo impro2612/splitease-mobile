@@ -6,7 +6,7 @@ import {
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { groupsApi, expensesApi, balancesApi, membersApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { formatCurrency, formatRelativeTime, CATEGORY_ICONS, CATEGORIES } from "@/lib/utils"
@@ -17,6 +17,7 @@ type Tab = "expenses" | "balances" | "members"
 
 export default function GroupDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const insets = useSafeAreaInsets()
 
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
@@ -326,7 +327,7 @@ export default function GroupDetail() {
 
       {/* Add Expense Modal */}
       <Modal visible={showAddExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddExpense(false)}>
-        <View className="flex-1 bg-base px-5 pt-6">
+        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
           <View className="flex-row items-center justify-between mb-6">
             <Text className="text-white text-xl font-bold">Add Expense</Text>
             <TouchableOpacity onPress={() => { setShowAddExpense(false); resetExpenseForm() }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
@@ -393,7 +394,7 @@ export default function GroupDetail() {
 
       {/* Add Member Modal */}
       <Modal visible={showAddMember} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddMember(false)}>
-        <View className="flex-1 bg-base px-5 pt-6">
+        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
           <View className="flex-row items-center justify-between mb-6">
             <Text className="text-white text-xl font-bold">Invite Member</Text>
             <TouchableOpacity onPress={() => { setShowAddMember(false); setMemberEmail("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
@@ -428,7 +429,7 @@ export default function GroupDetail() {
 
       {/* Settle Up Modal */}
       <Modal visible={showSettle} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSettle(false)}>
-        <View className="flex-1 bg-base px-5 pt-6">
+        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
           <View className="flex-row items-center justify-between mb-6">
             <Text className="text-white text-xl font-bold">Settle Up</Text>
             <TouchableOpacity onPress={() => { setShowSettle(false); setSettleNote("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>

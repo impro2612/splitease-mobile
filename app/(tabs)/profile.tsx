@@ -1,22 +1,69 @@
 import { useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, Switch,
+  ActivityIndicator, Alert, Switch, Modal, FlatList,
 } from "react-native"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuthStore } from "@/store/auth"
 import { api } from "@/lib/api"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 
+const CURRENCIES = [
+  { code: "USD", name: "US Dollar", symbol: "$" },
+  { code: "EUR", name: "Euro", symbol: "€" },
+  { code: "GBP", name: "British Pound", symbol: "£" },
+  { code: "JPY", name: "Japanese Yen", symbol: "¥" },
+  { code: "INR", name: "Indian Rupee", symbol: "₹" },
+  { code: "AUD", name: "Australian Dollar", symbol: "A$" },
+  { code: "CAD", name: "Canadian Dollar", symbol: "C$" },
+  { code: "CHF", name: "Swiss Franc", symbol: "Fr" },
+  { code: "CNY", name: "Chinese Yuan", symbol: "¥" },
+  { code: "SGD", name: "Singapore Dollar", symbol: "S$" },
+  { code: "HKD", name: "Hong Kong Dollar", symbol: "HK$" },
+  { code: "KRW", name: "South Korean Won", symbol: "₩" },
+  { code: "BRL", name: "Brazilian Real", symbol: "R$" },
+  { code: "MXN", name: "Mexican Peso", symbol: "$" },
+  { code: "AED", name: "UAE Dirham", symbol: "د.إ" },
+  { code: "SAR", name: "Saudi Riyal", symbol: "﷼" },
+  { code: "ZAR", name: "South African Rand", symbol: "R" },
+  { code: "NOK", name: "Norwegian Krone", symbol: "kr" },
+  { code: "SEK", name: "Swedish Krona", symbol: "kr" },
+  { code: "DKK", name: "Danish Krone", symbol: "kr" },
+  { code: "NZD", name: "New Zealand Dollar", symbol: "NZ$" },
+  { code: "THB", name: "Thai Baht", symbol: "฿" },
+  { code: "MYR", name: "Malaysian Ringgit", symbol: "RM" },
+  { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp" },
+  { code: "PHP", name: "Philippine Peso", symbol: "₱" },
+  { code: "PKR", name: "Pakistani Rupee", symbol: "₨" },
+  { code: "BDT", name: "Bangladeshi Taka", symbol: "৳" },
+  { code: "TRY", name: "Turkish Lira", symbol: "₺" },
+  { code: "RUB", name: "Russian Ruble", symbol: "₽" },
+  { code: "PLN", name: "Polish Zloty", symbol: "zł" },
+  { code: "CZK", name: "Czech Koruna", symbol: "Kč" },
+  { code: "HUF", name: "Hungarian Forint", symbol: "Ft" },
+  { code: "ILS", name: "Israeli Shekel", symbol: "₪" },
+  { code: "CLP", name: "Chilean Peso", symbol: "$" },
+  { code: "COP", name: "Colombian Peso", symbol: "$" },
+  { code: "VND", name: "Vietnamese Dong", symbol: "₫" },
+  { code: "EGP", name: "Egyptian Pound", symbol: "£" },
+  { code: "NGN", name: "Nigerian Naira", symbol: "₦" },
+  { code: "KES", name: "Kenyan Shilling", symbol: "KSh" },
+  { code: "QAR", name: "Qatari Riyal", symbol: "﷼" },
+]
+
 export default function Profile() {
   const { user, signOut, setUser } = useAuthStore()
   const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(user?.name ?? "")
   const [notifications, setNotifications] = useState(true)
+  const [currency, setCurrency] = useState("USD")
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
+  const [currencySearch, setCurrencySearch] = useState("")
 
   const updateMutation = useMutation({
     mutationFn: () => api.patch("/api/auth/me", { name: name.trim() }),
@@ -128,13 +175,13 @@ export default function Profile() {
               />
             </View>
 
-            <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
+            <TouchableOpacity onPress={() => setShowCurrencyPicker(true)} style={{ flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="card" size={18} color="#4ade80" />
               </View>
               <Text className="text-white flex-1">Default Currency</Text>
               <View className="flex-row items-center gap-1">
-                <Text className="text-muted text-sm">USD</Text>
+                <Text className="text-muted text-sm">{currency}</Text>
                 <Ionicons name="chevron-forward" size={14} color="#475569" />
               </View>
             </TouchableOpacity>
@@ -193,6 +240,65 @@ export default function Profile() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Currency Picker Modal */}
+      <Modal visible={showCurrencyPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <View className="flex-1 bg-base" style={{ paddingTop: insets.top + 16 }}>
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text className="text-white text-xl font-bold">Select Currency</Text>
+            <TouchableOpacity onPress={() => { setShowCurrencyPicker(false); setCurrencySearch("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Search */}
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>
+            <Ionicons name="search" size={16} color="#475569" style={{ marginRight: 8 }} />
+            <TextInput
+              className="text-white flex-1 text-base"
+              placeholder="Search currency..."
+              placeholderTextColor="#475569"
+              value={currencySearch}
+              onChangeText={setCurrencySearch}
+              autoCapitalize="none"
+            />
+            {currencySearch.length > 0 && (
+              <TouchableOpacity onPress={() => setCurrencySearch("")}>
+                <Ionicons name="close-circle" size={16} color="#475569" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <FlatList
+            data={CURRENCIES.filter(c =>
+              c.code.toLowerCase().includes(currencySearch.toLowerCase()) ||
+              c.name.toLowerCase().includes(currencySearch.toLowerCase())
+            )}
+            keyExtractor={item => item.code}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => { setCurrency(item.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
+                style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center", marginRight: 14 }}>
+                  <Text style={{ fontSize: 16, color: "#fff", fontWeight: "600" }}>{item.symbol}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text className="text-white font-semibold">{item.code}</Text>
+                  <Text className="text-muted text-xs">{item.name}</Text>
+                </View>
+                {currency === item.code && (
+                  <Ionicons name="checkmark-circle" size={20} color="#6366f1" />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
