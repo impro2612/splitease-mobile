@@ -334,8 +334,10 @@ export default function GroupDetail() {
                 const payer = members.find((m: any) => m.userId === exp.paidById)
                 const myAmount = isPayer ? exp.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
                 return (
-                  <View
+                  <TouchableOpacity
                     key={exp.id}
+                    onPress={() => openEdit(exp)}
+                    activeOpacity={0.75}
                     style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
                   >
                     <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" }}>
@@ -354,18 +356,7 @@ export default function GroupDetail() {
                       </Text>
                       <Text className="text-muted text-xs">{formatCurrency(exp.amount)} total</Text>
                     </View>
-                    {/* 3-dot menu */}
-                    <TouchableOpacity
-                      onPress={() => Alert.alert(exp.description, undefined, [
-                        { text: "Edit", onPress: () => openEdit(exp) },
-                        { text: "Delete", style: "destructive", onPress: () => confirmDelete(exp) },
-                        { text: "Cancel", style: "cancel" },
-                      ])}
-                      style={{ padding: 6 }}
-                    >
-                      <Ionicons name="ellipsis-vertical" size={16} color="#475569" />
-                    </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
                 )
               })}
             </View>
@@ -497,9 +488,17 @@ export default function GroupDetail() {
         <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
           <View className="flex-row items-center justify-between mb-6">
             <Text className="text-white text-xl font-bold">Edit Expense</Text>
-            <TouchableOpacity onPress={() => setShowEditExpense(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={() => { setShowEditExpense(false); confirmDelete(editTarget) }}
+                style={{ backgroundColor: "rgba(244,63,94,0.15)", borderRadius: 20, padding: 8 }}
+              >
+                <Ionicons name="trash-outline" size={18} color="#f87171" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowEditExpense(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+                <Ionicons name="close" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
           <ExpenseFormFields
             desc={editDesc} setDesc={setEditDesc}
