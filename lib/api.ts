@@ -1,0 +1,78 @@
+import axios from "axios"
+import * as SecureStore from "expo-secure-store"
+
+// ← Change this to your Next.js server URL
+// For local dev: use your Mac's local network IP (e.g. http://192.168.1.5:3000)
+// For production: use your deployed URL
+// Replace with your ngrok URL when testing on a physical device
+// e.g. export const API_BASE_URL = "https://abc123.ngrok-free.app"
+export const API_BASE_URL = "https://splitwise-clone-umber.vercel.app"
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: { "Content-Type": "application/json" },
+})
+
+// Attach session token to every request
+api.interceptors.request.use(async (config) => {
+  const token = await SecureStore.getItemAsync("session_token")
+  if (token) config.headers["Authorization"] = `Bearer ${token}`
+  return config
+})
+
+// Auth endpoints
+export const authApi = {
+  register: (data: { name: string; email: string; password: string }) =>
+    api.post("/api/auth/register", data),
+
+  signIn: (data: { email: string; password: string }) =>
+    api.post("/api/auth/mobile-signin", data),
+
+  me: () => api.get("/api/auth/me"),
+}
+
+// Groups
+export const groupsApi = {
+  list: () => api.get("/api/groups"),
+  get: (id: string) => api.get(`/api/groups/${id}`),
+  create: (data: { name: string; description?: string; color: string; emoji: string }) =>
+    api.post("/api/groups", data),
+  delete: (id: string) => api.delete(`/api/groups/${id}`),
+}
+
+// Members
+export const membersApi = {
+  add: (groupId: string, email: string) =>
+    api.post(`/api/groups/${groupId}/members`, { email }),
+  remove: (groupId: string, userId: string) =>
+    api.delete(`/api/groups/${groupId}/members`, { data: { userId } }),
+}
+
+// Expenses
+export const expensesApi = {
+  add: (groupId: string, data: {
+    description: string; amount: number; category: string
+    paidById: string; splitType: string; date?: string
+  }) => api.post(`/api/groups/${groupId}/expenses`, data),
+}
+
+// Balances & Settlements
+export const balancesApi = {
+  get: (groupId: string) => api.get(`/api/groups/${groupId}/balances`),
+  settle: (groupId: string, data: { toUserId: string; amount: number; note?: string }) =>
+    api.post(`/api/groups/${groupId}/settle`, data),
+}
+
+// Friends
+export const friendsApi = {
+  list: () => api.get("/api/friends"),
+  send: (addresseeId: string) => api.post("/api/friends", { addresseeId }),
+  respond: (id: string, action: "accept" | "reject") =>
+    api.patch(`/api/friends/${id}`, { action }),
+}
+
+// User search
+export const usersApi = {
+  search: (q: string) => api.get(`/api/users/search?q=${encodeURIComponent(q)}`),
+}
