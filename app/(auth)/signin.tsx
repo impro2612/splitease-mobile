@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
@@ -6,10 +6,17 @@ import {
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
+import { api } from "@/lib/api"
 
 export default function SignIn() {
   const { signIn } = useAuthStore()
   const [email, setEmail] = useState("")
+
+  // Fire a cheap GET to warm the serverless function while the user types,
+  // so the bcrypt + DB work happens on an already-running container.
+  useEffect(() => {
+    api.get("/api/auth/mobile-signin").catch(() => {})
+  }, [])
   const [password, setPassword] = useState("")
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
