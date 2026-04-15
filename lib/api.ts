@@ -69,6 +69,12 @@ export const expensesApi = {
     description: string; amount: number; category: string
     paidById: string; splitType: string; date?: string
   }) => api.post(`/api/groups/${groupId}/expenses`, data),
+  update: (groupId: string, expenseId: string, data: {
+    description?: string; amount?: number; category?: string
+    paidById?: string; date?: string
+  }) => api.patch(`/api/groups/${groupId}/expenses/${expenseId}`, data),
+  delete: (groupId: string, expenseId: string) =>
+    api.delete(`/api/groups/${groupId}/expenses/${expenseId}`),
 }
 
 // Balances & Settlements

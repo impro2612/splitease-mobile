@@ -3,42 +3,60 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, ActivityIndicator, RefreshControl, Alert,
 } from "react-native"
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { groupsApi, expensesApi, balancesApi, membersApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
-import { formatCurrency, formatRelativeTime, CATEGORY_ICONS, CATEGORIES } from "@/lib/utils"
+import { formatCurrency, formatDate, CATEGORY_ICONS, CATEGORIES } from "@/lib/utils"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 
 type Tab = "expenses" | "balances" | "members"
 
+function openDatePicker(current: Date, onChange: (d: Date) => void) {
+  DateTimePickerAndroid.open({
+    value: current,
+    mode: "date",
+    is24Hour: true,
+    maximumDate: new Date(),
+    onChange: (_, selected) => { if (selected) onChange(selected) },
+  })
+}
+
 export default function GroupDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
-
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>("expenses")
 
-  // Modals
+  // Add Expense modal
   const [showAddExpense, setShowAddExpense] = useState(false)
-  const [showAddMember, setShowAddMember] = useState(false)
-  const [showSettle, setShowSettle] = useState(false)
-  const [settleTarget, setSettleTarget] = useState<{ userId: string; name: string; amount: number } | null>(null)
-
-  // Add Expense form
   const [expDesc, setExpDesc] = useState("")
   const [expAmount, setExpAmount] = useState("")
   const [expCategory, setExpCategory] = useState("general")
   const [expPaidBy, setExpPaidBy] = useState<string>(user?.id ?? "")
+  const [expDate, setExpDate] = useState(new Date())
 
-  // Add Member form
+  // Edit Expense modal
+  const [showEditExpense, setShowEditExpense] = useState(false)
+  const [editTarget, setEditTarget] = useState<any>(null)
+  const [editDesc, setEditDesc] = useState("")
+  const [editAmount, setEditAmount] = useState("")
+  const [editCategory, setEditCategory] = useState("general")
+  const [editPaidBy, setEditPaidBy] = useState("")
+  const [editDate, setEditDate] = useState(new Date())
+
+  // Add Member modal
+  const [showAddMember, setShowAddMember] = useState(false)
   const [memberEmail, setMemberEmail] = useState("")
 
-  // Settle form
+  // Settle modal
+  const [showSettle, setShowSettle] = useState(false)
+  const [settleTarget, setSettleTarget] = useState<{ userId: string; name: string; amount: number } | null>(null)
   const [settleNote, setSettleNote] = useState("")
 
   const { data: group, isLoading, refetch, isRefetching } = useQuery({
@@ -49,7 +67,7 @@ export default function GroupDetail() {
 
   const { data: balances = [] } = useQuery({
     queryKey: ["balances", id],
-    queryFn: () => balancesApi.get(id).then((r) => r.data),
+    queryFn: () => balancesApi.get(id).then((r) => (Array.isArray(r.data) ? r.data : [])),
     enabled: !!id,
   })
 
@@ -60,16 +78,46 @@ export default function GroupDetail() {
       category: expCategory,
       paidById: expPaidBy || user!.id,
       splitType: "EQUAL",
+      date: expDate.toISOString(),
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       setShowAddExpense(false)
-      resetExpenseForm()
+      resetAddForm()
       Toast.show({ type: "success", text1: "Expense added!" })
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to add expense" }),
+  })
+
+  const editExpenseMutation = useMutation({
+    mutationFn: () => expensesApi.update(id, editTarget.id, {
+      description: editDesc.trim(),
+      amount: parseFloat(editAmount),
+      category: editCategory,
+      paidById: editPaidBy,
+      date: editDate.toISOString(),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["group", id] })
+      queryClient.invalidateQueries({ queryKey: ["balances", id] })
+      queryClient.invalidateQueries({ queryKey: ["groups"] })
+      setShowEditExpense(false)
+      Toast.show({ type: "success", text1: "Expense updated!" })
+    },
+    onError: () => Toast.show({ type: "error", text1: "Failed to update expense" }),
+  })
+
+  const deleteExpenseMutation = useMutation({
+    mutationFn: (expenseId: string) => expensesApi.delete(id, expenseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["group", id] })
+      queryClient.invalidateQueries({ queryKey: ["balances", id] })
+      queryClient.invalidateQueries({ queryKey: ["groups"] })
+      Toast.show({ type: "success", text1: "Expense deleted" })
+    },
+    onError: () => Toast.show({ type: "error", text1: "Failed to delete expense" }),
   })
 
   const addMemberMutation = useMutation({
@@ -101,8 +149,26 @@ export default function GroupDetail() {
     onError: () => Toast.show({ type: "error", text1: "Failed to record settlement" }),
   })
 
-  function resetExpenseForm() {
-    setExpDesc(""); setExpAmount(""); setExpCategory("general"); setExpPaidBy(user?.id ?? "")
+  function resetAddForm() {
+    setExpDesc(""); setExpAmount(""); setExpCategory("general")
+    setExpPaidBy(user?.id ?? ""); setExpDate(new Date())
+  }
+
+  function openEdit(exp: any) {
+    setEditTarget(exp)
+    setEditDesc(exp.description)
+    setEditAmount(String(exp.amount))
+    setEditCategory(exp.category ?? "general")
+    setEditPaidBy(exp.paidById)
+    setEditDate(new Date(exp.date ?? exp.createdAt))
+    setShowEditExpense(true)
+  }
+
+  function confirmDelete(exp: any) {
+    Alert.alert("Delete Expense", `Delete "${exp.description}"? This cannot be undone.`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteExpenseMutation.mutate(exp.id) },
+    ])
   }
 
   function openSettle(userId: string, name: string, amount: number) {
@@ -113,7 +179,6 @@ export default function GroupDetail() {
   const expenses: any[] = group?.expenses ?? []
   const members: any[] = group?.members ?? []
 
-  // My balance summary
   let myOwed = 0, myOwes = 0
   for (const exp of expenses) {
     const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
@@ -134,6 +199,71 @@ export default function GroupDetail() {
     )
   }
 
+  // Shared expense form fields (used in both add and edit modals)
+  function ExpenseFormFields({
+    desc, setDesc, amount, setAmount, category, setCategory,
+    paidBy, setPaidBy, date, setDate,
+  }: any) {
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* Description */}
+        <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
+        <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14 }}>
+          <TextInput className="text-white text-base" placeholder="What was this for?" placeholderTextColor="#475569" value={desc} onChangeText={setDesc} />
+        </View>
+
+        {/* Amount */}
+        <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
+        <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
+          <Text style={{ color: "#475569", fontSize: 18, marginRight: 4 }}>$</Text>
+          <TextInput className="text-white text-xl font-bold flex-1" placeholder="0.00" placeholderTextColor="#475569" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+        </View>
+
+        {/* Date */}
+        <Text className="text-slate-300 text-sm font-medium mb-2">Date</Text>
+        <TouchableOpacity
+          onPress={() => openDatePicker(date, setDate)}
+          style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
+        >
+          <Ionicons name="calendar-outline" size={18} color="#94a3b8" />
+          <Text className="text-white text-base">{formatDate(date)}</Text>
+        </TouchableOpacity>
+
+        {/* Paid by */}
+        <Text className="text-slate-300 text-sm font-medium mb-2">Paid by</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+          {members.map((m: any) => (
+            <TouchableOpacity
+              key={m.userId}
+              onPress={() => setPaidBy(m.userId)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: paidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: paidBy === m.userId ? 2 : 1, borderColor: paidBy === m.userId ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
+            >
+              <Avatar name={m.user?.name} email={m.user?.email} size={24} />
+              <Text style={{ color: paidBy === m.userId ? "#fff" : "#94a3b8", fontWeight: "600", fontSize: 13 }}>
+                {m.userId === user?.id ? "You" : m.user?.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Category */}
+        <Text className="text-slate-300 text-sm font-medium mb-2">Category</Text>
+        <View className="flex-row flex-wrap gap-2 mb-6">
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              onPress={() => setCategory(cat)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: category === cat ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 10, borderWidth: category === cat ? 2 : 1, borderColor: category === cat ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 10, paddingVertical: 7 }}
+            >
+              <Text style={{ fontSize: 14 }}>{CATEGORY_ICONS[cat]}</Text>
+              <Text style={{ color: category === cat ? "#fff" : "#94a3b8", fontSize: 12, fontWeight: "600", textTransform: "capitalize" }}>{cat}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    )
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-base" edges={["top"]}>
       {/* Header */}
@@ -151,7 +281,6 @@ export default function GroupDetail() {
           </View>
         </View>
 
-        {/* Balance summary */}
         <View className="flex-row gap-2 mb-3">
           <View style={{ flex: 1, backgroundColor: myNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 14, borderWidth: 1, borderColor: myNet >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 12 }}>
             <Text className="text-muted text-xs mb-0.5">Your balance</Text>
@@ -168,7 +297,6 @@ export default function GroupDetail() {
           </TouchableOpacity>
         </View>
 
-        {/* Tabs */}
         <View className="flex-row gap-1" style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 3 }}>
           {(["expenses", "balances", "members"] as Tab[]).map((t) => (
             <TouchableOpacity
@@ -200,7 +328,7 @@ export default function GroupDetail() {
             </View>
           ) : (
             <View className="gap-2 py-3">
-              {expenses.slice().sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((exp: any) => {
+              {expenses.slice().sort((a: any, b: any) => new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()).map((exp: any) => {
                 const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
                 const isPayer = exp.paidById === user?.id
                 const payer = members.find((m: any) => m.userId === exp.paidById)
@@ -216,15 +344,27 @@ export default function GroupDetail() {
                     <View style={{ flex: 1 }}>
                       <Text className="text-white font-semibold text-sm" numberOfLines={1}>{exp.description}</Text>
                       <Text className="text-muted text-xs mt-0.5">
-                        {isPayer ? "You paid" : `${payer?.user?.name ?? "Someone"} paid`} · {formatRelativeTime(exp.createdAt)}
+                        {isPayer ? "You paid" : `${payer?.user?.name ?? "Someone"} paid`}
                       </Text>
+                      <Text className="text-muted text-xs">{formatDate(exp.date ?? exp.createdAt)}</Text>
                     </View>
-                    <View style={{ alignItems: "flex-end" }}>
+                    <View style={{ alignItems: "flex-end", gap: 4 }}>
                       <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
                         {myAmount >= 0 ? "+" : ""}{formatCurrency(myAmount)}
                       </Text>
                       <Text className="text-muted text-xs">{formatCurrency(exp.amount)} total</Text>
                     </View>
+                    {/* 3-dot menu */}
+                    <TouchableOpacity
+                      onPress={() => Alert.alert(exp.description, undefined, [
+                        { text: "Edit", onPress: () => openEdit(exp) },
+                        { text: "Delete", style: "destructive", onPress: () => confirmDelete(exp) },
+                        { text: "Cancel", style: "cancel" },
+                      ])}
+                      style={{ padding: 6 }}
+                    >
+                      <Ionicons name="ellipsis-vertical" size={16} color="#475569" />
+                    </TouchableOpacity>
                   </View>
                 )
               })}
@@ -244,31 +384,32 @@ export default function GroupDetail() {
             ) : (
               <>
                 <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Who owes who</Text>
-                {balances.map((b: any, i: number) => {
+                {(balances as any[]).map((b: any, i: number) => {
                   const fromMe = b.fromUserId === user?.id
                   const toMe = b.toUserId === user?.id
-                  const fromName = fromMe ? "You" : (members.find((m: any) => m.userId === b.fromUserId)?.user?.name ?? "Someone")
-                  const toName = toMe ? "you" : (members.find((m: any) => m.userId === b.toUserId)?.user?.name ?? "Someone")
-                  const fromMember = members.find((m: any) => m.userId === b.fromUserId)
-                  const toMember = members.find((m: any) => m.userId === b.toUserId)
+                  // Use the embedded user objects from the API directly
+                  const fromUser = b.fromUser
+                  const toUser = b.toUser
+                  const fromName = fromMe ? "You" : (fromUser?.name ?? "Someone")
+                  const toName = toMe ? "you" : (toUser?.name ?? "someone")
                   return (
                     <View
                       key={i}
                       style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14 }}
                     >
                       <View className="flex-row items-center gap-3 mb-3">
-                        <Avatar name={fromMember?.user?.name} email={fromMember?.user?.email} size={36} />
+                        <Avatar name={fromUser?.name} email={fromUser?.email} size={36} />
                         <View className="flex-1">
                           <Text className="text-white font-semibold text-sm">
                             {fromName} owe{fromMe ? "" : "s"} {toName}
                           </Text>
                           <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 16 }}>{formatCurrency(b.amount)}</Text>
                         </View>
-                        <Avatar name={toMember?.user?.name} email={toMember?.user?.email} size={36} />
+                        <Avatar name={toUser?.name} email={toUser?.email} size={36} />
                       </View>
                       {fromMe && (
                         <TouchableOpacity
-                          onPress={() => openSettle(b.toUserId, toMember?.user?.name ?? "them", b.amount)}
+                          onPress={() => openSettle(b.toUserId, toUser?.name ?? "them", b.amount)}
                           style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingVertical: 9, alignItems: "center" }}
                         >
                           <Text style={{ color: "#fff", fontWeight: "600", fontSize: 13 }}>Settle up with {toName}</Text>
@@ -330,65 +471,50 @@ export default function GroupDetail() {
         <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
           <View className="flex-row items-center justify-between mb-6">
             <Text className="text-white text-xl font-bold">Add Expense</Text>
-            <TouchableOpacity onPress={() => { setShowAddExpense(false); resetExpenseForm() }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+            <TouchableOpacity onPress={() => { setShowAddExpense(false); resetAddForm() }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
+          <ExpenseFormFields
+            desc={expDesc} setDesc={setExpDesc}
+            amount={expAmount} setAmount={setExpAmount}
+            category={expCategory} setCategory={setExpCategory}
+            paidBy={expPaidBy} setPaidBy={setExpPaidBy}
+            date={expDate} setDate={setExpDate}
+          />
+          <TouchableOpacity
+            onPress={() => addExpenseMutation.mutate()}
+            disabled={!expDesc.trim() || !expAmount || isNaN(parseFloat(expAmount)) || addExpenseMutation.isPending}
+            style={{ backgroundColor: (!expDesc.trim() || !expAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center", marginBottom: 24 }}
+          >
+            {addExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Add Expense</Text>}
+          </TouchableOpacity>
+        </View>
+      </Modal>
 
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {/* Description */}
-            <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14 }}>
-              <TextInput className="text-white text-base" placeholder="What was this for?" placeholderTextColor="#475569" value={expDesc} onChangeText={setExpDesc} />
-            </View>
-
-            {/* Amount */}
-            <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
-              <Text style={{ color: "#475569", fontSize: 18, marginRight: 4 }}>$</Text>
-              <TextInput className="text-white text-xl font-bold flex-1" placeholder="0.00" placeholderTextColor="#475569" value={expAmount} onChangeText={setExpAmount} keyboardType="decimal-pad" />
-            </View>
-
-            {/* Paid by */}
-            <Text className="text-slate-300 text-sm font-medium mb-2">Paid by</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-              {members.map((m: any) => (
-                <TouchableOpacity
-                  key={m.userId}
-                  onPress={() => setExpPaidBy(m.userId)}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: expPaidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: expPaidBy === m.userId ? 2 : 1, borderColor: expPaidBy === m.userId ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
-                >
-                  <Avatar name={m.user?.name} email={m.user?.email} size={24} />
-                  <Text style={{ color: expPaidBy === m.userId ? "#fff" : "#94a3b8", fontWeight: "600", fontSize: 13 }}>
-                    {m.userId === user?.id ? "You" : m.user?.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Category */}
-            <Text className="text-slate-300 text-sm font-medium mb-2">Category</Text>
-            <View className="flex-row flex-wrap gap-2 mb-6">
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  onPress={() => setExpCategory(cat)}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: expCategory === cat ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 10, borderWidth: expCategory === cat ? 2 : 1, borderColor: expCategory === cat ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 10, paddingVertical: 7 }}
-                >
-                  <Text style={{ fontSize: 14 }}>{CATEGORY_ICONS[cat]}</Text>
-                  <Text style={{ color: expCategory === cat ? "#fff" : "#94a3b8", fontSize: 12, fontWeight: "600", textTransform: "capitalize" }}>{cat}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => addExpenseMutation.mutate()}
-              disabled={!expDesc.trim() || !expAmount || isNaN(parseFloat(expAmount)) || addExpenseMutation.isPending}
-              style={{ backgroundColor: (!expDesc.trim() || !expAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center", marginBottom: 24 }}
-            >
-              {addExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Add Expense</Text>}
+      {/* Edit Expense Modal */}
+      <Modal visible={showEditExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEditExpense(false)}>
+        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
+          <View className="flex-row items-center justify-between mb-6">
+            <Text className="text-white text-xl font-bold">Edit Expense</Text>
+            <TouchableOpacity onPress={() => setShowEditExpense(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+              <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
-          </ScrollView>
+          </View>
+          <ExpenseFormFields
+            desc={editDesc} setDesc={setEditDesc}
+            amount={editAmount} setAmount={setEditAmount}
+            category={editCategory} setCategory={setEditCategory}
+            paidBy={editPaidBy} setPaidBy={setEditPaidBy}
+            date={editDate} setDate={setEditDate}
+          />
+          <TouchableOpacity
+            onPress={() => editExpenseMutation.mutate()}
+            disabled={!editDesc.trim() || !editAmount || isNaN(parseFloat(editAmount)) || editExpenseMutation.isPending}
+            style={{ backgroundColor: (!editDesc.trim() || !editAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center", marginBottom: 24 }}
+          >
+            {editExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Save Changes</Text>}
+          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -401,22 +527,11 @@ export default function GroupDetail() {
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
-
           <Text className="text-muted text-sm mb-4">Enter the email address of the person you'd like to add to {group?.name}.</Text>
-
           <Text className="text-slate-300 text-sm font-medium mb-2">Email address *</Text>
           <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
-            <TextInput
-              className="text-white text-base"
-              placeholder="friend@example.com"
-              placeholderTextColor="#475569"
-              value={memberEmail}
-              onChangeText={setMemberEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            <TextInput className="text-white text-base" placeholder="friend@example.com" placeholderTextColor="#475569" value={memberEmail} onChangeText={setMemberEmail} keyboardType="email-address" autoCapitalize="none" />
           </View>
-
           <TouchableOpacity
             onPress={() => addMemberMutation.mutate()}
             disabled={!memberEmail.trim() || addMemberMutation.isPending}
@@ -436,7 +551,6 @@ export default function GroupDetail() {
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
-
           {settleTarget && (
             <>
               <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 20, alignItems: "center", marginBottom: 20 }}>
@@ -444,18 +558,10 @@ export default function GroupDetail() {
                 <Text className="text-white text-2xl font-bold mb-1">{settleTarget.name}</Text>
                 <Text style={{ color: "#6366f1", fontSize: 32, fontWeight: "800" }}>{formatCurrency(settleTarget.amount)}</Text>
               </View>
-
               <Text className="text-slate-300 text-sm font-medium mb-2">Note (optional)</Text>
               <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
-                <TextInput
-                  className="text-white text-base"
-                  placeholder="e.g. Venmo, Cash…"
-                  placeholderTextColor="#475569"
-                  value={settleNote}
-                  onChangeText={setSettleNote}
-                />
+                <TextInput className="text-white text-base" placeholder="e.g. Venmo, Cash…" placeholderTextColor="#475569" value={settleNote} onChangeText={setSettleNote} />
               </View>
-
               <TouchableOpacity
                 onPress={() => settleMutation.mutate()}
                 disabled={settleMutation.isPending}
