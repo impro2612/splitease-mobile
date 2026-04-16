@@ -2,6 +2,7 @@ import { useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, RefreshControl, ActivityIndicator, Alert, FlatList,
+  useWindowDimensions,
 } from "react-native"
 import { router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -18,6 +19,7 @@ export default function Groups() {
   const { user, currency: defaultCurrency } = useAuthStore()
   const queryClient = useQueryClient()
   const insets = useSafeAreaInsets()
+  const { height: windowH } = useWindowDimensions()
   const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -153,7 +155,7 @@ export default function Groups() {
 
       {/* Create Group Modal */}
       <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
-        <View style={{ flex: 1, backgroundColor: "#0a0a1a", paddingTop: insets.top + 16 }}>
+        <View style={{ height: windowH, backgroundColor: "#0a0a1a", paddingTop: insets.top + 16 }}>
 
           {/* ── STATIC TOP (all in one container so height is known upfront) ── */}
           <View style={{ paddingHorizontal: 20 }}>
