@@ -6,7 +6,7 @@ import { router } from "expo-router"
 import { useQuery } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
-import { groupsApi } from "@/lib/api"
+import { groupsApi, dashboardApi } from "@/lib/api"
 import { formatCurrency, formatRelativeTime, CATEGORY_ICONS } from "@/lib/utils"
 import { Avatar } from "@/components/ui/Avatar"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -19,22 +19,19 @@ export default function Dashboard() {
     queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
 
-  // Calculate totals across all groups
-  let totalOwed = 0, totalOwe = 0
-  for (const group of groups) {
-    for (const expense of (group.expenses ?? [])) {
-      const mySplit = expense.splits?.find((s: any) => s.userId === user?.id)
-      if (!mySplit) continue
-      if (expense.paidById === user?.id) {
-        expense.splits?.forEach((s: any) => {
-          if (s.userId !== user?.id && !s.paid) totalOwed += s.amount
-        })
-      } else if (!mySplit.paid) {
-        totalOwe += mySplit.amount
-      }
-    }
+  const { data: summary, refetch: refetchSummary } = useQuery({
+    queryKey: ["balance-summary"],
+    queryFn: () => dashboardApi.summary().then((r) => r.data),
+  })
+
+  const totalOwed: number = summary?.totalOwed ?? 0
+  const totalOwe: number = summary?.totalOwe ?? 0
+  const net: number = summary?.net ?? 0
+
+  const handleRefresh = () => {
+    refetch()
+    refetchSummary()
   }
-  const net = totalOwed - totalOwe
 
   // Recent expenses across all groups (last 10)
   const allExpenses = groups
@@ -46,7 +43,7 @@ export default function Dashboard() {
     <SafeAreaView className="flex-1 bg-base" edges={["top"]}>
       <ScrollView
         className="flex-1"
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#6366f1" />}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor="#6366f1" />}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}

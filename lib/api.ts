@@ -96,3 +96,8 @@ export const friendsApi = {
 export const usersApi = {
   search: (q: string) => api.get(`/api/users/search?q=${encodeURIComponent(q)}`),
 }
+
+// Dashboard summary
+export const dashboardApi = {
+  summary: () => api.get("/api/balance-summary"),
+}
