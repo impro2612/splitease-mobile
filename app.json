@@ -23,12 +23,18 @@
         "backgroundColor": "#0a0a1a"
       },
       "package": "com.splitease.app",
-      "versionCode": 3
+      "versionCode": 4
     },
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-secure-store",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "SplitEase needs contacts to help you invite friends."
+        }
+      ],
       [
         "expo-splash-screen",
         {

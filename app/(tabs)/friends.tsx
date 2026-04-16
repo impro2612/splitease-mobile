@@ -1,8 +1,9 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Modal, Linking, Platform, FlatList,
 } from "react-native"
+import * as Contacts from "expo-contacts"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -11,20 +12,48 @@ import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 
+const SIGNUP_URL = "https://splitwise-clone-umber.vercel.app/register"
+
 type Tab = "friends" | "requests" | "search"
+
+type Contact = {
+  id: string
+  name: string
+  phone: string
+  initials: string
+}
+
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+}
+
+function normalizePhone(raw: string): string {
+  return raw.replace(/[^\d+]/g, "").replace(/^00/, "+")
+}
 
 export default function Friends() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>("friends")
+
+  // Search on Add tab
   const [searchQ, setSearchQ] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [searching, setSearching] = useState(false)
 
+  // Contacts state
+  const [contactsPermission, setContactsPermission] = useState<"undetermined" | "granted" | "denied">("undetermined")
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [contactSearch, setContactSearch] = useState("")
+
+  // Invite bottom sheet
+  const [inviteTarget, setInviteTarget] = useState<Contact | null>(null)
+  const [showInvite, setShowInvite] = useState(false)
+
   const { data: friendsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["friends"],
     queryFn: async () => {
-      // Backfill friendships from shared groups, then fetch
       await friendsApi.sync().catch(() => {})
       const r = await friendsApi.list()
       return r.data && typeof r.data === "object" && !Array.isArray(r.data) ? r.data : {}
@@ -34,6 +63,56 @@ export default function Friends() {
   const friends: any[] = friendsData?.friends ?? []
   const incoming: any[] = friendsData?.incoming ?? []
   const outgoing: any[] = friendsData?.outgoing ?? []
+
+  // Check contacts permission on mount
+  useEffect(() => {
+    Contacts.getPermissionsAsync().then((res) => {
+      if (res.status === "granted") {
+        setContactsPermission("granted")
+        loadContacts()
+      } else if (res.status === "denied") {
+        setContactsPermission("denied")
+      }
+    })
+  }, [])
+
+  const loadContacts = useCallback(async () => {
+    setContactsLoading(true)
+    try {
+      const result = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+        sort: Contacts.SortTypes.FirstName,
+      })
+      const parsed: Contact[] = []
+      for (const c of result.data) {
+        if (!c.name || !c.phoneNumbers?.length) continue
+        const phone = c.phoneNumbers[0].number ?? ""
+        if (!phone) continue
+        parsed.push({
+          id: c.id ?? Math.random().toString(),
+          name: c.name,
+          phone,
+          initials: getInitials(c.name),
+        })
+      }
+      setContacts(parsed)
+    } catch {
+      Toast.show({ type: "error", text1: "Failed to load contacts" })
+    } finally {
+      setContactsLoading(false)
+    }
+  }, [])
+
+  async function requestContactsPermission() {
+    const { status } = await Contacts.requestPermissionsAsync()
+    if (status === "granted") {
+      setContactsPermission("granted")
+      await loadContacts()
+    } else {
+      setContactsPermission("denied")
+      Toast.show({ type: "error", text1: "Contacts permission denied" })
+    }
+  }
 
   const sendMutation = useMutation({
     mutationFn: (addresseeId: string) => friendsApi.send(addresseeId),
@@ -67,6 +146,47 @@ export default function Friends() {
     }
   }
 
+  function openInvite(contact: Contact) {
+    setInviteTarget(contact)
+    setShowInvite(true)
+  }
+
+  function buildMessage(name: string) {
+    return encodeURIComponent(
+      `Hey ${name.split(" ")[0]}! 👋 I'm using SplitEase to split bills and track expenses with friends. Join me here:\n${SIGNUP_URL}`
+    )
+  }
+
+  async function inviteViaWhatsApp() {
+    if (!inviteTarget) return
+    const phone = normalizePhone(inviteTarget.phone)
+    const msg = buildMessage(inviteTarget.name)
+    const url = `whatsapp://send?phone=${phone}&text=${msg}`
+    const fallback = `https://wa.me/${phone.replace("+", "")}?text=${msg}`
+    setShowInvite(false)
+    const canOpen = await Linking.canOpenURL(url).catch(() => false)
+    Linking.openURL(canOpen ? url : fallback).catch(() =>
+      Toast.show({ type: "error", text1: "WhatsApp not installed" })
+    )
+  }
+
+  async function inviteViaSMS() {
+    if (!inviteTarget) return
+    const phone = normalizePhone(inviteTarget.phone)
+    const msg = buildMessage(inviteTarget.name)
+    // Android uses ?body=, iOS uses &body=
+    const separator = Platform.OS === "android" ? "?" : "&"
+    const url = `sms:${phone}${separator}body=${msg}`
+    setShowInvite(false)
+    Linking.openURL(url).catch(() =>
+      Toast.show({ type: "error", text1: "Could not open SMS" })
+    )
+  }
+
+  const filteredContacts = contactSearch.trim().length > 0
+    ? contacts.filter((c) => c.name.toLowerCase().includes(contactSearch.toLowerCase()) || c.phone.includes(contactSearch))
+    : contacts
+
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "friends", label: "Friends", badge: friends.length },
     { key: "requests", label: "Requests", badge: incoming.length || undefined },
@@ -74,15 +194,29 @@ export default function Friends() {
   ]
 
   return (
-    <SafeAreaView className="flex-1 bg-base" edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a1a" }} edges={["top"]}>
       {/* Header */}
-      <View className="px-5 pt-4 pb-3">
-        <Text className="text-white text-2xl font-bold">Friends</Text>
-        <Text className="text-muted text-sm">{friends.length} friend{friends.length !== 1 ? "s" : ""}</Text>
+      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
+        <View>
+          <Text style={{ color: "#fff", fontSize: 24, fontWeight: "800" }}>Friends</Text>
+          <Text style={{ color: "#475569", fontSize: 13 }}>{friends.length} friend{friends.length !== 1 ? "s" : ""}</Text>
+        </View>
+        {tab === "search" && contactsPermission === "granted" && (
+          <TouchableOpacity
+            onPress={loadContacts}
+            disabled={contactsLoading}
+            style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, padding: 10, flexDirection: "row", alignItems: "center", gap: 6 }}
+          >
+            {contactsLoading
+              ? <ActivityIndicator size="small" color="#a5b4fc" />
+              : <Ionicons name="sync" size={16} color="#a5b4fc" />}
+            <Text style={{ color: "#a5b4fc", fontSize: 12, fontWeight: "600" }}>Sync</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Tabs */}
-      <View className="flex-row px-5 gap-2 mb-4">
+      <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 8, marginBottom: 16 }}>
         {tabs.map((t) => (
           <TouchableOpacity
             key={t.key}
@@ -103,38 +237,34 @@ export default function Friends() {
         ))}
       </View>
 
-      <ScrollView
-        className="flex-1 px-5"
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#6366f1" />}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Friends Tab */}
-        {tab === "friends" && (
-          isLoading ? (
-            <ActivityIndicator color="#6366f1" className="mt-10" />
+      {/* Friends Tab */}
+      {tab === "friends" && (
+        <ScrollView
+          style={{ flex: 1, paddingHorizontal: 20 }}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#6366f1" />}
+          showsVerticalScrollIndicator={false}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
           ) : friends.length === 0 ? (
-            <View className="items-center py-20">
-              <Text className="text-5xl mb-4">🤝</Text>
-              <Text className="text-white text-lg font-semibold mb-2">No friends yet</Text>
-              <Text className="text-muted text-sm text-center mb-6">Search for people to add as friends</Text>
-              <TouchableOpacity onPress={() => setTab("search")} className="bg-primary rounded-2xl px-6 py-3">
-                <Text className="text-white font-semibold">Find friends</Text>
+            <View style={{ alignItems: "center", paddingTop: 80 }}>
+              <Text style={{ fontSize: 48, marginBottom: 16 }}>🤝</Text>
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 8 }}>No friends yet</Text>
+              <Text style={{ color: "#475569", fontSize: 14, textAlign: "center", marginBottom: 24 }}>Search for people or invite from your contacts</Text>
+              <TouchableOpacity onPress={() => setTab("search")} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+                <Text style={{ color: "#fff", fontWeight: "600" }}>Find friends</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <View className="gap-2 pb-6">
+            <View style={{ gap: 8, paddingBottom: 32 }}>
               {friends.map((f: any) => {
                 const other = f.requesterId === user?.id ? f.addressee : f.requester
                 return (
-                  <View
-                    key={f.id}
-                    style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
-                  >
+                  <View key={f.id} style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <Avatar name={other?.name} email={other?.email} image={other?.image} size={44} />
                     <View style={{ flex: 1 }}>
-                      <Text className="text-white font-semibold">{other?.name ?? "Unknown"}</Text>
-                      <Text className="text-muted text-xs">{other?.email}</Text>
+                      <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>{other?.name ?? "Unknown"}</Text>
+                      <Text style={{ color: "#475569", fontSize: 12 }}>{other?.email}</Text>
                     </View>
                     <View style={{ backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
                       <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "600" }}>Friends</Text>
@@ -143,39 +273,30 @@ export default function Friends() {
                 )
               })}
             </View>
-          )
-        )}
+          )}
+        </ScrollView>
+      )}
 
-        {/* Requests Tab */}
-        {tab === "requests" && (
-          <View className="gap-4 pb-6">
+      {/* Requests Tab */}
+      {tab === "requests" && (
+        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+          <View style={{ gap: 16, paddingBottom: 32 }}>
             {incoming.length > 0 && (
               <View>
-                <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Incoming ({incoming.length})</Text>
-                <View className="gap-2">
+                <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Incoming ({incoming.length})</Text>
+                <View style={{ gap: 8 }}>
                   {incoming.map((r: any) => (
-                    <View
-                      key={r.id}
-                      style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.2)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
-                    >
+                    <View key={r.id} style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.2)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <Avatar name={r.requester?.name} email={r.requester?.email} image={r.requester?.image} size={44} />
                       <View style={{ flex: 1 }}>
-                        <Text className="text-white font-semibold">{r.requester?.name}</Text>
-                        <Text className="text-muted text-xs">{r.requester?.email}</Text>
+                        <Text style={{ color: "#fff", fontWeight: "600" }}>{r.requester?.name}</Text>
+                        <Text style={{ color: "#475569", fontSize: 12 }}>{r.requester?.email}</Text>
                       </View>
-                      <View className="flex-row gap-2">
-                        <TouchableOpacity
-                          onPress={() => respondMutation.mutate({ id: r.id, action: "accept" })}
-                          disabled={respondMutation.isPending}
-                          style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}
-                        >
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <TouchableOpacity onPress={() => respondMutation.mutate({ id: r.id, action: "accept" })} disabled={respondMutation.isPending} style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}>
                           <Ionicons name="checkmark" size={16} color="#fff" />
                         </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => respondMutation.mutate({ id: r.id, action: "reject" })}
-                          disabled={respondMutation.isPending}
-                          style={{ backgroundColor: "rgba(244,63,94,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}
-                        >
+                        <TouchableOpacity onPress={() => respondMutation.mutate({ id: r.id, action: "reject" })} disabled={respondMutation.isPending} style={{ backgroundColor: "rgba(244,63,94,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}>
                           <Ionicons name="close" size={16} color="#f87171" />
                         </TouchableOpacity>
                       </View>
@@ -184,20 +305,16 @@ export default function Friends() {
                 </View>
               </View>
             )}
-
             {outgoing.length > 0 && (
               <View>
-                <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Sent ({outgoing.length})</Text>
-                <View className="gap-2">
+                <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Sent ({outgoing.length})</Text>
+                <View style={{ gap: 8 }}>
                   {outgoing.map((r: any) => (
-                    <View
-                      key={r.id}
-                      style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
-                    >
+                    <View key={r.id} style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <Avatar name={r.addressee?.name} email={r.addressee?.email} image={r.addressee?.image} size={44} />
                       <View style={{ flex: 1 }}>
-                        <Text className="text-white font-semibold">{r.addressee?.name}</Text>
-                        <Text className="text-muted text-xs">{r.addressee?.email}</Text>
+                        <Text style={{ color: "#fff", fontWeight: "600" }}>{r.addressee?.name}</Text>
+                        <Text style={{ color: "#475569", fontSize: 12 }}>{r.addressee?.email}</Text>
                       </View>
                       <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
                         <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Pending</Text>
@@ -207,109 +324,236 @@ export default function Friends() {
                 </View>
               </View>
             )}
-
             {incoming.length === 0 && outgoing.length === 0 && (
-              <View className="items-center py-20">
-                <Text className="text-5xl mb-4">📬</Text>
-                <Text className="text-white text-lg font-semibold mb-2">No requests</Text>
-                <Text className="text-muted text-sm text-center">Friend requests will appear here</Text>
+              <View style={{ alignItems: "center", paddingTop: 80 }}>
+                <Text style={{ fontSize: 48, marginBottom: 16 }}>📬</Text>
+                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 8 }}>No requests</Text>
+                <Text style={{ color: "#475569", fontSize: 14, textAlign: "center" }}>Friend requests will appear here</Text>
               </View>
             )}
           </View>
-        )}
+        </ScrollView>
+      )}
 
-        {/* Search/Add Tab */}
-        {tab === "search" && (
-          <View className="pb-6">
-            <View className="flex-row gap-2 mb-4">
-              <View style={{ flex: 1, backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 50 }}>
-                <Ionicons name="search" size={16} color="#475569" style={{ marginRight: 8 }} />
-                <TextInput
-                  className="text-white flex-1 text-base"
-                  placeholder="Search by name or email…"
-                  placeholderTextColor="#475569"
-                  value={searchQ}
-                  onChangeText={setSearchQ}
-                  onSubmitEditing={doSearch}
-                  autoCapitalize="none"
-                  returnKeyType="search"
-                />
-                {searchQ.length > 0 && (
-                  <TouchableOpacity onPress={() => { setSearchQ(""); setSearchResults([]) }}>
-                    <Ionicons name="close-circle" size={16} color="#475569" />
-                  </TouchableOpacity>
-                )}
+      {/* Add / Search Tab */}
+      {tab === "search" && (
+        <View style={{ flex: 1 }}>
+          {/* Search bar (always visible) */}
+          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={{ flex: 1, backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 50 }}>
+              <Ionicons name="search" size={16} color="#475569" style={{ marginRight: 8 }} />
+              <TextInput
+                style={{ color: "#fff", flex: 1, fontSize: 15 }}
+                placeholder="Search by name or email…"
+                placeholderTextColor="#475569"
+                value={searchQ}
+                onChangeText={setSearchQ}
+                onSubmitEditing={doSearch}
+                autoCapitalize="none"
+                returnKeyType="search"
+              />
+              {searchQ.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearchQ(""); setSearchResults([]) }}>
+                  <Ionicons name="close-circle" size={16} color="#475569" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity onPress={doSearch} style={{ backgroundColor: "#6366f1", borderRadius: 14, width: 50, alignItems: "center", justifyContent: "center" }}>
+              {searching ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="search" size={18} color="#fff" />}
+            </TouchableOpacity>
+          </View>
+
+          {/* Search results */}
+          {searchQ.length > 0 ? (
+            <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {searchResults.length > 0 ? (
+                <View style={{ gap: 8, paddingBottom: 32 }}>
+                  {searchResults.map((u: any) => {
+                    const alreadyFriend = friends.some((f: any) => f.requesterId === u.id || f.addresseeId === u.id)
+                    const sentRequest = outgoing.some((r: any) => r.addresseeId === u.id)
+                    const isMe = u.id === user?.id
+                    return (
+                      <View key={u.id} style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <Avatar name={u.name} email={u.email} image={u.image} size={44} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: "#fff", fontWeight: "600" }}>{u.name}</Text>
+                          <Text style={{ color: "#475569", fontSize: 12 }}>{u.email}</Text>
+                        </View>
+                        {isMe ? (
+                          <Text style={{ color: "#475569", fontSize: 12 }}>You</Text>
+                        ) : alreadyFriend ? (
+                          <View style={{ backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+                            <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "600" }}>Friends</Text>
+                          </View>
+                        ) : sentRequest ? (
+                          <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+                            <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Sent</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity onPress={() => sendMutation.mutate(u.id)} disabled={sendMutation.isPending} style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Ionicons name="person-add" size={13} color="#fff" />
+                            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>Add</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )
+                  })}
+                </View>
+              ) : !searching ? (
+                <View style={{ alignItems: "center", paddingTop: 60 }}>
+                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🔍</Text>
+                  <Text style={{ color: "#fff", fontWeight: "600", marginBottom: 4 }}>No results</Text>
+                  <Text style={{ color: "#475569", fontSize: 13 }}>No users found for "{searchQ}"</Text>
+                </View>
+              ) : null}
+            </ScrollView>
+
+          ) : contactsPermission === "undetermined" ? (
+            /* First-time: center sync prompt */
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
+              <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                <Ionicons name="people" size={38} color="#a5b4fc" />
               </View>
+              <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700", marginBottom: 10, textAlign: "center" }}>Sync Phone Contacts</Text>
+              <Text style={{ color: "#475569", fontSize: 14, textAlign: "center", lineHeight: 21, marginBottom: 32 }}>
+                Find friends already on SplitEase or invite your contacts to join you.
+              </Text>
               <TouchableOpacity
-                onPress={doSearch}
-                style={{ backgroundColor: "#6366f1", borderRadius: 14, width: 50, alignItems: "center", justifyContent: "center" }}
+                onPress={requestContactsPermission}
+                style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 32, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
               >
-                {searching ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="search" size={18} color="#fff" />}
+                <Ionicons name="sync" size={18} color="#fff" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Sync Contacts</Text>
               </TouchableOpacity>
             </View>
 
-            {searchResults.length > 0 && (
-              <View className="gap-2">
-                {searchResults.map((u: any) => {
-                  const alreadyFriend = friends.some((f: any) =>
-                    f.requesterId === u.id || f.addresseeId === u.id
-                  )
-                  const sentRequest = outgoing.some((r: any) => r.addresseeId === u.id)
-                  const isMe = u.id === user?.id
-                  return (
-                    <View
-                      key={u.id}
-                      style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
-                    >
-                      <Avatar name={u.name} email={u.email} image={u.image} size={44} />
-                      <View style={{ flex: 1 }}>
-                        <Text className="text-white font-semibold">{u.name}</Text>
-                        <Text className="text-muted text-xs">{u.email}</Text>
+          ) : contactsPermission === "denied" ? (
+            /* Permission denied */
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
+              <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 8 }}>Contacts access denied</Text>
+              <Text style={{ color: "#475569", fontSize: 14, textAlign: "center", marginBottom: 24 }}>Enable contacts access in Settings to invite friends.</Text>
+              <TouchableOpacity onPress={() => Linking.openSettings()} style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
+                <Text style={{ color: "#fff", fontWeight: "600" }}>Open Settings</Text>
+              </TouchableOpacity>
+            </View>
+
+          ) : contactsLoading ? (
+            /* Loading contacts */
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16 }}>
+              <ActivityIndicator color="#6366f1" size="large" />
+              <Text style={{ color: "#475569", fontSize: 14 }}>Loading contacts…</Text>
+            </View>
+
+          ) : (
+            /* Contacts list */
+            <View style={{ flex: 1 }}>
+              {contacts.length > 0 && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                  <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 44 }}>
+                    <Ionicons name="search" size={15} color="#475569" style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={{ color: "#fff", flex: 1, fontSize: 14 }}
+                      placeholder="Filter contacts…"
+                      placeholderTextColor="#475569"
+                      value={contactSearch}
+                      onChangeText={setContactSearch}
+                    />
+                    {contactSearch.length > 0 && (
+                      <TouchableOpacity onPress={() => setContactSearch("")}>
+                        <Ionicons name="close-circle" size={15} color="#475569" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {filteredContacts.length === 0 ? (
+                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: "#475569", fontSize: 14 }}>No contacts found</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={filteredContacts}
+                  keyExtractor={(item) => item.id}
+                  contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  ListHeaderComponent={
+                    <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                      {filteredContacts.length} contact{filteredContacts.length !== 1 ? "s" : ""}
+                    </Text>
+                  }
+                  renderItem={({ item }) => (
+                    <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 12, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                      {/* Initials avatar */}
+                      <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "#6366f122", alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 15 }}>{item.initials}</Text>
                       </View>
-                      {isMe ? (
-                        <Text className="text-muted text-xs">You</Text>
-                      ) : alreadyFriend ? (
-                        <View style={{ backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                          <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "600" }}>Friends</Text>
-                        </View>
-                      ) : sentRequest ? (
-                        <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                          <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Sent</Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() => sendMutation.mutate(u.id)}
-                          disabled={sendMutation.isPending}
-                          style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 4 }}
-                        >
-                          <Ionicons name="person-add" size={13} color="#fff" />
-                          <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>Add</Text>
-                        </TouchableOpacity>
-                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }} numberOfLines={1}>{item.name}</Text>
+                        <Text style={{ color: "#475569", fontSize: 12 }}>{item.phone}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => openInvite(item)}
+                        style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}
+                      >
+                        <Ionicons name="paper-plane-outline" size={13} color="#a5b4fc" />
+                        <Text style={{ color: "#a5b4fc", fontSize: 12, fontWeight: "600" }}>Invite</Text>
+                      </TouchableOpacity>
                     </View>
-                  )
-                })}
-              </View>
-            )}
+                  )}
+                />
+              )}
+            </View>
+          )}
+        </View>
+      )}
 
-            {searchResults.length === 0 && searchQ.length >= 2 && !searching && (
-              <View className="items-center py-16">
-                <Text className="text-4xl mb-3">🔍</Text>
-                <Text className="text-white font-semibold mb-1">No results</Text>
-                <Text className="text-muted text-sm text-center">No users found for "{searchQ}"</Text>
-              </View>
-            )}
+      {/* Invite Bottom Sheet */}
+      <Modal visible={showInvite} transparent animationType="fade" onRequestClose={() => setShowInvite(false)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}
+          activeOpacity={1}
+          onPress={() => setShowInvite(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={{ backgroundColor: "#1a1a2e", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.15)", alignSelf: "center", marginBottom: 20 }} />
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 4 }}>Invite {inviteTarget?.name?.split(" ")[0]}</Text>
+              <Text style={{ color: "#475569", fontSize: 13, marginBottom: 24 }}>{inviteTarget?.phone}</Text>
 
-            {searchQ.length === 0 && (
-              <View className="items-center py-16">
-                <Text className="text-4xl mb-3">👤</Text>
-                <Text className="text-white font-semibold mb-1">Find people</Text>
-                <Text className="text-muted text-sm text-center">Search by name or email address</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </ScrollView>
+              <TouchableOpacity
+                onPress={inviteViaWhatsApp}
+                style={{ backgroundColor: "rgba(37,211,102,0.12)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(37,211,102,0.25)", padding: 16, flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 12 }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(37,211,102,0.15)", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 22 }}>💬</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>WhatsApp</Text>
+                  <Text style={{ color: "#475569", fontSize: 12 }}>Send invite via WhatsApp</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#475569" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={inviteViaSMS}
+                style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.2)", padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 22 }}>✉️</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>SMS</Text>
+                  <Text style={{ color: "#475569", fontSize: 12 }}>Send invite via text message</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#475569" />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   )
 }
