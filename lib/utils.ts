@@ -41,7 +41,26 @@ export const CATEGORY_ICONS: Record<string, string> = {
 
 export const CATEGORIES = Object.keys(CATEGORY_ICONS)
 
-export const GROUP_EMOJIS = ["💰", "🏠", "✈️", "🎉", "🍕", "🎮", "💪", "🌍", "🎸", "⚽"]
+export const GROUP_EMOJIS = [
+  // Money & Finance
+  "💰", "💳", "🏦", "💵", "💎", "🪙",
+  // Travel & Transport
+  "✈️", "🏖️", "🏔️", "🗺️", "🚂", "🚗", "🛳️", "🏕️", "🌴",
+  // Home & Living
+  "🏠", "🏡", "🛋️", "🔧", "🔨", "🪴", "💡", "🧹",
+  // Food & Drink
+  "🍕", "🍔", "🍣", "🥘", "☕", "🍺", "🥂", "🍜",
+  // Entertainment & Hobbies
+  "🎮", "🎸", "🎵", "🎬", "🎳", "🎯", "🎲", "🎭",
+  // Sports & Fitness
+  "⚽", "🏀", "🏋️", "🧘", "🚴", "🏊", "🎾", "🏄",
+  // People & Events
+  "🎉", "👨‍👩‍👧‍👦", "💑", "🎓", "💼", "🤝",
+  // Nature
+  "🌍", "🌿", "🐾", "🌸", "⛰️", "🌊",
+  // Daily & Utilities
+  "💪", "🛒", "📱", "💊", "📚", "🧴", "👔", "🐶",
+]
 
 export const GROUP_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e",

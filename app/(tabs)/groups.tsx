@@ -153,8 +153,8 @@ export default function Groups() {
 
       {/* Create Group Modal */}
       <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
-        <View className="flex-1 bg-base px-5 pt-6">
-          <View className="flex-row items-center justify-between mb-6">
+        <View className="flex-1 bg-base" style={{ paddingTop: insets.top + 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text className="text-white text-xl font-bold">Create Group</Text>
             <TouchableOpacity onPress={() => setShowCreate(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
@@ -162,7 +162,7 @@ export default function Groups() {
           </View>
 
           {/* Preview */}
-          <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <View style={{ marginHorizontal: 20, backgroundColor: "#1a1a2e", borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
               <Text style={{ fontSize: 26 }}>{emoji}</Text>
             </View>
@@ -172,7 +172,7 @@ export default function Groups() {
             </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
             {/* Name */}
             <Text className="text-slate-300 text-sm font-medium mb-2">Group name *</Text>
             <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14 }}>
