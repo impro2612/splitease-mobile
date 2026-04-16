@@ -48,11 +48,34 @@ export default function Dashboard() {
     refetchSummary()
   }
 
-  // Recent expenses across all groups (last 10)
-  const allExpenses = groups
-    .flatMap((g: any) => (g.expenses ?? []).map((e: any) => ({ ...e, groupName: g.name })))
-    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 10)
+  // Build unified activity feed: expenses + group created + members joined
+  const activityItems: any[] = []
+
+  for (const g of groups) {
+    const gc = CURRENCIES.find((c: any) => c.code === (g.currency ?? "USD")) ?? CURRENCIES[0]
+
+    // Expenses
+    for (const e of (g.expenses ?? [])) {
+      activityItems.push({ type: "expense", date: e.createdAt, expense: e, group: g, gc })
+    }
+
+    // Group created
+    activityItems.push({ type: "group_created", date: g.createdAt, group: g, gc })
+
+    // Members joined (skip the creator who joined at the same time as group was created)
+    for (const m of (g.members ?? [])) {
+      const joinedAt = new Date(m.joinedAt).getTime()
+      const createdAt = new Date(g.createdAt).getTime()
+      if (Math.abs(joinedAt - createdAt) > 5000) {
+        // joined more than 5s after group creation → it's a real add-member event
+        activityItems.push({ type: "member_joined", date: m.joinedAt, member: m, group: g, gc })
+      }
+    }
+  }
+
+  const recentActivity = activityItems
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 15)
 
   return (
     <SafeAreaView className="flex-1 bg-base" edges={["top"]}>
@@ -145,38 +168,74 @@ export default function Dashboard() {
         {/* Recent activity */}
         <View className="px-5 mt-6 mb-8">
           <Text className="text-white font-semibold text-base mb-3">Recent Activity</Text>
-          {allExpenses.length === 0 ? (
+          {recentActivity.length === 0 ? (
             <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 24, alignItems: "center" }}>
               <Text className="text-4xl mb-2">📝</Text>
-              <Text className="text-muted text-sm">No expenses yet</Text>
+              <Text className="text-muted text-sm">No activity yet</Text>
             </View>
           ) : (
-            allExpenses.map((expense: any) => {
-              const mySplit = expense.splits?.find((s: any) => s.userId === user?.id)
-              const isPayer = expense.paidById === user?.id
-              const myNetUSD = isPayer ? expense.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
-              const myNet = myNetUSD * rate
-              const expenseTotal = expense.amount * rate
-              return (
-                <View
-                  key={expense.id}
-                  style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 12 }}
-                >
-                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ fontSize: 18 }}>{CATEGORY_ICONS[expense.category] ?? "💸"}</Text>
+            recentActivity.map((item: any, idx: number) => {
+              if (item.type === "expense") {
+                const expense = item.expense
+                const gc = item.gc
+                const mySplit = expense.splits?.find((s: any) => s.userId === user?.id)
+                const isPayer = expense.paidById === user?.id
+                const myNet = isPayer
+                  ? expense.amount - (mySplit?.amount ?? 0)
+                  : -(mySplit?.amount ?? 0)
+                return (
+                  <View key={`exp-${expense.id}`} style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 18 }}>{CATEGORY_ICONS[expense.category] ?? "💸"}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text className="text-white text-sm font-medium" numberOfLines={1}>{expense.description}</Text>
+                      <Text className="text-muted text-xs mt-0.5">{item.group.name} · {formatRelativeTime(expense.createdAt)}</Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
+                        {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, gc.symbol, gc.code)}
+                      </Text>
+                      <Text className="text-muted text-xs">{formatCurrency(expense.amount, gc.symbol, gc.code)}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text className="text-white text-sm font-medium" numberOfLines={1}>{expense.description}</Text>
-                    <Text className="text-muted text-xs mt-0.5">{expense.groupName} · {formatRelativeTime(expense.createdAt)}</Text>
+                )
+              }
+
+              if (item.type === "group_created") {
+                return (
+                  <View key={`grp-${item.group.id}`} style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: item.group.color + "33", alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 18 }}>{item.group.emoji}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text className="text-white text-sm font-medium" numberOfLines={1}>Group "{item.group.name}" created</Text>
+                      <Text className="text-muted text-xs mt-0.5">{item.gc.code} · {formatRelativeTime(item.group.createdAt)}</Text>
+                    </View>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="people" size={18} color="#a5b4fc" />
+                    </View>
                   </View>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                      {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, currencyInfo.symbol, currencyInfo.code)}
-                    </Text>
-                    <Text className="text-muted text-xs">{formatCurrency(expenseTotal, currencyInfo.symbol, currencyInfo.code)}</Text>
+                )
+              }
+
+              if (item.type === "member_joined") {
+                return (
+                  <View key={`mem-${item.group.id}-${item.member.userId}`} style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(34,197,94,0.1)", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="person-add" size={18} color="#4ade80" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text className="text-white text-sm font-medium" numberOfLines={1}>
+                        {item.member.user?.name ?? item.member.user?.email ?? "Someone"} joined {item.group.name}
+                      </Text>
+                      <Text className="text-muted text-xs mt-0.5">{formatRelativeTime(item.member.joinedAt)}</Text>
+                    </View>
                   </View>
-                </View>
-              )
+                )
+              }
+
+              return null
             })
           )}
         </View>

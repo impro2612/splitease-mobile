@@ -1,26 +1,31 @@
 import { useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, RefreshControl, ActivityIndicator, Alert,
+  Modal, RefreshControl, ActivityIndicator, Alert, FlatList,
 } from "react-native"
 import { router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { groupsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { formatCurrency, GROUP_EMOJIS, GROUP_COLORS } from "@/lib/utils"
+import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 
 export default function Groups() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets()
   const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [emoji, setEmoji] = useState("💰")
   const [color, setColor] = useState("#6366f1")
+  const [groupCurrency, setGroupCurrency] = useState("USD")
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
+  const [currencySearch, setCurrencySearch] = useState("")
 
   const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["groups"],
@@ -28,11 +33,12 @@ export default function Groups() {
   })
 
   const createMutation = useMutation({
-    mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color }),
+    mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
+      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
       setShowCreate(false)
-      setName(""); setDescription(""); setEmoji("💰"); setColor("#6366f1")
+      setName(""); setDescription(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency("USD")
       Toast.show({ type: "success", text1: "Group created! 🎉" })
       router.push(`/group/${res.data.id}`)
     },
@@ -90,6 +96,7 @@ export default function Groups() {
           <View className="gap-3 pb-6">
             {groups.map((group: any) => {
               const balance = getGroupBalance(group)
+              const gc = CURRENCIES.find(c => c.code === (group.currency ?? "USD")) ?? CURRENCIES[0]
               return (
                 <TouchableOpacity
                   key={group.id}
@@ -120,7 +127,7 @@ export default function Groups() {
                       </View>
                     </View>
                     <Text style={{ color: balance > 0 ? "#4ade80" : balance < 0 ? "#f87171" : "#475569", fontWeight: "700", fontSize: 14 }}>
-                      {balance > 0 ? `+${formatCurrency(balance)}` : balance < 0 ? formatCurrency(balance) : "Settled"}
+                      {balance > 0 ? `+${formatCurrency(balance, gc.symbol, gc.code)}` : balance < 0 ? formatCurrency(balance, gc.symbol, gc.code) : "Settled"}
                     </Text>
                   </View>
 
@@ -174,9 +181,22 @@ export default function Groups() {
 
             {/* Description */}
             <Text className="text-slate-300 text-sm font-medium mb-2">Description (optional)</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
+            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14 }}>
               <TextInput className="text-white text-base" placeholder="What's this group for?" placeholderTextColor="#475569" value={description} onChangeText={setDescription} />
             </View>
+
+            {/* Currency */}
+            <Text className="text-slate-300 text-sm font-medium mb-2">Group Currency</Text>
+            <TouchableOpacity
+              onPress={() => setShowCurrencyPicker(true)}
+              style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Text style={{ fontSize: 20 }}>{CURRENCIES.find(c => c.code === groupCurrency)?.flag}</Text>
+                <Text className="text-white text-base">{groupCurrency} — {CURRENCIES.find(c => c.code === groupCurrency)?.name}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#475569" />
+            </TouchableOpacity>
 
             {/* Emoji */}
             <Text className="text-slate-300 text-sm font-medium mb-3">Icon</Text>
@@ -212,6 +232,45 @@ export default function Groups() {
               {createMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Create Group</Text>}
             </TouchableOpacity>
           </ScrollView>
+        </View>
+      </Modal>
+      {/* Currency Picker Modal */}
+      <Modal visible={showCurrencyPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <View className="flex-1 bg-base" style={{ paddingTop: insets.top + 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text className="text-white text-xl font-bold">Group Currency</Text>
+            <TouchableOpacity onPress={() => { setShowCurrencyPicker(false); setCurrencySearch("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>
+            <Ionicons name="search" size={16} color="#475569" style={{ marginRight: 8 }} />
+            <TextInput className="text-white flex-1 text-base" placeholder="Search currency..." placeholderTextColor="#475569" value={currencySearch} onChangeText={setCurrencySearch} autoCapitalize="none" />
+            {currencySearch.length > 0 && <TouchableOpacity onPress={() => setCurrencySearch("")}><Ionicons name="close-circle" size={16} color="#475569" /></TouchableOpacity>}
+          </View>
+          <FlatList
+            data={CURRENCIES.filter(c => c.code.toLowerCase().includes(currencySearch.toLowerCase()) || c.name.toLowerCase().includes(currencySearch.toLowerCase()))}
+            keyExtractor={item => item.code}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => { setGroupCurrency(item.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
+                style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center", marginRight: 14 }}>
+                  <Text style={{ fontSize: 16, color: "#fff", fontWeight: "600" }}>{item.symbol}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text className="text-white font-semibold">{item.code}</Text>
+                  <Text className="text-muted text-xs">{item.name}</Text>
+                </View>
+                <Text style={{ fontSize: 24, marginRight: groupCurrency === item.code ? 8 : 0 }}>{item.flag}</Text>
+                {groupCurrency === item.code && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
+              </TouchableOpacity>
+            )}
+          />
         </View>
       </Modal>
     </SafeAreaView>
