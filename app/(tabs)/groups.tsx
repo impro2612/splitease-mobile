@@ -154,17 +154,20 @@ export default function Groups() {
       {/* Create Group Modal */}
       <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
         <View className="flex-1 bg-base" style={{ paddingTop: insets.top + 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
+
+          {/* ── STATIC TOP ── */}
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 14 }}>
             <Text className="text-white text-xl font-bold">Create Group</Text>
             <TouchableOpacity onPress={() => setShowCreate(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
 
-          {/* Preview */}
-          <View style={{ marginHorizontal: 20, backgroundColor: "#1a1a2e", borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ fontSize: 26 }}>{emoji}</Text>
+          {/* Preview card */}
+          <View style={{ marginHorizontal: 20, backgroundColor: "#1a1a2e", borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 22 }}>{emoji}</Text>
             </View>
             <View>
               <Text className="text-white font-semibold text-base">{name || "Group name"}</Text>
@@ -172,49 +175,54 @@ export default function Groups() {
             </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-            {/* Name */}
+          {/* Group name */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
             <Text className="text-slate-300 text-sm font-medium mb-2">Group name *</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14 }}>
+            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center" }}>
               <TextInput className="text-white text-base" placeholder="e.g. NYC Trip, Apartment" placeholderTextColor="#475569" value={name} onChangeText={setName} />
             </View>
+          </View>
 
-            {/* Description */}
+          {/* Description */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
             <Text className="text-slate-300 text-sm font-medium mb-2">Description (optional)</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14 }}>
+            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center" }}>
               <TextInput className="text-white text-base" placeholder="What's this group for?" placeholderTextColor="#475569" value={description} onChangeText={setDescription} />
             </View>
+          </View>
 
-            {/* Currency */}
+          {/* Currency */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
             <Text className="text-slate-300 text-sm font-medium mb-2">Group Currency</Text>
             <TouchableOpacity
               onPress={() => setShowCurrencyPicker(true)}
-              style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}
+              style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <Text style={{ fontSize: 20 }}>{CURRENCIES.find(c => c.code === groupCurrency)?.flag}</Text>
+                <Text style={{ fontSize: 18 }}>{CURRENCIES.find(c => c.code === groupCurrency)?.flag}</Text>
                 <Text className="text-white text-base">{groupCurrency} — {CURRENCIES.find(c => c.code === groupCurrency)?.name}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#475569" />
             </TouchableOpacity>
+          </View>
 
-            {/* Emoji */}
-            <Text className="text-slate-300 text-sm font-medium mb-3">Icon</Text>
-            <View className="flex-row flex-wrap gap-2 mb-5">
+          {/* ── SCROLLABLE MIDDLE: Icon + Color ── */}
+          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+            <Text className="text-slate-300 text-sm font-medium mb-3 mt-2">Icon</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
               {GROUP_EMOJIS.map((e) => (
                 <TouchableOpacity
                   key={e}
                   onPress={() => setEmoji(e)}
-                  style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: emoji === e ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.05)", borderWidth: emoji === e ? 2 : 1, borderColor: emoji === e ? "#6366f1" : "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" }}
+                  style={{ width: 46, height: 46, borderRadius: 13, backgroundColor: emoji === e ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.05)", borderWidth: emoji === e ? 2 : 1, borderColor: emoji === e ? "#6366f1" : "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" }}
                 >
-                  <Text style={{ fontSize: 22 }}>{e}</Text>
+                  <Text style={{ fontSize: 21 }}>{e}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Color */}
             <Text className="text-slate-300 text-sm font-medium mb-3">Color</Text>
-            <View className="flex-row flex-wrap gap-2 mb-8">
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
               {GROUP_COLORS.map((c) => (
                 <TouchableOpacity
                   key={c}
@@ -223,7 +231,10 @@ export default function Groups() {
                 />
               ))}
             </View>
+          </ScrollView>
 
+          {/* ── STATIC BOTTOM: Create button ── */}
+          <View style={{ paddingHorizontal: 20, paddingBottom: 24, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" }}>
             <TouchableOpacity
               onPress={() => createMutation.mutate()}
               disabled={!name.trim() || createMutation.isPending}
@@ -231,7 +242,8 @@ export default function Groups() {
             >
               {createMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Create Group</Text>}
             </TouchableOpacity>
-          </ScrollView>
+          </View>
+
         </View>
       </Modal>
       {/* Currency Picker Modal */}
