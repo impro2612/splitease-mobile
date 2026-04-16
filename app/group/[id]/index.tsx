@@ -84,6 +84,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
+      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
       setShowAddExpense(false)
       resetAddForm()
       Toast.show({ type: "success", text1: "Expense added!" })
@@ -103,6 +104,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
+      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
       setShowEditExpense(false)
       Toast.show({ type: "success", text1: "Expense updated!" })
     },
@@ -115,6 +117,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
+      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
       Toast.show({ type: "success", text1: "Expense deleted" })
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to delete expense" }),
@@ -141,6 +144,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
+      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
       setShowSettle(false)
       setSettleNote("")
       setSettleTarget(null)
