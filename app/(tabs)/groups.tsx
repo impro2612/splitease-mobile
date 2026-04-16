@@ -153,62 +153,64 @@ export default function Groups() {
 
       {/* Create Group Modal */}
       <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
-        <View className="flex-1 bg-base" style={{ paddingTop: insets.top + 16 }}>
+        <View style={{ flex: 1, backgroundColor: "#0a0a1a", paddingTop: insets.top + 16 }}>
 
-          {/* ── STATIC TOP ── */}
-          {/* Header */}
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 14 }}>
-            <Text className="text-white text-xl font-bold">Create Group</Text>
-            <TouchableOpacity onPress={() => setShowCreate(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Preview card */}
-          <View style={{ marginHorizontal: 20, backgroundColor: "#1a1a2e", borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
-            <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ fontSize: 22 }}>{emoji}</Text>
+          {/* ── STATIC TOP (all in one container so height is known upfront) ── */}
+          <View style={{ paddingHorizontal: 20 }}>
+            {/* Header */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Create Group</Text>
+              <TouchableOpacity onPress={() => setShowCreate(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+                <Ionicons name="close" size={18} color="#fff" />
+              </TouchableOpacity>
             </View>
-            <View>
-              <Text className="text-white font-semibold text-base">{name || "Group name"}</Text>
-              <Text className="text-muted text-xs">{description || "No description"}</Text>
-            </View>
-          </View>
 
-          {/* Group name */}
-          <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-            <Text className="text-slate-300 text-sm font-medium mb-2">Group name *</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center" }}>
-              <TextInput className="text-white text-base" placeholder="e.g. NYC Trip, Apartment" placeholderTextColor="#475569" value={name} onChangeText={setName} />
+            {/* Preview card */}
+            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 22 }}>{emoji}</Text>
+              </View>
+              <View>
+                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>{name || "Group name"}</Text>
+                <Text style={{ color: "#475569", fontSize: 12 }}>{description || "No description"}</Text>
+              </View>
             </View>
-          </View>
 
-          {/* Description */}
-          <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-            <Text className="text-slate-300 text-sm font-medium mb-2">Description (optional)</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center" }}>
-              <TextInput className="text-white text-base" placeholder="What's this group for?" placeholderTextColor="#475569" value={description} onChangeText={setDescription} />
+            {/* Group name */}
+            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group name *</Text>
+            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
+              <TextInput style={{ color: "#fff", fontSize: 15 }} placeholder="e.g. NYC Trip, Apartment" placeholderTextColor="#475569" value={name} onChangeText={setName} />
             </View>
-          </View>
 
-          {/* Currency */}
-          <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-            <Text className="text-slate-300 text-sm font-medium mb-2">Group Currency</Text>
+            {/* Description */}
+            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Description (optional)</Text>
+            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
+              <TextInput style={{ color: "#fff", fontSize: 15 }} placeholder="What's this group for?" placeholderTextColor="#475569" value={description} onChangeText={setDescription} />
+            </View>
+
+            {/* Currency */}
+            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group Currency</Text>
             <TouchableOpacity
               onPress={() => setShowCurrencyPicker(true)}
-              style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+              style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Text style={{ fontSize: 18 }}>{CURRENCIES.find(c => c.code === groupCurrency)?.flag}</Text>
-                <Text className="text-white text-base">{groupCurrency} — {CURRENCIES.find(c => c.code === groupCurrency)?.name}</Text>
+                <Text style={{ color: "#fff", fontSize: 15 }}>{groupCurrency} — {CURRENCIES.find(c => c.code === groupCurrency)?.name}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#475569" />
             </TouchableOpacity>
+
+            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6, marginTop: 2 }}>Icon</Text>
           </View>
 
-          {/* ── SCROLLABLE MIDDLE: Icon + Color ── */}
-          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-            <Text className="text-slate-300 text-sm font-medium mb-3 mt-2">Icon</Text>
+          {/* ── SCROLLABLE MIDDLE: Icon grid + Color ── */}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
               {GROUP_EMOJIS.map((e) => (
                 <TouchableOpacity
@@ -221,8 +223,8 @@ export default function Groups() {
               ))}
             </View>
 
-            <Text className="text-slate-300 text-sm font-medium mb-3">Color</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
+            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Color</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               {GROUP_COLORS.map((c) => (
                 <TouchableOpacity
                   key={c}
@@ -234,13 +236,13 @@ export default function Groups() {
           </ScrollView>
 
           {/* ── STATIC BOTTOM: Create button ── */}
-          <View style={{ paddingHorizontal: 20, paddingBottom: 24, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" }}>
+          <View style={{ paddingHorizontal: 20, paddingBottom: 28, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" }}>
             <TouchableOpacity
               onPress={() => createMutation.mutate()}
               disabled={!name.trim() || createMutation.isPending}
               style={{ backgroundColor: !name.trim() ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
             >
-              {createMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Create Group</Text>}
+              {createMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Create Group</Text>}
             </TouchableOpacity>
           </View>
 
