@@ -1,7 +1,8 @@
-export function formatCurrency(amount: number) {
+export function formatCurrency(amount: number, symbol = "$", code = "USD") {
   const abs = Math.abs(amount)
-  const formatted = abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-  return `$${formatted}`
+  const noDecimals = ["JPY", "KRW", "VND", "IDR", "HUF", "CLP", "COP"].includes(code)
+  const formatted = abs.toFixed(noDecimals ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return `${symbol}${formatted}`
 }
 
 export function getInitials(name?: string | null, email?: string | null): string {

@@ -8,11 +8,13 @@ import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
 import { groupsApi, dashboardApi } from "@/lib/api"
 import { formatCurrency, formatRelativeTime, CATEGORY_ICONS } from "@/lib/utils"
+import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 export default function Dashboard() {
-  const { user } = useAuthStore()
+  const { user, currency } = useAuthStore()
+  const currencyInfo = CURRENCIES.find(c => c.code === currency) ?? CURRENCIES[0]
 
   const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["groups"],
@@ -24,9 +26,22 @@ export default function Dashboard() {
     queryFn: () => dashboardApi.summary().then((r) => r.data),
   })
 
-  const totalOwed: number = summary?.totalOwed ?? 0
-  const totalOwe: number = summary?.totalOwe ?? 0
-  const net: number = summary?.net ?? 0
+  const { data: rateData } = useQuery({
+    queryKey: ["exchange-rate", currency],
+    queryFn: async () => {
+      if (currency === "USD") return 1
+      const res = await fetch(`https://open.er-api.com/v6/latest/USD`)
+      const data = await res.json()
+      return (data.rates?.[currency] as number) ?? 1
+    },
+    staleTime: 1000 * 60 * 60, // cache rate for 1 hour
+    retry: 2,
+  })
+
+  const rate: number = rateData ?? 1
+  const totalOwed: number = (summary?.totalOwed ?? 0) * rate
+  const totalOwe: number = (summary?.totalOwe ?? 0) * rate
+  const net: number = (summary?.net ?? 0) * rate
 
   const handleRefresh = () => {
     refetch()
@@ -65,7 +80,7 @@ export default function Dashboard() {
           >
             <Text className="text-muted text-xs font-medium uppercase tracking-wider mb-1">Net balance</Text>
             <Text style={{ color: net >= 0 ? "#4ade80" : "#f87171", fontSize: 34, fontWeight: "800" }}>
-              {net >= 0 ? "+" : ""}{formatCurrency(net)}
+              {net >= 0 ? "+" : ""}{formatCurrency(net, currencyInfo.symbol, currencyInfo.code)}
             </Text>
             <Text className="text-muted text-xs mt-1">
               {net > 0 ? "Others owe you" : net < 0 ? "You owe others" : "All settled up! ✅"}
@@ -79,14 +94,14 @@ export default function Dashboard() {
                 <Ionicons name="trending-up" size={14} color="#4ade80" />
                 <Text className="text-muted text-xs">You're owed</Text>
               </View>
-              <Text style={{ color: "#4ade80", fontSize: 20, fontWeight: "700" }}>+{formatCurrency(totalOwed)}</Text>
+              <Text style={{ color: "#4ade80", fontSize: 20, fontWeight: "700" }}>+{formatCurrency(totalOwed, currencyInfo.symbol, currencyInfo.code)}</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: "rgba(244,63,94,0.08)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(244,63,94,0.15)", padding: 16 }}>
               <View className="flex-row items-center gap-1.5 mb-1">
                 <Ionicons name="trending-down" size={14} color="#f87171" />
                 <Text className="text-muted text-xs">You owe</Text>
               </View>
-              <Text style={{ color: "#f87171", fontSize: 20, fontWeight: "700" }}>-{formatCurrency(totalOwe)}</Text>
+              <Text style={{ color: "#f87171", fontSize: 20, fontWeight: "700" }}>-{formatCurrency(totalOwe, currencyInfo.symbol, currencyInfo.code)}</Text>
             </View>
           </View>
         </View>
@@ -139,7 +154,9 @@ export default function Dashboard() {
             allExpenses.map((expense: any) => {
               const mySplit = expense.splits?.find((s: any) => s.userId === user?.id)
               const isPayer = expense.paidById === user?.id
-              const myNet = isPayer ? expense.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
+              const myNetUSD = isPayer ? expense.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
+              const myNet = myNetUSD * rate
+              const expenseTotal = expense.amount * rate
               return (
                 <View
                   key={expense.id}
@@ -154,9 +171,9 @@ export default function Dashboard() {
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
                     <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                      {myNet >= 0 ? "+" : ""}{formatCurrency(myNet)}
+                      {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, currencyInfo.symbol, currencyInfo.code)}
                     </Text>
-                    <Text className="text-muted text-xs">{formatCurrency(expense.amount)}</Text>
+                    <Text className="text-muted text-xs">{formatCurrency(expenseTotal, currencyInfo.symbol, currencyInfo.code)}</Text>
                   </View>
                 </View>
               )
