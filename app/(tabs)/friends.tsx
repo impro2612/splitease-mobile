@@ -45,6 +45,8 @@ export default function Friends() {
   const [contactsPermission, setContactsPermission] = useState<"undetermined" | "granted" | "denied">("undetermined")
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
+  // Map: normalizedPhone -> SplitEase user { id, name, email, image }
+  const [phoneUserMap, setPhoneUserMap] = useState<Record<string, any>>({})
 
   // Invite bottom sheet
   const [inviteTarget, setInviteTarget] = useState<Contact | null>(null)
@@ -95,6 +97,13 @@ export default function Friends() {
         })
       }
       setContacts(parsed)
+
+      // Lookup which contacts are on SplitEase
+      if (parsed.length > 0) {
+        const normalized = parsed.map((c) => normalizePhone(c.phone))
+        const res = await usersApi.lookupPhones(normalized).catch(() => null)
+        if (res?.data) setPhoneUserMap(res.data)
+      }
     } catch {
       Toast.show({ type: "error", text1: "Failed to load contacts" })
     } finally {
@@ -146,8 +155,20 @@ export default function Friends() {
   }
 
   function openInvite(contact: Contact) {
-    setInviteTarget(contact)
-    setShowInvite(true)
+    const normalized = normalizePhone(contact.phone)
+    const splitEaseUser = phoneUserMap[normalized]
+    if (splitEaseUser) {
+      // Already on SplitEase — send friend request directly
+      const alreadyFriend = friends.some((f: any) => f.requesterId === splitEaseUser.id || f.addresseeId === splitEaseUser.id)
+      const sentRequest = outgoing.some((r: any) => r.addresseeId === splitEaseUser.id)
+      if (alreadyFriend) { Toast.show({ type: "info", text1: `${contact.name} is already your friend` }); return }
+      if (sentRequest) { Toast.show({ type: "info", text1: "Friend request already sent" }); return }
+      sendMutation.mutate(splitEaseUser.id)
+    } else {
+      // Not on SplitEase — show invite sheet
+      setInviteTarget(contact)
+      setShowInvite(true)
+    }
   }
 
   function buildMessage(name: string) {
@@ -456,21 +477,49 @@ export default function Friends() {
                   )}
                 </>
               }
-              renderItem={({ item }) => (
-                <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 12, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "#6366f122", alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 15 }}>{item.initials}</Text>
+              renderItem={({ item }) => {
+                const normalized = normalizePhone(item.phone)
+                const splitEaseUser = phoneUserMap[normalized]
+                const alreadyFriend = splitEaseUser && friends.some((f: any) => f.requesterId === splitEaseUser.id || f.addresseeId === splitEaseUser.id)
+                const sentRequest = splitEaseUser && outgoing.some((r: any) => r.addresseeId === splitEaseUser.id)
+                return (
+                  <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: splitEaseUser ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.06)", padding: 12, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: splitEaseUser ? "rgba(99,102,241,0.15)" : "#6366f122", alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 15 }}>{item.initials}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }} numberOfLines={1}>{item.name}</Text>
+                        {splitEaseUser && (
+                          <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
+                            <Text style={{ color: "#a5b4fc", fontSize: 9, fontWeight: "700" }}>ON APP</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={{ color: "#475569", fontSize: 12 }}>{item.phone}</Text>
+                    </View>
+                    {alreadyFriend ? (
+                      <View style={{ backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "600" }}>Friends</Text>
+                      </View>
+                    ) : sentRequest ? (
+                      <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Sent</Text>
+                      </View>
+                    ) : splitEaseUser ? (
+                      <TouchableOpacity onPress={() => openInvite(item)} style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
+                        <Ionicons name="person-add-outline" size={13} color="#fff" />
+                        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>Add</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity onPress={() => openInvite(item)} style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
+                        <Ionicons name="paper-plane-outline" size={13} color="#a5b4fc" />
+                        <Text style={{ color: "#a5b4fc", fontSize: 12, fontWeight: "600" }}>Invite</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }} numberOfLines={1}>{item.name}</Text>
-                    <Text style={{ color: "#475569", fontSize: 12 }}>{item.phone}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => openInvite(item)} style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
-                    <Ionicons name="paper-plane-outline" size={13} color="#a5b4fc" />
-                    <Text style={{ color: "#a5b4fc", fontSize: 12, fontWeight: "600" }}>Invite</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+                )
+              }}
             />
           )}
         </View>

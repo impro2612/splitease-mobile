@@ -11,6 +11,7 @@ export default function SignUp() {
   const { signUp } = useAuthStore()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -20,11 +21,12 @@ export default function SignUp() {
   const strengthColor = strength === 1 ? "bg-danger" : strength === 2 ? "bg-warning" : "bg-success"
 
   async function handleSignUp() {
-    if (!name || !email || !password) { setError("All fields are required"); return }
+    if (!name || !email || !phone || !password) { setError("All fields are required"); return }
+    if (phone.replace(/[^\d]/g, "").length < 7) { setError("Enter a valid phone number"); return }
     if (password.length < 6) { setError("Password must be at least 6 characters"); return }
     setLoading(true); setError("")
     try {
-      await signUp(name.trim(), email.trim().toLowerCase(), password)
+      await signUp(name.trim(), email.trim().toLowerCase(), phone.trim(), password)
       router.replace("/(tabs)/dashboard")
     } catch (e: any) {
       setError(e?.response?.data?.error ?? "Something went wrong")
@@ -76,6 +78,23 @@ export default function SignUp() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            {/* Phone */}
+            <View>
+              <Text className="text-slate-300 text-sm font-medium mb-2">Phone number</Text>
+              <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-14">
+                <Ionicons name="call-outline" size={18} color="#94a3b8" />
+                <TextInput
+                  className="flex-1 text-white text-base ml-3"
+                  placeholder="+1 234 567 8900"
+                  placeholderTextColor="#475569"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
                   autoCorrect={false}
                 />
               </View>

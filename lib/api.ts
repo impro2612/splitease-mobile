@@ -37,7 +37,7 @@ api.interceptors.response.use(
 
 // Auth endpoints
 export const authApi = {
-  register: (data: { name: string; email: string; password: string }) =>
+  register: (data: { name: string; email: string; phone: string; password: string }) =>
     api.post("/api/auth/register", data),
 
   signIn: (data: { email: string; password: string }) =>
@@ -98,6 +98,7 @@ export const friendsApi = {
 // User search
 export const usersApi = {
   search: (q: string) => api.get(`/api/users/search?q=${encodeURIComponent(q)}`),
+  lookupPhones: (phones: string[]) => api.post("/api/users/lookup-phones", { phones }),
 }
 
 // Dashboard summary

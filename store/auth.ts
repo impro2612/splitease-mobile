@@ -16,7 +16,7 @@ type AuthState = {
   loading: boolean
   currency: string
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (name: string, email: string, password: string) => Promise<void>
+  signUp: (name: string, email: string, phone: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   loadSession: () => Promise<void>
   setUser: (user: User) => void
@@ -55,8 +55,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, token })
   },
 
-  signUp: async (name, email, password) => {
-    await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, password })
+  signUp: async (name, email, phone, password) => {
+    await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, phone, password })
     // Auto sign in after registration
     const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-signin`, {
       email, password,
