@@ -245,6 +245,9 @@ export default function GroupDetail() {
   const expenses: any[] = group?.expenses ?? []
   const members: any[] = group?.members ?? []
 
+  // Group currency info — used for all amount display in this screen
+  const gc = CURRENCIES.find((c) => c.code === (group?.currency ?? "USD")) ?? CURRENCIES[0]
+
   let myOwed = 0, myOwes = 0
   for (const exp of expenses) {
     const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
@@ -281,7 +284,7 @@ export default function GroupDetail() {
         {/* Amount */}
         <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
         <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
-          <Text style={{ color: "#475569", fontSize: 18, marginRight: 4 }}>$</Text>
+          <Text style={{ color: "#475569", fontSize: 18, marginRight: 4 }}>{gc.symbol}</Text>
           <TextInput className="text-white text-xl font-bold flex-1" placeholder="0.00" placeholderTextColor="#475569" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
         </View>
 
@@ -354,7 +357,7 @@ export default function GroupDetail() {
           <View style={{ flex: 1, backgroundColor: myNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 14, borderWidth: 1, borderColor: myNet >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 12 }}>
             <Text className="text-muted text-xs mb-0.5">Your balance</Text>
             <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "800", fontSize: 20 }}>
-              {myNet >= 0 ? "+" : ""}{formatCurrency(myNet)}
+              {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, gc.symbol, gc.code)}
             </Text>
           </View>
           <TouchableOpacity
@@ -421,9 +424,9 @@ export default function GroupDetail() {
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
                       <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                        {myAmount >= 0 ? "+" : ""}{formatCurrency(myAmount)}
+                        {myAmount >= 0 ? "+" : ""}{formatCurrency(myAmount, gc.symbol, gc.code)}
                       </Text>
-                      <Text className="text-muted text-xs">{formatCurrency(exp.amount)} total</Text>
+                      <Text className="text-muted text-xs">{formatCurrency(exp.amount, gc.symbol, gc.code)} total</Text>
                     </View>
                   </TouchableOpacity>
                 )
@@ -463,7 +466,7 @@ export default function GroupDetail() {
                           <Text className="text-white font-semibold text-sm">
                             {fromName} owe{fromMe ? "" : "s"} {toName}
                           </Text>
-                          <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 16 }}>{formatCurrency(b.amount)}</Text>
+                          <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 16 }}>{formatCurrency(b.amount, gc.symbol, gc.code)}</Text>
                         </View>
                         <Avatar name={toUser?.name} email={toUser?.email} size={36} />
                       </View>
@@ -766,7 +769,7 @@ export default function GroupDetail() {
               <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 20, alignItems: "center", marginBottom: 20 }}>
                 <Text className="text-muted text-sm mb-1">You're paying</Text>
                 <Text className="text-white text-2xl font-bold mb-1">{settleTarget.name}</Text>
-                <Text style={{ color: "#6366f1", fontSize: 32, fontWeight: "800" }}>{formatCurrency(settleTarget.amount)}</Text>
+                <Text style={{ color: "#6366f1", fontSize: 32, fontWeight: "800" }}>{formatCurrency(settleTarget.amount, gc.symbol, gc.code)}</Text>
               </View>
               <Text className="text-slate-300 text-sm font-medium mb-2">Note (optional)</Text>
               <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
