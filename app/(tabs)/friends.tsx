@@ -23,7 +23,12 @@ export default function Friends() {
 
   const { data: friendsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["friends"],
-    queryFn: () => friendsApi.list().then((r) => (r.data && typeof r.data === "object" && !Array.isArray(r.data) ? r.data : {})),
+    queryFn: async () => {
+      // Backfill friendships from shared groups, then fetch
+      await friendsApi.sync().catch(() => {})
+      const r = await friendsApi.list()
+      return r.data && typeof r.data === "object" && !Array.isArray(r.data) ? r.data : {}
+    },
   })
 
   const friends: any[] = friendsData?.friends ?? []

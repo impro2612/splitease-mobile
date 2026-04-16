@@ -89,6 +89,7 @@ export const balancesApi = {
 // Friends
 export const friendsApi = {
   list: () => api.get("/api/friends"),
+  sync: () => api.post("/api/friends/sync"),
   send: (addresseeId: string) => api.post("/api/friends", { addresseeId }),
   respond: (id: string, action: "accept" | "reject") =>
     api.patch(`/api/friends/${id}`, { action }),
