@@ -15,7 +15,7 @@ import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 
 export default function Groups() {
-  const { user } = useAuthStore()
+  const { user, currency: defaultCurrency } = useAuthStore()
   const queryClient = useQueryClient()
   const insets = useSafeAreaInsets()
   const [showCreate, setShowCreate] = useState(false)
@@ -23,7 +23,7 @@ export default function Groups() {
   const [description, setDescription] = useState("")
   const [emoji, setEmoji] = useState("💰")
   const [color, setColor] = useState("#6366f1")
-  const [groupCurrency, setGroupCurrency] = useState("USD")
+  const [groupCurrency, setGroupCurrency] = useState(defaultCurrency)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [currencySearch, setCurrencySearch] = useState("")
 
@@ -38,7 +38,7 @@ export default function Groups() {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
       setShowCreate(false)
-      setName(""); setDescription(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency("USD")
+      setName(""); setDescription(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
       Toast.show({ type: "success", text1: "Group created! 🎉" })
       router.push(`/group/${res.data.id}`)
     },

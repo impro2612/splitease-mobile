@@ -27,13 +27,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   loading: true,
-  currency: "USD",
+  currency: "INR",
 
   loadSession: async () => {
     try {
       const token = await SecureStore.getItemAsync("session_token")
       const userJson = await SecureStore.getItemAsync("user_data")
-      const currency = await SecureStore.getItemAsync("currency") ?? "USD"
+      const currency = await SecureStore.getItemAsync("currency") ?? "INR"
       if (token && userJson) {
         set({ user: JSON.parse(userJson), token, loading: false, currency })
       } else {
