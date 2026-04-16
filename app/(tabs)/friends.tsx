@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Modal, Linking, Platform, FlatList,
+  AppState, AppStateStatus,
 } from "react-native"
 import * as Contacts from "expo-contacts"
+import * as SecureStore from "expo-secure-store"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -52,6 +54,9 @@ export default function Friends() {
   const [inviteTarget, setInviteTarget] = useState<Contact | null>(null)
   const [showInvite, setShowInvite] = useState(false)
 
+  // Track AppState for auto-sync
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState)
+
   const { data: friendsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["friends"],
     queryFn: async () => {
@@ -65,7 +70,19 @@ export default function Friends() {
   const incoming: any[] = friendsData?.incoming ?? []
   const outgoing: any[] = friendsData?.outgoing ?? []
 
-  // Check contacts permission on mount
+  const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+  async function maybeSyncContacts() {
+    const perm = await Contacts.getPermissionsAsync()
+    if (perm.status !== "granted") return
+    const lastSyncStr = await SecureStore.getItemAsync("contacts_last_sync")
+    const lastSync = lastSyncStr ? parseInt(lastSyncStr) : 0
+    if (Date.now() - lastSync >= SYNC_INTERVAL_MS) {
+      await loadContacts()
+    }
+  }
+
+  // On mount: check permission + do initial/daily sync
   useEffect(() => {
     Contacts.getPermissionsAsync().then((res) => {
       if (res.status === "granted") {
@@ -75,6 +92,16 @@ export default function Friends() {
         setContactsPermission("denied")
       }
     })
+
+    // Auto-sync when app comes to foreground after 24h gap
+    const sub = AppState.addEventListener("change", (nextState: AppStateStatus) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
+        maybeSyncContacts()
+      }
+      appStateRef.current = nextState
+    })
+
+    return () => sub.remove()
   }, [])
 
   const loadContacts = useCallback(async () => {
@@ -104,6 +131,9 @@ export default function Friends() {
         const res = await usersApi.lookupPhones(normalized).catch(() => null)
         if (res?.data) setPhoneUserMap(res.data)
       }
+
+      // Save last sync timestamp
+      await SecureStore.setItemAsync("contacts_last_sync", Date.now().toString())
     } catch {
       Toast.show({ type: "error", text1: "Failed to load contacts" })
     } finally {
