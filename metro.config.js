@@ -2,6 +2,11 @@ const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
 
+// Ensure process.cwd() always points to the project root, regardless of where
+// EAS local builds invoke the bundler from (e.g. the android/ subdirectory).
+// react-native-css-interop calls getConfig(process.cwd()) internally.
+process.chdir(__dirname);
+
 const config = getDefaultConfig(__dirname);
 
 // Force Metro to use pre-built CJS files for @tanstack packages instead of raw
@@ -27,4 +32,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
-module.exports = withNativeWind(config, { input: "./global.css" });
+module.exports = withNativeWind(config, {
+  input: path.resolve(__dirname, "global.css"),
+  configPath: path.resolve(__dirname, "tailwind.config"),
+});

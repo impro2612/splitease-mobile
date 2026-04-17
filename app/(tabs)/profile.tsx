@@ -1,7 +1,7 @@
 import { useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, Switch, Modal, FlatList,
+  ActivityIndicator, Switch, Modal, FlatList,
 } from "react-native"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
@@ -21,6 +21,7 @@ export default function Profile() {
   const [notifications, setNotifications] = useState(true)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [currencySearch, setCurrencySearch] = useState("")
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
 
   const updateMutation = useMutation({
     mutationFn: () => api.patch("/api/auth/me", { name: name.trim() }),
@@ -33,17 +34,13 @@ export default function Profile() {
   })
 
   function handleSignOut() {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut()
-          queryClient.clear()
-        },
-      },
-    ])
+    setShowSignOutConfirm(true)
+  }
+
+  async function doSignOut() {
+    setShowSignOutConfirm(false)
+    await signOut()
+    queryClient.clear()
   }
 
   const stats = [
@@ -255,6 +252,33 @@ export default function Profile() {
               </TouchableOpacity>
             )}
           />
+        </View>
+      </Modal>
+
+      {/* Sign Out Confirm Dialog */}
+      <Modal visible={showSignOutConfirm} transparent animationType="fade" onRequestClose={() => setShowSignOutConfirm(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: "#1a1a2e", borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name="log-out-outline" size={26} color="#f87171" />
+            </View>
+            <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Sign Out</Text>
+            <Text style={{ color: "#94a3b8", fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>Are you sure you want to sign out?</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setShowSignOutConfirm(false)}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#94a3b8", fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={doSignOut}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>

@@ -28,6 +28,7 @@ export default function Groups() {
   const [groupCurrency, setGroupCurrency] = useState(defaultCurrency)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [currencySearch, setCurrencySearch] = useState("")
+  const [search, setSearch] = useState("")
 
   const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["groups"],
@@ -78,6 +79,27 @@ export default function Groups() {
         </TouchableOpacity>
       </View>
 
+      {/* Search bar */}
+      <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+        <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
+          <Ionicons name="search-outline" size={16} color="#475569" style={{ marginRight: 8 }} />
+          <TextInput
+            style={{ flex: 1, color: "#fff", fontSize: 14 }}
+            placeholder="Search groups..."
+            placeholderTextColor="#475569"
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Ionicons name="close-circle" size={16} color="#475569" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       <ScrollView
         className="flex-1 px-5"
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#6366f1" />}
@@ -96,7 +118,9 @@ export default function Groups() {
           </View>
         ) : (
           <View className="gap-3 pb-6">
-            {groups.map((group: any) => {
+            {groups
+              .filter((g: any) => !search.trim() || g.name?.toLowerCase().includes(search.toLowerCase()))
+              .map((group: any) => {
               const balance = getGroupBalance(group)
               const gc = CURRENCIES.find(c => c.code === (group.currency ?? "USD")) ?? CURRENCIES[0]
               return (
@@ -149,6 +173,12 @@ export default function Groups() {
                 </TouchableOpacity>
               )
             })}
+            {search.trim() && groups.filter((g: any) => g.name?.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <Ionicons name="search-outline" size={40} color="#334155" style={{ marginBottom: 12 }} />
+                <Text style={{ color: "#94a3b8", fontWeight: "600", fontSize: 15 }}>No groups match "{search}"</Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>

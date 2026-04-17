@@ -90,6 +90,11 @@ export default function SignIn() {
               </View>
             </View>
 
+            {/* Forgot password */}
+            <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password" as any)} style={{ alignSelf: "flex-end", marginTop: 2 }}>
+              <Text style={{ color: "#6366f1", fontSize: 13 }}>Forgot password?</Text>
+            </TouchableOpacity>
+
             {error ? (
               <View className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
                 <Text className="text-red-400 text-sm">{error}</Text>

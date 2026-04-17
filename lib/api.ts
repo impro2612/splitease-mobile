@@ -44,6 +44,12 @@ export const authApi = {
     api.post("/api/auth/mobile-signin", data),
 
   me: () => api.get("/api/auth/me"),
+
+  forgotPassword: (email: string) =>
+    api.post("/api/auth/forgot-password", { email }),
+
+  resetPassword: (data: { email: string; token: string; newPassword: string }) =>
+    api.post("/api/auth/reset-password", data),
 }
 
 // Groups
@@ -63,13 +69,15 @@ export const membersApi = {
     api.post(`/api/groups/${groupId}/members`, { email }),
   remove: (groupId: string, userId: string) =>
     api.delete(`/api/groups/${groupId}/members`, { data: { userId } }),
+  setRole: (groupId: string, userId: string, role: "ADMIN" | "MEMBER") =>
+    api.patch(`/api/groups/${groupId}/members/${userId}`, { role }),
 }
 
 // Expenses
 export const expensesApi = {
   add: (groupId: string, data: {
     description: string; amount: number; category: string
-    paidById: string; splitType: string; date?: string
+    paidById: string; splitType: string; splits?: any[]; date?: string
   }) => api.post(`/api/groups/${groupId}/expenses`, data),
   update: (groupId: string, expenseId: string, data: {
     description?: string; amount?: number; category?: string
@@ -93,6 +101,15 @@ export const friendsApi = {
   send: (addresseeId: string) => api.post("/api/friends", { addresseeId }),
   respond: (id: string, action: "accept" | "reject") =>
     api.patch(`/api/friends/${id}`, { action }),
+  remove: (id: string) => api.delete(`/api/friends/${id}`),
+}
+
+// Messages
+export const messagesApi = {
+  send: (data: { receiverId: string; content: string; clientId: string }) =>
+    api.post("/api/messages", data),
+  history: (friendId: string, params?: { after?: string; before?: string; limit?: number }) =>
+    api.get(`/api/messages/${friendId}`, { params }),
 }
 
 // User search
@@ -103,5 +120,10 @@ export const usersApi = {
 
 // Dashboard summary
 export const dashboardApi = {
-  summary: () => api.get("/api/balance-summary"),
+  summary: (currency: string) => api.get("/api/balance-summary", { params: { currency } }),
+}
+
+// Push token registration
+export const pushApi = {
+  saveToken: (pushToken: string) => api.post("/api/auth/push-token", { pushToken }),
 }

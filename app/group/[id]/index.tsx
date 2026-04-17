@@ -1,22 +1,158 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, RefreshControl, Alert, FlatList,
-  useWindowDimensions,
+  Modal, ActivityIndicator, RefreshControl, FlatList,
+  useWindowDimensions, Animated,
 } from "react-native"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { groupsApi, expensesApi, balancesApi, membersApi } from "@/lib/api"
+import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
-import { formatCurrency, formatDate, CATEGORY_ICONS, CATEGORIES, GROUP_EMOJIS, GROUP_COLORS } from "@/lib/utils"
-import { CURRENCIES } from "@/lib/currencies"
+import { formatCurrency, formatDate, GROUP_EMOJIS, GROUP_COLORS, guessCategory, getExpenseEmoji } from "@/lib/utils"
+import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg"
+const AnimatedPath = Animated.createAnimatedComponent(Path)
+import * as Print from "expo-print"
+import * as Sharing from "expo-sharing"
 
-type Tab = "expenses" | "balances" | "members"
+type Tab = "expenses" | "balances" | "members" | "analytics" | "utility"
+
+const PIE_COLORS = ["#6366f1", "#f59e0b", "#10b981", "#f87171", "#38bdf8", "#a78bfa", "#fb923c", "#34d399"]
+
+function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
+  data: { name: string; amount: number; color: string }[]
+  size?: number
+  symbol?: string
+}) {
+  const [selected, setSelected] = useState<number | null>(null)
+  const mountAnim = useRef(new Animated.Value(0)).current
+  const segAnims = useRef(data.map(() => new Animated.Value(0))).current
+
+  useEffect(() => {
+    Animated.spring(mountAnim, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }).start()
+    Animated.stagger(120, segAnims.map(a =>
+      Animated.spring(a, { toValue: 1, tension: 70, friction: 8, useNativeDriver: true })
+    )).start()
+  }, [])
+
+  const total = data.reduce((s, d) => s + d.amount, 0)
+  if (total === 0) return null
+
+  const cx = size / 2, cy = size / 2
+  const outerR = size * 0.43, innerR = size * 0.265
+  const explodeD = 12
+
+  let angle = -Math.PI / 2
+  const slices = data.map((d, i) => {
+    const frac = d.amount / total
+    const sweep = frac * 2 * Math.PI
+    const mid = angle + sweep / 2
+    const end = angle + sweep
+    const large = sweep > Math.PI ? 1 : 0
+    const ox1 = cx + outerR * Math.cos(angle), oy1 = cy + outerR * Math.sin(angle)
+    const ox2 = cx + outerR * Math.cos(end), oy2 = cy + outerR * Math.sin(end)
+    const ix1 = cx + innerR * Math.cos(end), iy1 = cy + innerR * Math.sin(end)
+    const ix2 = cx + innerR * Math.cos(angle), iy2 = cy + innerR * Math.sin(angle)
+    const path = `M${ox1},${oy1} A${outerR},${outerR},0,${large},1,${ox2},${oy2} L${ix1},${iy1} A${innerR},${innerR},0,${large},0,${ix2},${iy2}Z`
+    const tx = Math.cos(mid) * explodeD, ty = Math.sin(mid) * explodeD
+    angle = end
+    return { ...d, path, mid, tx, ty, frac, i }
+  })
+
+  const sel = selected !== null ? slices[selected] : null
+
+  return (
+    <View style={{ alignItems: "center" }}>
+      <Animated.View style={{ opacity: mountAnim, transform: [{ scale: mountAnim }] }}>
+        <Svg width={size} height={size + 8}>
+          <Defs>
+            {slices.map((s, i) => (
+              <LinearGradient key={i} id={`lg${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
+                <Stop offset="100%" stopColor={s.color} stopOpacity="1" />
+              </LinearGradient>
+            ))}
+          </Defs>
+
+          {/* 3D depth layers — two shadow offset copies per segment */}
+          {slices.map((s, i) => {
+            const isSel = selected === i
+            const ox = isSel ? s.tx : 0, oy = isSel ? s.ty : 0
+            return (
+              <G key={`depth${i}`}>
+                <Path d={s.path} fill={s.color} opacity={0.18} transform={`translate(${ox},${oy + 7})`} />
+                <Path d={s.path} fill={s.color} opacity={0.12} transform={`translate(${ox},${oy + 12})`} />
+              </G>
+            )
+          })}
+
+          {/* Glow ring on selected */}
+          {sel && (
+            <Path
+              d={sel.path}
+              fill="none"
+              stroke={sel.color}
+              strokeWidth={8}
+              opacity={0.25}
+              transform={`translate(${sel.tx},${sel.ty})`}
+            />
+          )}
+
+          {/* Main segments with stagger fade-in */}
+          {slices.map((s, i) => {
+            const isSel = selected === i
+            return (
+              <AnimatedPath
+                key={`seg${i}`}
+                d={s.path}
+                fill={`url(#lg${i})`}
+                stroke={isSel ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)"}
+                strokeWidth={isSel ? 2.5 : 1.5}
+                transform={isSel ? `translate(${s.tx},${s.ty})` : "translate(0,0)"}
+                opacity={segAnims[i] as any}
+                onPress={() => setSelected(selected === i ? null : i)}
+              />
+            )
+          })}
+
+          {/* Center hole */}
+          <Circle cx={cx} cy={cy} r={innerR - 2} fill="#1a1a2e" />
+          {/* Subtle inner ring */}
+          <Circle cx={cx} cy={cy} r={innerR - 2} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
+
+          {/* Center content */}
+          {sel ? (
+            <G>
+              <Circle cx={cx} cy={cy} r={innerR - 4} fill={sel.color} opacity={0.08} />
+              <SvgText x={cx} y={cy - 10} textAnchor="middle" fill={sel.color} fontSize="9" fontWeight="bold" letterSpacing="1.5">
+                {sel.name.slice(0, 12).toUpperCase()}
+              </SvgText>
+              <SvgText x={cx} y={cy + 10} textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">
+                {`${symbol}${sel.amount.toFixed(2)}`}
+              </SvgText>
+            </G>
+          ) : (
+            <G>
+              <SvgText x={cx} y={cy - 7} textAnchor="middle" fill="#64748b" fontSize="9" letterSpacing="2">
+                TOTAL
+              </SvgText>
+              <SvgText x={cx} y={cy + 11} textAnchor="middle" fill="#ffffff" fontSize="15" fontWeight="bold">
+                {`${symbol}${total.toFixed(2)}`}
+              </SvgText>
+            </G>
+          )}
+        </Svg>
+      </Animated.View>
+      <Text style={{ color: "#475569", fontSize: 11, marginTop: 2, fontStyle: "italic" }}>Tap a slice to explore</Text>
+    </View>
+  )
+}
 
 function openDatePicker(current: Date, onChange: (d: Date) => void) {
   DateTimePickerAndroid.open({
@@ -26,6 +162,59 @@ function openDatePicker(current: Date, onChange: (d: Date) => void) {
     maximumDate: new Date(),
     onChange: (_, selected) => { if (selected) onChange(selected) },
   })
+}
+
+function BarChart({ data, maxAmt, barHeight, symbol, code }: {
+  data: { name: string; amount: number; color: string }[]
+  maxAmt: number
+  barHeight: number
+  symbol: string
+  code: string
+}) {
+  const barAnims = useRef(data.map(() => new Animated.Value(0))).current
+  useEffect(() => {
+    Animated.stagger(100, barAnims.map(a =>
+      Animated.spring(a, { toValue: 1, tension: 55, friction: 8, useNativeDriver: false })
+    )).start()
+  }, [])
+
+  return (
+    <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 20 }}>
+      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Who Paid the Most</Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-around", height: barHeight + 40 }}>
+        {data.map((d, i) => {
+          const heightPct = maxAmt > 0 ? d.amount / maxAmt : 0
+          const barH = barAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0, barHeight * heightPct] })
+          return (
+            <View key={i} style={{ alignItems: "center", flex: 1, gap: 6 }}>
+              {/* Amount label */}
+              <Animated.Text style={{ color: d.color, fontSize: 10, fontWeight: "700", opacity: barAnims[i] }}>
+                {symbol}{d.amount >= 1000 ? `${(d.amount / 1000).toFixed(1)}k` : d.amount.toFixed(0)}
+              </Animated.Text>
+              {/* Bar */}
+              <View style={{ width: "60%", height: barHeight, justifyContent: "flex-end" }}>
+                <Animated.View style={{
+                  height: barH,
+                  backgroundColor: d.color,
+                  borderRadius: 8,
+                  width: "100%",
+                  shadowColor: d.color,
+                  shadowOpacity: 0.4,
+                  shadowRadius: 6,
+                }} />
+              </View>
+              {/* Name */}
+              <Text style={{ color: "#94a3b8", fontSize: 10, fontWeight: "600", textAlign: "center" }} numberOfLines={1}>
+                {d.name}
+              </Text>
+            </View>
+          )
+        })}
+      </View>
+      {/* Baseline */}
+      <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.06)", marginTop: 4 }} />
+    </View>
+  )
 }
 
 export default function GroupDetail() {
@@ -54,6 +243,13 @@ export default function GroupDetail() {
   const [expPaidBy, setExpPaidBy] = useState<string>(user?.id ?? "")
   const [expDate, setExpDate] = useState(new Date())
 
+  // Split options
+  type SplitType = "EQUAL" | "PERCENTAGE" | "CUSTOM"
+  const [splitType, setSplitType] = useState<SplitType>("EQUAL")
+  const [equallyIncluded, setEquallyIncluded] = useState<string[]>([])
+  const [percentageSplits, setPercentageSplits] = useState<Record<string, string>>({})
+  const [customSplits, setCustomSplits] = useState<Record<string, string>>({})
+
   // Edit Expense modal
   const [showEditExpense, setShowEditExpense] = useState(false)
   const [editTarget, setEditTarget] = useState<any>(null)
@@ -63,14 +259,45 @@ export default function GroupDetail() {
   const [editPaidBy, setEditPaidBy] = useState("")
   const [editDate, setEditDate] = useState(new Date())
 
-  // Add Member modal
+  // Add Member modal — friends picker
   const [showAddMember, setShowAddMember] = useState(false)
-  const [memberEmail, setMemberEmail] = useState("")
+  const [friendSearch, setFriendSearch] = useState("")
 
   // Settle modal
   const [showSettle, setShowSettle] = useState(false)
   const [settleTarget, setSettleTarget] = useState<{ userId: string; name: string; amount: number } | null>(null)
   const [settleNote, setSettleNote] = useState("")
+
+  // Balances tab — collapse/expand & inline settle
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set())
+  const [inlineSettleKey, setInlineSettleKey] = useState<string | null>(null)
+  const [inlineSettleAmount, setInlineSettleAmount] = useState("")
+
+  // Custom confirm dialog (replaces native Alert.alert)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string; message: string; confirmText: string; danger?: boolean; onConfirm: () => void
+  } | null>(null)
+  function showConfirm(cfg: typeof confirmDialog) { setConfirmDialog(cfg) }
+
+  // Notes (Utility tab)
+  const [showNotes, setShowNotes] = useState(false)
+  const [noteText, setNoteText] = useState("")
+  const [noteSaving, setNoteSaving] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  useEffect(() => {
+    if (id) {
+      AsyncStorage.getItem(`group-note-${id}`).then((v) => { if (v) setNoteText(v) })
+    }
+  }, [id])
+
+  async function saveNote() {
+    setNoteSaving(true)
+    await AsyncStorage.setItem(`group-note-${id}`, noteText)
+    setNoteSaving(false)
+    setShowNotes(false)
+    Toast.show({ type: "success", text1: "Note saved!" })
+  }
 
   const { data: group, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["group", id],
@@ -85,14 +312,59 @@ export default function GroupDetail() {
   })
 
   const addExpenseMutation = useMutation({
-    mutationFn: () => expensesApi.add(id, {
-      description: expDesc.trim(),
-      amount: parseFloat(expAmount),
-      category: expCategory,
-      paidById: expPaidBy || user!.id,
-      splitType: "EQUAL",
-      date: expDate.toISOString(),
-    }),
+    mutationFn: () => {
+      const numAmount = parseFloat(expAmount)
+      const memberIds = members.map((m: any) => m.userId)
+      const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
+
+      let apiSplitType: string
+      let splits: any[] | undefined
+
+      if (splitType === "EQUAL") {
+        apiSplitType = "EXACT"
+        const n = included.length
+        const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+        if (isNoDec) {
+          // 0-decimal currencies (JPY, KRW, …): split at base-unit level
+          const totalUnits = Math.round(numAmount)
+          const baseUnits = Math.floor(totalUnits / n)
+          const extra = totalUnits - baseUnits * n
+          splits = included.map((uid: string, i: number) => ({
+            userId: uid,
+            amount: baseUnits + (i < extra ? 1 : 0),
+          }))
+        } else {
+          // 2-decimal currencies: split in cents so the total is exact
+          const totalCents = Math.round(numAmount * 100)
+          const baseCents = Math.floor(totalCents / n)
+          const extra = totalCents - baseCents * n
+          splits = included.map((uid: string, i: number) => ({
+            userId: uid,
+            amount: (baseCents + (i < extra ? 1 : 0)) / 100,
+          }))
+        }
+      } else if (splitType === "PERCENTAGE") {
+        apiSplitType = "PERCENTAGE"
+        splits = memberIds
+          .filter((uid: string) => parseFloat(percentageSplits[uid] || "0") > 0)
+          .map((uid: string) => ({ userId: uid, percentage: parseFloat(percentageSplits[uid] || "0") }))
+      } else {
+        apiSplitType = "EXACT"
+        splits = memberIds
+          .filter((uid: string) => parseFloat(customSplits[uid] || "0") > 0)
+          .map((uid: string) => ({ userId: uid, amount: parseFloat(customSplits[uid] || "0") }))
+      }
+
+      return expensesApi.add(id, {
+        description: expDesc.trim(),
+        amount: numAmount,
+        category: expCategory,
+        paidById: expPaidBy || user!.id,
+        splitType: apiSplitType,
+        splits,
+        date: expDate.toISOString(),
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
@@ -137,15 +409,36 @@ export default function GroupDetail() {
   })
 
   const addMemberMutation = useMutation({
-    mutationFn: () => membersApi.add(id, memberEmail.trim()),
+    mutationFn: (email: string) => membersApi.add(id, email),
+  })
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) => membersApi.remove(id, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
-      setShowAddMember(false)
-      setMemberEmail("")
-      Toast.show({ type: "success", text1: "Member added!" })
+      queryClient.invalidateQueries({ queryKey: ["groups"] })
+      Toast.show({ type: "success", text1: "Member removed" })
     },
-    onError: () => Toast.show({ type: "error", text1: "User not found or already a member" }),
+    onError: () => Toast.show({ type: "error", text1: "Failed to remove member" }),
   })
+
+  const makeAdminMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: "ADMIN" | "MEMBER" }) =>
+      membersApi.setRole(id, userId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["group", id] })
+      Toast.show({ type: "success", text1: "Role updated!" })
+    },
+    onError: (e: any) =>
+      Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Failed to update role" }),
+  })
+
+  // Friends list for picker
+  const { data: friendsData } = useQuery({
+    queryKey: ["friends"],
+    queryFn: () => friendsApi.list().then((r) => (r.data && typeof r.data === "object" ? r.data : {})),
+  })
+  const allFriends: any[] = (friendsData as any)?.friends ?? []
 
   const settleMutation = useMutation({
     mutationFn: () => balancesApi.settle(id, {
@@ -205,19 +498,19 @@ export default function GroupDetail() {
   }
 
   function confirmDeleteGroup() {
-    Alert.alert(
-      "Delete Group",
-      `Delete "${group?.name}"? All expenses and data will be permanently removed.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteGroupMutation.mutate() },
-      ]
-    )
+    showConfirm({
+      title: "Delete Group",
+      message: `Delete "${group?.name}"? All expenses and data will be permanently removed.`,
+      confirmText: "Delete",
+      danger: true,
+      onConfirm: () => deleteGroupMutation.mutate(),
+    })
   }
 
   function resetAddForm() {
     setExpDesc(""); setExpAmount(""); setExpCategory("general")
     setExpPaidBy(user?.id ?? ""); setExpDate(new Date())
+    setSplitType("EQUAL"); setEquallyIncluded([]); setPercentageSplits({}); setCustomSplits({})
   }
 
   function openEdit(exp: any) {
@@ -231,10 +524,13 @@ export default function GroupDetail() {
   }
 
   function confirmDelete(exp: any) {
-    Alert.alert("Delete Expense", `Delete "${exp.description}"? This cannot be undone.`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteExpenseMutation.mutate(exp.id) },
-    ])
+    showConfirm({
+      title: "Delete Expense",
+      message: `Delete "${exp.description}"? This cannot be undone.`,
+      confirmText: "Delete",
+      danger: true,
+      onConfirm: () => deleteExpenseMutation.mutate(exp.id),
+    })
   }
 
   function openSettle(userId: string, name: string, amount: number) {
@@ -244,6 +540,9 @@ export default function GroupDetail() {
 
   const expenses: any[] = group?.expenses ?? []
   const members: any[] = group?.members ?? []
+
+  // Is the current user an admin of this group?
+  const isAdmin = members.some((m: any) => m.userId === user?.id && m.role === "ADMIN")
 
   // Group currency info — used for all amount display in this screen
   const gc = CURRENCIES.find((c) => c.code === (group?.currency ?? "USD")) ?? CURRENCIES[0]
@@ -273,13 +572,28 @@ export default function GroupDetail() {
     desc, setDesc, amount, setAmount, category, setCategory,
     paidBy, setPaidBy, date, setDate,
   }: any) {
+    const detectedCategory = guessCategory(desc)
+    const categoryEmoji = getExpenseEmoji(desc)
+
     return (
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Description */}
         <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
-        <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14 }}>
-          <TextInput className="text-white text-base" placeholder="What was this for?" placeholderTextColor="#475569" value={desc} onChangeText={setDesc} />
+        <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>
+          <TextInput
+            className="text-white text-base flex-1"
+            placeholder="What was this for?"
+            placeholderTextColor="#475569"
+            value={desc}
+            onChangeText={(t) => { setDesc(t); setCategory(guessCategory(t)) }}
+          />
         </View>
+        {desc.trim() ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+            <Text style={{ fontSize: 16 }}>{categoryEmoji}</Text>
+            <Text style={{ color: "#64748b", fontSize: 12, textTransform: "capitalize" }}>{detectedCategory}</Text>
+          </View>
+        ) : null}
 
         {/* Amount */}
         <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
@@ -315,20 +629,154 @@ export default function GroupDetail() {
           ))}
         </ScrollView>
 
-        {/* Category */}
-        <Text className="text-slate-300 text-sm font-medium mb-2">Category</Text>
-        <View className="flex-row flex-wrap gap-2 mb-6">
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => setCategory(cat)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: category === cat ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 10, borderWidth: category === cat ? 2 : 1, borderColor: category === cat ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 10, paddingVertical: 7 }}
-            >
-              <Text style={{ fontSize: 14 }}>{CATEGORY_ICONS[cat]}</Text>
-              <Text style={{ color: category === cat ? "#fff" : "#94a3b8", fontSize: 12, fontWeight: "600", textTransform: "capitalize" }}>{cat}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ── Split section ── */}
+        {(() => {
+          const numAmount = parseFloat(amount) || 0
+          const disabled = numAmount <= 0
+          const memberIds = members.map((m: any) => m.userId)
+          const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
+
+          // Validation
+          const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
+          const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
+          const pctError = splitType === "PERCENTAGE" && numAmount > 0 && Math.abs(pctTotal - 100) > 0.01 ? `${pctTotal.toFixed(1)}% of 100%` : null
+          const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+          const fmt = (n: number) => isNoDec ? Math.round(n).toString() : n.toFixed(2)
+          const customError = splitType === "CUSTOM" && numAmount > 0 && Math.abs(customTotal - numAmount) > (isNoDec ? 0.5 : 0.01) ? `Total ${gc.symbol}${fmt(customTotal)} must equal ${gc.symbol}${fmt(numAmount)}` : null
+
+          return (
+            <View style={{ marginTop: 4, marginBottom: 8, opacity: disabled ? 0.4 : 1 }}>
+              <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Split</Text>
+
+              {/* Tab row */}
+              <View style={{ flexDirection: "row", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 3, marginBottom: 14 }}>
+                {(["EQUAL", "PERCENTAGE", "CUSTOM"] as const).map((st) => (
+                  <TouchableOpacity
+                    key={st}
+                    disabled={disabled}
+                    onPress={() => { if (!disabled) setSplitType(st) }}
+                    style={{ flex: 1, paddingVertical: 7, borderRadius: 10, alignItems: "center", backgroundColor: splitType === st ? "#6366f1" : "transparent" }}
+                  >
+                    <Text style={{ color: splitType === st ? "#fff" : "#64748b", fontSize: 12, fontWeight: "600" }}>
+                      {st === "EQUAL" ? "Equally" : st === "PERCENTAGE" ? "%" : "Custom"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Equally */}
+              {splitType === "EQUAL" && (
+                <View style={{ gap: 8 }}>
+                  {members.map((m: any) => {
+                    const isIncluded = included.includes(m.userId)
+                    // For 0-decimal currencies, round to whole unit; otherwise 2dp
+                    const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+                    const rawPerPerson = included.length > 0 ? numAmount / included.length : 0
+                    const perPerson = isNoDec ? Math.round(rawPerPerson) : rawPerPerson
+                    return (
+                      <TouchableOpacity
+                        key={m.userId}
+                        disabled={disabled}
+                        onPress={() => {
+                          if (disabled) return
+                          const current = equallyIncluded.length > 0 ? equallyIncluded : memberIds
+                          if (isIncluded && current.length === 1) return // keep at least 1
+                          setEquallyIncluded(isIncluded ? current.filter((id: string) => id !== m.userId) : [...current, m.userId])
+                        }}
+                        style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a2e", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isIncluded ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)" }}
+                      >
+                        <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
+                        <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }}>
+                          {m.userId === user?.id ? "You" : m.user?.name}
+                        </Text>
+                        {isIncluded && numAmount > 0 && (
+                          <Text style={{ color: "#94a3b8", fontSize: 12, marginRight: 10 }}>
+                            {gc.symbol}{perPerson.toFixed(2)}
+                          </Text>
+                        )}
+                        <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: isIncluded ? "#6366f1" : "#334155", backgroundColor: isIncluded ? "#6366f1" : "transparent", alignItems: "center", justifyContent: "center" }}>
+                          {isIncluded && <Ionicons name="checkmark" size={13} color="#fff" />}
+                        </View>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              )}
+
+              {/* Percentage */}
+              {splitType === "PERCENTAGE" && (
+                <View style={{ gap: 8 }}>
+                  {members.map((m: any) => {
+                    const pct = percentageSplits[m.userId] ?? ""
+                    const pctNum = parseFloat(pct) || 0
+                    const perPerson = (pctNum / 100) * numAmount
+                    return (
+                      <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+                        <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
+                        <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
+                          {m.userId === user?.id ? "You" : m.user?.name}
+                        </Text>
+                        {numAmount > 0 && pctNum > 0 && (
+                          <Text style={{ color: "#64748b", fontSize: 11, marginRight: 6 }}>{gc.symbol}{perPerson.toFixed(2)}</Text>
+                        )}
+                        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 64 }}>
+                          <TextInput
+                            style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", textAlign: "right", padding: 0, height: 32 }}
+                            placeholder="0"
+                            placeholderTextColor="#475569"
+                            value={pct}
+                            onChangeText={(v) => setPercentageSplits({ ...percentageSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
+                            keyboardType="decimal-pad"
+                            editable={!disabled}
+                          />
+                          <Text style={{ color: "#64748b", fontSize: 12, marginLeft: 2 }}>%</Text>
+                        </View>
+                      </View>
+                    )
+                  })}
+                  {pctError && <Text style={{ color: "#f87171", fontSize: 12, marginTop: 4 }}>⚠ {pctError} used</Text>}
+                  {!pctError && numAmount > 0 && <Text style={{ color: "#4ade80", fontSize: 12, marginTop: 4 }}>✓ Splits to 100%</Text>}
+                </View>
+              )}
+
+              {/* Custom */}
+              {splitType === "CUSTOM" && (
+                <View style={{ gap: 8 }}>
+                  {members.map((m: any) => {
+                    const val = customSplits[m.userId] ?? ""
+                    return (
+                      <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+                        <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
+                        <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
+                          {m.userId === user?.id ? "You" : m.user?.name}
+                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 80 }}>
+                          <Text style={{ color: "#64748b", fontSize: 12, marginRight: 2 }}>{gc.symbol}</Text>
+                          <TextInput
+                            style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", padding: 0, height: 32 }}
+                            placeholder="0.00"
+                            placeholderTextColor="#475569"
+                            value={val}
+                            onChangeText={(v) => setCustomSplits({ ...customSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
+                            keyboardType="decimal-pad"
+                            editable={!disabled}
+                          />
+                        </View>
+                      </View>
+                    )
+                  })}
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+                    <Text style={{ color: customError ? "#f87171" : "#64748b", fontSize: 12 }}>
+                      {customError ? `⚠ ${customError}` : `Total: ${gc.symbol}${customTotal.toFixed(2)}`}
+                    </Text>
+                    <Text style={{ color: "#64748b", fontSize: 12 }}>of {gc.symbol}{numAmount.toFixed(2)}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )
+        })()}
+
       </ScrollView>
     )
   }
@@ -369,17 +817,17 @@ export default function GroupDetail() {
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row gap-1" style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 3 }}>
-          {(["expenses", "balances", "members"] as Tab[]).map((t) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12 }} contentContainerStyle={{ padding: 3, gap: 4 }}>
+          {(["expenses", "balances", "members", "analytics", "utility"] as Tab[]).map((t) => (
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}
-              style={{ flex: 1, backgroundColor: tab === t ? "#6366f1" : "transparent", borderRadius: 10, paddingVertical: 8, alignItems: "center" }}
+              style={{ backgroundColor: tab === t ? "#6366f1" : "transparent", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, alignItems: "center" }}
             >
               <Text style={{ color: tab === t ? "#fff" : "#94a3b8", fontWeight: "600", fontSize: 13, textTransform: "capitalize" }}>{t}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -400,7 +848,11 @@ export default function GroupDetail() {
             </View>
           ) : (
             <View className="gap-2 py-3">
-              {expenses.slice().sort((a: any, b: any) => new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()).map((exp: any) => {
+              {expenses.slice().sort((a: any, b: any) => {
+                const dateDiff = new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()
+                if (dateDiff !== 0) return dateDiff
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              }).map((exp: any) => {
                 const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
                 const isPayer = exp.paidById === user?.id
                 const payer = members.find((m: any) => m.userId === exp.paidById)
@@ -413,7 +865,7 @@ export default function GroupDetail() {
                     style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
                   >
                     <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 18 }}>{CATEGORY_ICONS[exp.category] ?? "💸"}</Text>
+                      <Text style={{ fontSize: 18 }}>{getExpenseEmoji(exp.description)}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text className="text-white font-semibold text-sm" numberOfLines={1}>{exp.description}</Text>
@@ -435,72 +887,187 @@ export default function GroupDetail() {
           )
         )}
 
-        {/* Balances Tab */}
-        {tab === "balances" && (
-          <View className="py-3 gap-3">
-            {balances.length === 0 ? (
-              <View className="items-center py-16">
-                <Text className="text-5xl mb-3">✅</Text>
-                <Text className="text-white font-semibold mb-1">All settled up!</Text>
-                <Text className="text-muted text-sm text-center">No outstanding balances</Text>
-              </View>
-            ) : (
-              <>
-                <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Who owes who</Text>
-                {(balances as any[]).map((b: any, i: number) => {
-                  const fromMe = b.fromUserId === user?.id
-                  const toMe = b.toUserId === user?.id
-                  // Use the embedded user objects from the API directly
-                  const fromUser = b.fromUser
-                  const toUser = b.toUser
-                  const fromName = fromMe ? "You" : (fromUser?.name ?? "Someone")
-                  const toName = toMe ? "you" : (toUser?.name ?? "someone")
-                  return (
-                    <View
-                      key={i}
-                      style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14 }}
-                    >
-                      <View className="flex-row items-center gap-3 mb-3">
-                        <Avatar name={fromUser?.name} email={fromUser?.email} size={36} />
-                        <View className="flex-1">
-                          <Text className="text-white font-semibold text-sm">
-                            {fromName} owe{fromMe ? "" : "s"} {toName}
-                          </Text>
-                          <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 16 }}>{formatCurrency(b.amount, gc.symbol, gc.code)}</Text>
-                        </View>
-                        <Avatar name={toUser?.name} email={toUser?.email} size={36} />
+        {/* Balances Tab — Splitwise-style per-person view */}
+        {tab === "balances" && (() => {
+          // Build per-member balance map
+          type MemberBalance = { getsBack: number; owes: number; debts: any[] }
+          const map: Record<string, MemberBalance> = {}
+          for (const m of members) map[m.userId] = { getsBack: 0, owes: 0, debts: [] }
+
+          for (const b of (balances as any[])) {
+            if (map[b.fromUserId]) {
+              map[b.fromUserId].owes += b.amount
+              map[b.fromUserId].debts.push({ dir: "owes", otherId: b.toUserId, otherUser: b.toUser, amount: b.amount })
+            }
+            if (map[b.toUserId]) {
+              map[b.toUserId].getsBack += b.amount
+              map[b.toUserId].debts.push({ dir: "getsBack", otherId: b.fromUserId, otherUser: b.fromUser, amount: b.amount })
+            }
+          }
+
+          // Current user first, then rest
+          const sorted = [...members].sort((a: any, b: any) => (a.userId === user?.id ? -1 : b.userId === user?.id ? 1 : 0))
+
+          return (
+            <View className="py-3 gap-3">
+              {sorted.map((m: any) => {
+                const mb = map[m.userId] ?? { getsBack: 0, owes: 0, debts: [] }
+                const net = mb.getsBack - mb.owes
+                const isMe = m.userId === user?.id
+                const name = isMe ? "You" : (m.user?.name ?? "Someone")
+                const netColor = net > 0 ? "#4ade80" : net < 0 ? "#f87171" : "#64748b"
+                const isExpanded = expandedMembers.has(m.userId)
+
+                function toggleExpand() {
+                  setExpandedMembers(prev => {
+                    const next = new Set(prev)
+                    if (next.has(m.userId)) next.delete(m.userId)
+                    else next.add(m.userId)
+                    return next
+                  })
+                }
+
+                return (
+                  <View key={m.userId} style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                    {/* Tappable header — collapsed by default */}
+                    <TouchableOpacity onPress={toggleExpand} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 12 }}>
+                      <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={40} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>{name}</Text>
+                        <Text style={{ color: netColor, fontWeight: "600", fontSize: 13, marginTop: 2 }}>
+                          {net > 0
+                            ? `gets back ${formatCurrency(net, gc.symbol, gc.code)} in total`
+                            : net < 0
+                            ? `owes ${formatCurrency(Math.abs(net), gc.symbol, gc.code)} in total`
+                            : "is settled up ✅"}
+                        </Text>
                       </View>
-                      {fromMe && (
-                        <TouchableOpacity
-                          onPress={() => openSettle(b.toUserId, toUser?.name ?? "them", b.amount)}
-                          style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingVertical: 9, alignItems: "center" }}
-                        >
-                          <Text style={{ color: "#fff", fontWeight: "600", fontSize: 13 }}>Settle up with {toName}</Text>
-                        </TouchableOpacity>
+                      {mb.debts.length > 0 && (
+                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="#64748b" />
                       )}
-                    </View>
-                  )
-                })}
-              </>
-            )}
-          </View>
-        )}
+                    </TouchableOpacity>
+
+                    {/* Expanded individual debt rows */}
+                    {isExpanded && mb.debts.map((d: any, di: number) => {
+                      const settleKey = `${m.userId}-${di}`
+                      const isInlineSettle = inlineSettleKey === settleKey
+                      const otherName = d.otherUser?.name ?? "Someone"
+
+                      return (
+                        <View key={di} style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.05)" }}>
+                          {/* Debt row */}
+                          <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                            <Avatar name={d.otherUser?.name} email={d.otherUser?.email} image={d.otherUser?.image} size={28} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: "#94a3b8", fontSize: 12 }}>
+                                {d.dir === "owes"
+                                  ? `${isMe ? "You owe" : `${name} owes`} ${otherName}`
+                                  : `${otherName} owes ${isMe ? "you" : name}`}
+                              </Text>
+                              <Text style={{ color: d.dir === "owes" ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 14 }}>
+                                {formatCurrency(d.amount, gc.symbol, gc.code)}
+                              </Text>
+                            </View>
+                            {/* Remind + Settle up: own debts always, other members' debts only for admins */}
+                            {(isMe || isAdmin) && (
+                              <View style={{ flexDirection: "row", gap: 6 }}>
+                                <TouchableOpacity
+                                  style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                                >
+                                  <Text style={{ color: "#fbbf24", fontWeight: "600", fontSize: 11 }}>Remind</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    if (isInlineSettle) {
+                                      setInlineSettleKey(null)
+                                      setInlineSettleAmount("")
+                                    } else {
+                                      setInlineSettleKey(settleKey)
+                                      setInlineSettleAmount(d.amount.toFixed(2))
+                                    }
+                                  }}
+                                  style={{ backgroundColor: "#6366f1", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                                >
+                                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 11 }}>Settle up</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* Inline settle input */}
+                          {(isMe || isAdmin) && isInlineSettle && (
+                            <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 6 }}>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(99,102,241,0.5)", paddingHorizontal: 12, height: 40 }}>
+                                  <Text style={{ color: "#94a3b8", fontSize: 14, marginRight: 4 }}>{gc.symbol}</Text>
+                                  <TextInput
+                                    style={{ flex: 1, color: "#fff", fontSize: 14 }}
+                                    keyboardType="decimal-pad"
+                                    value={inlineSettleAmount}
+                                    onChangeText={setInlineSettleAmount}
+                                    placeholder={d.amount.toFixed(2)}
+                                    placeholderTextColor="#475569"
+                                    autoFocus
+                                  />
+                                </View>
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    const amt = parseFloat(inlineSettleAmount)
+                                    if (!amt || amt <= 0) return
+                                    const capped = Math.min(amt, d.amount)
+                                    balancesApi.settle(id, { toUserId: d.otherId, amount: capped })
+                                      .then(() => {
+                                        queryClient.invalidateQueries({ queryKey: ["group", id] })
+                                        queryClient.invalidateQueries({ queryKey: ["balances", id] })
+                                        queryClient.invalidateQueries({ queryKey: ["groups"] })
+                                        queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+                                        setInlineSettleKey(null)
+                                        setInlineSettleAmount("")
+                                        Toast.show({ type: "success", text1: amt >= d.amount ? "Fully settled! 🎉" : "Partial settlement recorded!" })
+                                      })
+                                      .catch(() => Toast.show({ type: "error", text1: "Failed to record settlement" }))
+                                  }}
+                                  style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, height: 40, alignItems: "center", justifyContent: "center" }}
+                                >
+                                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Confirm</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => { setInlineSettleKey(null); setInlineSettleAmount("") }} style={{ padding: 6 }}>
+                                  <Ionicons name="close" size={18} color="#64748b" />
+                                </TouchableOpacity>
+                              </View>
+                              <Text style={{ color: "#64748b", fontSize: 11 }}>
+                                Max: {formatCurrency(d.amount, gc.symbol, gc.code)} — enter full amount to settle completely
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      )
+                    })}
+                  </View>
+                )
+              })}
+            </View>
+          )
+        })()}
 
         {/* Members Tab */}
         {tab === "members" && (
           <View className="py-3 gap-2">
-            <TouchableOpacity
-              onPress={() => setShowAddMember(true)}
-              style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}
-            >
-              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="person-add" size={20} color="#a5b4fc" />
-              </View>
-              <Text style={{ color: "#a5b4fc", fontWeight: "600" }}>Invite member</Text>
-            </TouchableOpacity>
+            {/* Add members — admin only */}
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => setShowAddMember(true)}
+                style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="person-add" size={20} color="#a5b4fc" />
+                </View>
+                <Text style={{ color: "#a5b4fc", fontWeight: "600" }}>Add members</Text>
+              </TouchableOpacity>
+            )}
 
             {members.map((m: any) => {
-              const isCreator = group?.createdById === m.userId
+              const isMemberAdmin = m.role === "ADMIN"
               const isMe = m.userId === user?.id
               return (
                 <View
@@ -515,9 +1082,43 @@ export default function GroupDetail() {
                     </View>
                     <Text className="text-muted text-xs">{m.user?.email}</Text>
                   </View>
-                  {isCreator && (
+                  {/* Admin badge */}
+                  {isMemberAdmin && (
                     <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
                       <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Admin</Text>
+                    </View>
+                  )}
+                  {/* Admin-only actions */}
+                  {isAdmin && !isMe && (
+                    <View style={{ flexDirection: "column", alignItems: "center", gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() => showConfirm({
+                          title: "Remove Member",
+                          message: `Remove ${m.user?.name} from this group?`,
+                          confirmText: "Remove",
+                          danger: true,
+                          onConfirm: () => removeMemberMutation.mutate(m.userId),
+                        })}
+                        disabled={removeMemberMutation.isPending}
+                        style={{ padding: 4 }}
+                      >
+                        <Ionicons name="person-remove-outline" size={18} color="#f87171" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => showConfirm({
+                          title: isMemberAdmin ? "Remove Admin" : "Make Admin",
+                          message: isMemberAdmin
+                            ? `Remove admin rights from ${m.user?.name}?`
+                            : `Make ${m.user?.name} an admin of this group?`,
+                          confirmText: isMemberAdmin ? "Remove Admin" : "Make Admin",
+                          danger: false,
+                          onConfirm: () => makeAdminMutation.mutate({ userId: m.userId, role: isMemberAdmin ? "MEMBER" : "ADMIN" }),
+                        })}
+                        disabled={makeAdminMutation.isPending}
+                        style={{ padding: 4 }}
+                      >
+                        <Ionicons name={isMemberAdmin ? "shield" : "shield-outline"} size={16} color={isMemberAdmin ? "#fbbf24" : "#64748b"} />
+                      </TouchableOpacity>
                     </View>
                   )}
                 </View>
@@ -526,8 +1127,248 @@ export default function GroupDetail() {
           </View>
         )}
 
+        {/* Analytics Tab */}
+        {tab === "analytics" && (() => {
+          const totalGroupExpense = expenses.reduce((sum: number, e: any) => sum + e.amount, 0)
+          const myShare = expenses.reduce((sum: number, e: any) => {
+            const s = e.splits?.find((sp: any) => sp.userId === user?.id)
+            return sum + (s?.amount ?? 0)
+          }, 0)
+
+          // Per-member share
+          const memberShareMap: Record<string, number> = {}
+          for (const m of members) memberShareMap[m.userId] = 0
+          for (const e of expenses) {
+            for (const s of (e.splits ?? [])) {
+              if (memberShareMap[s.userId] !== undefined) memberShareMap[s.userId] += s.amount
+            }
+          }
+          const pieData = members
+            .map((m: any, i: number) => ({
+              name: m.userId === user?.id ? "You" : (m.user?.name ?? "?"),
+              amount: memberShareMap[m.userId] ?? 0,
+              color: PIE_COLORS[i % PIE_COLORS.length],
+              userId: m.userId,
+            }))
+            .filter((d) => d.amount > 0)
+
+          return (
+            <View className="py-3 gap-4">
+              {/* Summary cards */}
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flex: 1, backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 16 }}>
+                  <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP TOTAL</Text>
+                  <Text style={{ color: "#fff", fontSize: 22, fontWeight: "800" }}>{formatCurrency(totalGroupExpense, gc.symbol, gc.code)}</Text>
+                  <Text style={{ color: "#64748b", fontSize: 11, marginTop: 4 }}>{expenses.length} expenses</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 16 }}>
+                  <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600", marginBottom: 6 }}>YOUR SHARE</Text>
+                  <Text style={{ color: "#6366f1", fontSize: 22, fontWeight: "800" }}>{formatCurrency(myShare, gc.symbol, gc.code)}</Text>
+                  <Text style={{ color: "#64748b", fontSize: 11, marginTop: 4 }}>
+                    {totalGroupExpense > 0 ? `${((myShare / totalGroupExpense) * 100).toFixed(1)}% of total` : "—"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Pie chart */}
+              {pieData.length > 0 && (
+                <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 20, alignItems: "center" }}>
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Expense Distribution</Text>
+                  <AnimatedPieChart data={pieData} size={240} symbol={gc.symbol} />
+                  {/* Legend */}
+                  <View style={{ width: "100%", marginTop: 20, gap: 10 }}>
+                    {pieData.map((d, i) => (
+                      <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: d.color }} />
+                        <Text style={{ flex: 1, color: "#cbd5e1", fontSize: 13 }}>{d.name}</Text>
+                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>{formatCurrency(d.amount, gc.symbol, gc.code)}</Text>
+                        <Text style={{ color: "#64748b", fontSize: 12, width: 42, textAlign: "right" }}>
+                          {totalGroupExpense > 0 ? `${((d.amount / totalGroupExpense) * 100).toFixed(1)}%` : "0%"}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Who Paid Bar Chart */}
+              {(() => {
+                // Calculate how much each member actually paid (paidById)
+                const paidMap: Record<string, number> = {}
+                for (const m of members) paidMap[m.userId] = 0
+                for (const e of expenses) {
+                  if (paidMap[e.paidById] !== undefined) paidMap[e.paidById] += e.amount
+                }
+                const barData = members
+                  .map((m: any, i: number) => ({
+                    name: m.userId === user?.id ? "You" : (m.user?.name?.split(" ")[0] ?? "?"),
+                    amount: paidMap[m.userId] ?? 0,
+                    color: PIE_COLORS[i % PIE_COLORS.length],
+                    userId: m.userId,
+                  }))
+                  .filter(d => d.amount > 0)
+                  .sort((a, b) => b.amount - a.amount)
+
+                if (barData.length === 0) return null
+                const maxAmt = barData[0].amount
+                const BAR_H = 140
+
+                return (
+                  <BarChart data={barData} maxAmt={maxAmt} barHeight={BAR_H} symbol={gc.symbol} code={gc.code} />
+                )
+              })()}
+            </View>
+          )
+        })()}
+
+        {/* Utility Tab */}
+        {tab === "utility" && (
+          <View className="py-3 gap-3">
+            {/* Write Notes */}
+            <TouchableOpacity
+              onPress={() => setShowNotes(true)}
+              style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="document-text-outline" size={22} color="#a5b4fc" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Write Notes</Text>
+                <Text style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
+                  {noteText.trim() ? `${noteText.trim().slice(0, 40)}${noteText.length > 40 ? "…" : ""}` : "Add notes for this group"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#64748b" />
+            </TouchableOpacity>
+
+            {/* Download Statement */}
+            <TouchableOpacity
+              onPress={async () => {
+                setPdfLoading(true)
+                try {
+                  const totalGroupExpense = expenses.reduce((sum: number, e: any) => sum + e.amount, 0)
+                  const myShare = expenses.reduce((sum: number, e: any) => {
+                    const s = e.splits?.find((sp: any) => sp.userId === user?.id)
+                    return sum + (s?.amount ?? 0)
+                  }, 0)
+                  const rows = expenses.map((e: any) => `
+                    <tr>
+                      <td>${new Date(e.date ?? e.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      <td>${e.description}</td>
+                      <td>${e.paidBy?.name ?? "?"}</td>
+                      <td style="text-align:right;font-weight:600">${gc.symbol}${e.amount.toFixed(2)}</td>
+                    </tr>`).join("")
+                  const html = `
+                    <!DOCTYPE html><html><head>
+                    <meta charset="utf-8"/>
+                    <style>
+                      body { font-family: Arial, sans-serif; padding: 32px; color: #1e293b; }
+                      h1 { font-size: 24px; color: #6366f1; margin-bottom: 4px; }
+                      .subtitle { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+                      .summary { display: flex; gap: 24px; margin-bottom: 28px; }
+                      .card { background: #f8fafc; border-radius: 12px; padding: 16px 24px; flex: 1; }
+                      .card-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+                      .card-value { font-size: 22px; font-weight: 800; color: #1e293b; }
+                      table { width: 100%; border-collapse: collapse; }
+                      th { background: #6366f1; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; }
+                      td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+                      tr:nth-child(even) td { background: #f8fafc; }
+                      .footer { margin-top: 24px; font-size: 11px; color: #94a3b8; text-align: center; }
+                    </style></head><body>
+                    <h1>${group?.emoji ?? ""} ${group?.name ?? "Group"} — Statement</h1>
+                    <div class="subtitle">Generated on ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</div>
+                    <div class="summary">
+                      <div class="card"><div class="card-label">Total Group Expense</div><div class="card-value">${gc.symbol}${totalGroupExpense.toFixed(2)}</div></div>
+                      <div class="card"><div class="card-label">Your Share</div><div class="card-value" style="color:#6366f1">${gc.symbol}${myShare.toFixed(2)}</div></div>
+                    </div>
+                    <table>
+                      <thead><tr><th>Date</th><th>Expense</th><th>Paid By</th><th style="text-align:right">Amount</th></tr></thead>
+                      <tbody>${rows}</tbody>
+                    </table>
+                    <div class="footer">SplitEase • All amounts in ${gc.code}</div>
+                    </body></html>`
+                  const { uri } = await Print.printToFileAsync({ html, base64: false })
+                  await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: `${group?.name} Statement` })
+                } catch (e) {
+                  Toast.show({ type: "error", text1: "Failed to generate PDF" })
+                } finally {
+                  setPdfLoading(false)
+                }
+              }}
+              disabled={pdfLoading}
+              style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14, opacity: pdfLoading ? 0.6 : 1 }}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(16,185,129,0.15)", alignItems: "center", justifyContent: "center" }}>
+                {pdfLoading ? <ActivityIndicator color="#10b981" size="small" /> : <Ionicons name="download-outline" size={22} color="#10b981" />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Download Statement</Text>
+                <Text style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>Export all expenses as PDF</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Custom Confirm Dialog */}
+      <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: "#1a1a2e", borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 20 }}>
+            {/* Icon — centered */}
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: confirmDialog?.danger ? "rgba(239,68,68,0.15)" : "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name={confirmDialog?.danger ? "warning-outline" : "shield-outline"} size={26} color={confirmDialog?.danger ? "#f87171" : "#a5b4fc"} />
+            </View>
+            <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
+            <Text style={{ color: "#94a3b8", fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setConfirmDialog(null)}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#94a3b8", fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: confirmDialog?.danger ? "#ef4444" : "#6366f1", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notes Modal */}
+      <Modal visible={showNotes} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowNotes(false)}>
+        <View className="flex-1 bg-base" style={{ paddingTop: insets.top + 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 20 }}>
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800" }}>Group Notes</Text>
+            <TouchableOpacity onPress={() => setShowNotes(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={{ flex: 1, color: "#fff", fontSize: 14, lineHeight: 22, paddingHorizontal: 20, paddingTop: 8, textAlignVertical: "top" }}
+            multiline
+            placeholder="Write anything about this group — trip plans, reminders, important notes..."
+            placeholderTextColor="#475569"
+            value={noteText}
+            onChangeText={setNoteText}
+          />
+          <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16 }}>
+            <TouchableOpacity
+              onPress={saveNote}
+              disabled={noteSaving}
+              style={{ backgroundColor: "#6366f1", borderRadius: 14, height: 52, alignItems: "center", justifyContent: "center" }}
+            >
+              {noteSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Save Note</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Add Expense Modal */}
       <Modal visible={showAddExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddExpense(false)}>
@@ -547,7 +1388,20 @@ export default function GroupDetail() {
           />
           <TouchableOpacity
             onPress={() => addExpenseMutation.mutate()}
-            disabled={!expDesc.trim() || !expAmount || isNaN(parseFloat(expAmount)) || addExpenseMutation.isPending}
+            disabled={(() => {
+              if (!expDesc.trim() || !expAmount || isNaN(parseFloat(expAmount)) || addExpenseMutation.isPending) return true
+              const numAmt = parseFloat(expAmount)
+              const memberIds = members.map((m: any) => m.userId)
+              if (splitType === "PERCENTAGE") {
+                const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
+                if (Math.abs(pctTotal - 100) > 0.01) return true
+              }
+              if (splitType === "CUSTOM") {
+                const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
+                if (Math.abs(customTotal - numAmt) > 0.01) return true
+              }
+              return false
+            })()}
             style={{ backgroundColor: (!expDesc.trim() || !expAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center", marginBottom: 24 }}
           >
             {addExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Add Expense</Text>}
@@ -589,27 +1443,111 @@ export default function GroupDetail() {
         </View>
       </Modal>
 
-      {/* Add Member Modal */}
-      <Modal visible={showAddMember} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddMember(false)}>
-        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
-          <View className="flex-row items-center justify-between mb-6">
-            <Text className="text-white text-xl font-bold">Invite Member</Text>
-            <TouchableOpacity onPress={() => { setShowAddMember(false); setMemberEmail("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+      {/* Add Member Modal — Friends Picker */}
+      <Modal visible={showAddMember} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowAddMember(false); setFriendSearch("") }}>
+        <View style={{ height: windowH, backgroundColor: "#0a0a1a", paddingTop: insets.top + 16 }}>
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Add to {group?.name}</Text>
+            <TouchableOpacity onPress={() => { setShowAddMember(false); setFriendSearch("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
-          <Text className="text-muted text-sm mb-4">Enter the email address of the person you'd like to add to {group?.name}.</Text>
-          <Text className="text-slate-300 text-sm font-medium mb-2">Email address *</Text>
-          <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
-            <TextInput className="text-white text-base" placeholder="friend@example.com" placeholderTextColor="#475569" value={memberEmail} onChangeText={setMemberEmail} keyboardType="email-address" autoCapitalize="none" />
+
+          {/* Search bar */}
+          <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
+            <Ionicons name="search-outline" size={16} color="#475569" style={{ marginRight: 8 }} />
+            <TextInput
+              style={{ flex: 1, color: "#fff", fontSize: 14 }}
+              placeholder="Search friends..."
+              placeholderTextColor="#475569"
+              value={friendSearch}
+              onChangeText={setFriendSearch}
+              autoCapitalize="none"
+            />
+            {friendSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setFriendSearch("")}>
+                <Ionicons name="close-circle" size={16} color="#475569" />
+              </TouchableOpacity>
+            )}
           </View>
-          <TouchableOpacity
-            onPress={() => addMemberMutation.mutate()}
-            disabled={!memberEmail.trim() || addMemberMutation.isPending}
-            style={{ backgroundColor: !memberEmail.trim() ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
-          >
-            {addMemberMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Add Member</Text>}
-          </TouchableOpacity>
+
+          {/* Friends list */}
+          {(() => {
+            const members: any[] = group?.members ?? []
+            const memberIds = new Set(members.map((m: any) => m.userId))
+            const filtered = allFriends
+              .filter((f: any) => {
+                const other = f.requesterId === user?.id ? f.addressee : f.requester
+                if (!other) return false
+                if (memberIds.has(other.id)) return false
+                if (!friendSearch.trim()) return true
+                const q = friendSearch.toLowerCase()
+                return other.name?.toLowerCase().includes(q) || other.email?.toLowerCase().includes(q)
+              })
+
+            if (!friendsData) {
+              return (
+                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                  <ActivityIndicator color="#6366f1" />
+                </View>
+              )
+            }
+
+            if (filtered.length === 0) {
+              return (
+                <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+                  <Ionicons name="people-outline" size={48} color="#334155" style={{ marginBottom: 12 }} />
+                  <Text style={{ color: "#94a3b8", fontSize: 15, fontWeight: "600", textAlign: "center" }}>
+                    {friendSearch.trim() ? "No friends match your search" : "All your friends are already in this group"}
+                  </Text>
+                  <Text style={{ color: "#475569", fontSize: 13, textAlign: "center", marginTop: 6 }}>
+                    {!friendSearch.trim() && "Add friends from the Friends tab first."}
+                  </Text>
+                </View>
+              )
+            }
+
+            return (
+              <FlatList
+                data={filtered}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+                renderItem={({ item }) => {
+                  const other = item.requesterId === user?.id ? item.addressee : item.requester
+                  if (!other) return null
+                  return (
+                    <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}>
+                      <Avatar name={other.name} image={other.image} size={42} />
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>{other.name}</Text>
+                        <Text style={{ color: "#475569", fontSize: 12 }}>{other.email}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => {
+                          addMemberMutation.mutate(other.email, {
+                            onSuccess: () => {
+                              queryClient.invalidateQueries({ queryKey: ["group", id] })
+                              queryClient.invalidateQueries({ queryKey: ["friends"] })
+                              Toast.show({ type: "success", text1: `${other.name} added!` })
+                            },
+                            onError: (err: any) => {
+                              const msg = err?.response?.data?.error ?? "Failed to add member"
+                              Toast.show({ type: "error", text1: msg })
+                            },
+                          })
+                        }}
+                        disabled={addMemberMutation.isPending}
+                        style={{ backgroundColor: "#6366f1", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 7 }}
+                      >
+                        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 13 }}>Add</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )
+                }}
+              />
+            )
+          })()}
         </View>
       </Modal>
 

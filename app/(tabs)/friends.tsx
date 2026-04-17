@@ -9,6 +9,7 @@ import * as SecureStore from "expo-secure-store"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { router, type Href } from "expo-router"
 import { friendsApi, usersApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
@@ -33,10 +34,13 @@ function normalizePhone(raw: string): string {
   return raw.replace(/[^\d+]/g, "").replace(/^00/, "+")
 }
 
+type ConfirmDialog = { title: string; message: string; onConfirm: () => void }
+
 export default function Friends() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>("friends")
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null)
 
   // Search on Add tab
   const [searchQ, setSearchQ] = useState("")
@@ -170,6 +174,23 @@ export default function Friends() {
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to respond" }),
   })
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => friendsApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+      Toast.show({ type: "success", text1: "Friend removed" })
+    },
+    onError: () => Toast.show({ type: "error", text1: "Failed to remove friend" }),
+  })
+
+  function confirmRemove(friendId: string, name: string) {
+    setConfirmDialog({
+      title: "Remove Friend",
+      message: `Remove ${name} from your friends? You can always add them back later.`,
+      onConfirm: () => removeMutation.mutate(friendId),
+    })
+  }
 
   async function doSearch() {
     if (!searchQ.trim() || searchQ.trim().length < 2) return
@@ -316,9 +337,27 @@ export default function Friends() {
                       <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>{other?.name ?? "Unknown"}</Text>
                       <Text style={{ color: "#475569", fontSize: 12 }}>{other?.email}</Text>
                     </View>
-                    <View style={{ backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                      <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "600" }}>Friends</Text>
-                    </View>
+                    {/* Chat icon */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (!other?.id) return
+                        router.push({
+                          // The generated Expo Router types in .expo currently omit this valid route.
+                          pathname: "/chat/[friendId]",
+                          params: { friendId: other.id, name: other.name ?? "" },
+                        } as unknown as Href)
+                      }}
+                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <Ionicons name="chatbubble-ellipses" size={17} color="#4ade80" />
+                    </TouchableOpacity>
+                    {/* Remove icon */}
+                    <TouchableOpacity
+                      onPress={() => confirmRemove(f.id, other?.name ?? "this friend")}
+                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.12)", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <Ionicons name="person-remove" size={16} color="#f87171" />
+                    </TouchableOpacity>
                   </View>
                 )
               })}
@@ -554,6 +593,33 @@ export default function Friends() {
           )}
         </View>
       )}
+
+      {/* Remove Friend Confirm Dialog */}
+      <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: "#1a1a2e", borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name="person-remove-outline" size={26} color="#f87171" />
+            </View>
+            <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
+            <Text style={{ color: "#94a3b8", fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setConfirmDialog(null)}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#94a3b8", fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Invite Bottom Sheet */}
       <Modal visible={showInvite} transparent animationType="fade" onRequestClose={() => setShowInvite(false)}>

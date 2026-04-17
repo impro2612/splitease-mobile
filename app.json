@@ -23,7 +23,7 @@
         "backgroundColor": "#0a0a1a"
       },
       "package": "com.splitease.app",
-      "versionCode": 4
+      "versionCode": 5
     },
     "plugins": [
       "expo-router",
@@ -36,13 +36,20 @@
         }
       ],
       [
+        "expo-notifications",
+        {
+          "color": "#6366f1"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0a0a1a",
           "image": "./assets/splash-icon.png",
           "imageWidth": 200
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

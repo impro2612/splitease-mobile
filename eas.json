@@ -12,6 +12,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "ANDROID_HOME": "/Users/pratikp/Library/Android/sdk"
       }
     },
     "apk": {
