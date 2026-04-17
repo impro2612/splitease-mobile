@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, RefreshControl, FlatList,
+  Modal, ActivityIndicator, FlatList,
   useWindowDimensions, Animated,
 } from "react-native"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -299,7 +299,7 @@ export default function GroupDetail() {
     Toast.show({ type: "success", text1: "Note saved!" })
   }
 
-  const { data: group, isLoading, refetch, isRefetching } = useQuery({
+  const { data: group, isLoading } = useQuery({
     queryKey: ["group", id],
     queryFn: () => groupsApi.get(id).then((r) => r.data),
     enabled: !!id,
@@ -618,7 +618,6 @@ export default function GroupDetail() {
 
       <ScrollView
         className="flex-1 px-5"
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#6366f1" />}
         showsVerticalScrollIndicator={false}
       >
         {/* Expenses Tab */}

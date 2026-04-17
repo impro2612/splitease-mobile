@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, RefreshControl, Modal, Linking, Platform, FlatList,
+  ActivityIndicator, Modal, Linking, Platform, FlatList,
   AppState, AppStateStatus,
 } from "react-native"
 import * as Contacts from "expo-contacts"
@@ -61,7 +61,7 @@ export default function Friends() {
   // Track AppState for auto-sync
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
 
-  const { data: friendsData, isLoading, refetch, isRefetching } = useQuery({
+  const { data: friendsData, isLoading, refetch } = useQuery({
     queryKey: ["friends"],
     queryFn: async () => {
       await friendsApi.sync().catch(() => {})
@@ -312,7 +312,6 @@ export default function Friends() {
       {tab === "friends" && (
         <ScrollView
           style={{ flex: 1, paddingHorizontal: 20 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#6366f1" />}
           showsVerticalScrollIndicator={false}
         >
           {isLoading ? (

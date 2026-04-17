@@ -1,7 +1,7 @@
 import { useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, RefreshControl, ActivityIndicator, Alert, FlatList,
+  Modal, ActivityIndicator, Alert, FlatList,
   useWindowDimensions,
 } from "react-native"
 import { router } from "expo-router"
@@ -30,7 +30,7 @@ export default function Groups() {
   const [currencySearch, setCurrencySearch] = useState("")
   const [search, setSearch] = useState("")
 
-  const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
+  const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
     queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
@@ -102,7 +102,6 @@ export default function Groups() {
 
       <ScrollView
         className="flex-1 px-5"
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#6366f1" />}
         showsVerticalScrollIndicator={false}
       >
         {isLoading ? (

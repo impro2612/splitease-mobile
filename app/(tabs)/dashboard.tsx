@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  RefreshControl, ActivityIndicator,
+  ActivityIndicator,
 } from "react-native"
 import { router } from "expo-router"
 import { useQuery } from "@tanstack/react-query"
@@ -16,12 +16,12 @@ export default function Dashboard() {
   const { user, currency } = useAuthStore()
   const currencyInfo = CURRENCIES.find(c => c.code === currency) ?? CURRENCIES[0]
 
-  const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
+  const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
     queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
 
-  const { data: summary, refetch: refetchSummary } = useQuery({
+  const { data: summary } = useQuery({
     queryKey: ["balance-summary", currency],
     queryFn: () => dashboardApi.summary(currency).then((r) => r.data),
   })
@@ -29,11 +29,6 @@ export default function Dashboard() {
   const totalOwed: number = summary?.totalOwed ?? 0
   const totalOwe: number = summary?.totalOwe ?? 0
   const net: number = summary?.net ?? 0
-
-  const handleRefresh = () => {
-    refetch()
-    refetchSummary()
-  }
 
   // Build unified activity feed: expenses + group created + members joined
   const activityItems: any[] = []
@@ -69,7 +64,6 @@ export default function Dashboard() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ flex: 1 }}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor="#6366f1" />}
         showsVerticalScrollIndicator={false}
         bounces={true}
       >
