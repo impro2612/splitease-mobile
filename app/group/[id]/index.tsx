@@ -567,220 +567,6 @@ export default function GroupDetail() {
     )
   }
 
-  // Shared expense form fields (used in both add and edit modals)
-  function ExpenseFormFields({
-    desc, setDesc, amount, setAmount, category, setCategory,
-    paidBy, setPaidBy, date, setDate,
-  }: any) {
-    const detectedCategory = guessCategory(desc)
-    const categoryEmoji = getExpenseEmoji(desc)
-
-    return (
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {/* Description */}
-        <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
-        <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>
-          <TextInput
-            className="text-white text-base flex-1"
-            placeholder="What was this for?"
-            placeholderTextColor="#475569"
-            value={desc}
-            onChangeText={(t) => { setDesc(t); setCategory(guessCategory(t)) }}
-          />
-        </View>
-        {desc.trim() ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
-            <Text style={{ fontSize: 16 }}>{categoryEmoji}</Text>
-            <Text style={{ color: "#64748b", fontSize: 12, textTransform: "capitalize" }}>{detectedCategory}</Text>
-          </View>
-        ) : null}
-
-        {/* Amount */}
-        <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
-        <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
-          <Text style={{ color: "#475569", fontSize: 18, marginRight: 4 }}>{gc.symbol}</Text>
-          <TextInput className="text-white text-xl font-bold flex-1" placeholder="0.00" placeholderTextColor="#475569" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
-        </View>
-
-        {/* Date */}
-        <Text className="text-slate-300 text-sm font-medium mb-2">Date</Text>
-        <TouchableOpacity
-          onPress={() => openDatePicker(date, setDate)}
-          style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
-        >
-          <Ionicons name="calendar-outline" size={18} color="#94a3b8" />
-          <Text className="text-white text-base">{formatDate(date)}</Text>
-        </TouchableOpacity>
-
-        {/* Paid by */}
-        <Text className="text-slate-300 text-sm font-medium mb-2">Paid by</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-          {members.map((m: any) => (
-            <TouchableOpacity
-              key={m.userId}
-              onPress={() => setPaidBy(m.userId)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: paidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: paidBy === m.userId ? 2 : 1, borderColor: paidBy === m.userId ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
-            >
-              <Avatar name={m.user?.name} email={m.user?.email} size={24} />
-              <Text style={{ color: paidBy === m.userId ? "#fff" : "#94a3b8", fontWeight: "600", fontSize: 13 }}>
-                {m.userId === user?.id ? "You" : m.user?.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* ── Split section ── */}
-        {(() => {
-          const numAmount = parseFloat(amount) || 0
-          const disabled = numAmount <= 0
-          const memberIds = members.map((m: any) => m.userId)
-          const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
-
-          // Validation
-          const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
-          const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
-          const pctError = splitType === "PERCENTAGE" && numAmount > 0 && Math.abs(pctTotal - 100) > 0.01 ? `${pctTotal.toFixed(1)}% of 100%` : null
-          const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
-          const fmt = (n: number) => isNoDec ? Math.round(n).toString() : n.toFixed(2)
-          const customError = splitType === "CUSTOM" && numAmount > 0 && Math.abs(customTotal - numAmount) > (isNoDec ? 0.5 : 0.01) ? `Total ${gc.symbol}${fmt(customTotal)} must equal ${gc.symbol}${fmt(numAmount)}` : null
-
-          return (
-            <View style={{ marginTop: 4, marginBottom: 8, opacity: disabled ? 0.4 : 1 }}>
-              <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Split</Text>
-
-              {/* Tab row */}
-              <View style={{ flexDirection: "row", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 3, marginBottom: 14 }}>
-                {(["EQUAL", "PERCENTAGE", "CUSTOM"] as const).map((st) => (
-                  <TouchableOpacity
-                    key={st}
-                    disabled={disabled}
-                    onPress={() => { if (!disabled) setSplitType(st) }}
-                    style={{ flex: 1, paddingVertical: 7, borderRadius: 10, alignItems: "center", backgroundColor: splitType === st ? "#6366f1" : "transparent" }}
-                  >
-                    <Text style={{ color: splitType === st ? "#fff" : "#64748b", fontSize: 12, fontWeight: "600" }}>
-                      {st === "EQUAL" ? "Equally" : st === "PERCENTAGE" ? "%" : "Custom"}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Equally */}
-              {splitType === "EQUAL" && (
-                <View style={{ gap: 8 }}>
-                  {members.map((m: any) => {
-                    const isIncluded = included.includes(m.userId)
-                    // For 0-decimal currencies, round to whole unit; otherwise 2dp
-                    const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
-                    const rawPerPerson = included.length > 0 ? numAmount / included.length : 0
-                    const perPerson = isNoDec ? Math.round(rawPerPerson) : rawPerPerson
-                    return (
-                      <TouchableOpacity
-                        key={m.userId}
-                        disabled={disabled}
-                        onPress={() => {
-                          if (disabled) return
-                          const current = equallyIncluded.length > 0 ? equallyIncluded : memberIds
-                          if (isIncluded && current.length === 1) return // keep at least 1
-                          setEquallyIncluded(isIncluded ? current.filter((id: string) => id !== m.userId) : [...current, m.userId])
-                        }}
-                        style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a2e", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isIncluded ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)" }}
-                      >
-                        <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
-                        <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }}>
-                          {m.userId === user?.id ? "You" : m.user?.name}
-                        </Text>
-                        {isIncluded && numAmount > 0 && (
-                          <Text style={{ color: "#94a3b8", fontSize: 12, marginRight: 10 }}>
-                            {gc.symbol}{perPerson.toFixed(2)}
-                          </Text>
-                        )}
-                        <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: isIncluded ? "#6366f1" : "#334155", backgroundColor: isIncluded ? "#6366f1" : "transparent", alignItems: "center", justifyContent: "center" }}>
-                          {isIncluded && <Ionicons name="checkmark" size={13} color="#fff" />}
-                        </View>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-              )}
-
-              {/* Percentage */}
-              {splitType === "PERCENTAGE" && (
-                <View style={{ gap: 8 }}>
-                  {members.map((m: any) => {
-                    const pct = percentageSplits[m.userId] ?? ""
-                    const pctNum = parseFloat(pct) || 0
-                    const perPerson = (pctNum / 100) * numAmount
-                    return (
-                      <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
-                        <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
-                        <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
-                          {m.userId === user?.id ? "You" : m.user?.name}
-                        </Text>
-                        {numAmount > 0 && pctNum > 0 && (
-                          <Text style={{ color: "#64748b", fontSize: 11, marginRight: 6 }}>{gc.symbol}{perPerson.toFixed(2)}</Text>
-                        )}
-                        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 64 }}>
-                          <TextInput
-                            style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", textAlign: "right", padding: 0, height: 32 }}
-                            placeholder="0"
-                            placeholderTextColor="#475569"
-                            value={pct}
-                            onChangeText={(v) => setPercentageSplits({ ...percentageSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
-                            keyboardType="decimal-pad"
-                            editable={!disabled}
-                          />
-                          <Text style={{ color: "#64748b", fontSize: 12, marginLeft: 2 }}>%</Text>
-                        </View>
-                      </View>
-                    )
-                  })}
-                  {pctError && <Text style={{ color: "#f87171", fontSize: 12, marginTop: 4 }}>⚠ {pctError} used</Text>}
-                  {!pctError && numAmount > 0 && <Text style={{ color: "#4ade80", fontSize: 12, marginTop: 4 }}>✓ Splits to 100%</Text>}
-                </View>
-              )}
-
-              {/* Custom */}
-              {splitType === "CUSTOM" && (
-                <View style={{ gap: 8 }}>
-                  {members.map((m: any) => {
-                    const val = customSplits[m.userId] ?? ""
-                    return (
-                      <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
-                        <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
-                        <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
-                          {m.userId === user?.id ? "You" : m.user?.name}
-                        </Text>
-                        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 80 }}>
-                          <Text style={{ color: "#64748b", fontSize: 12, marginRight: 2 }}>{gc.symbol}</Text>
-                          <TextInput
-                            style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", padding: 0, height: 32 }}
-                            placeholder="0.00"
-                            placeholderTextColor="#475569"
-                            value={val}
-                            onChangeText={(v) => setCustomSplits({ ...customSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
-                            keyboardType="decimal-pad"
-                            editable={!disabled}
-                          />
-                        </View>
-                      </View>
-                    )
-                  })}
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-                    <Text style={{ color: customError ? "#f87171" : "#64748b", fontSize: 12 }}>
-                      {customError ? `⚠ ${customError}` : `Total: ${gc.symbol}${customTotal.toFixed(2)}`}
-                    </Text>
-                    <Text style={{ color: "#64748b", fontSize: 12 }}>of {gc.symbol}{numAmount.toFixed(2)}</Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          )
-        })()}
-
-      </ScrollView>
-    )
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-base" edges={["top"]}>
       {/* Header */}
@@ -1385,6 +1171,11 @@ export default function GroupDetail() {
             category={expCategory} setCategory={setExpCategory}
             paidBy={expPaidBy} setPaidBy={setExpPaidBy}
             date={expDate} setDate={setExpDate}
+            members={members} gc={gc} user={user}
+            splitType={splitType} setSplitType={setSplitType}
+            equallyIncluded={equallyIncluded} setEquallyIncluded={setEquallyIncluded}
+            percentageSplits={percentageSplits} setPercentageSplits={setPercentageSplits}
+            customSplits={customSplits} setCustomSplits={setCustomSplits}
           />
           <TouchableOpacity
             onPress={() => addExpenseMutation.mutate()}
@@ -1432,6 +1223,11 @@ export default function GroupDetail() {
             category={editCategory} setCategory={setEditCategory}
             paidBy={editPaidBy} setPaidBy={setEditPaidBy}
             date={editDate} setDate={setEditDate}
+            members={members} gc={gc} user={user}
+            splitType={splitType} setSplitType={setSplitType}
+            equallyIncluded={equallyIncluded} setEquallyIncluded={setEquallyIncluded}
+            percentageSplits={percentageSplits} setPercentageSplits={setPercentageSplits}
+            customSplits={customSplits} setCustomSplits={setCustomSplits}
           />
           <TouchableOpacity
             onPress={() => editExpenseMutation.mutate()}
@@ -1730,5 +1526,225 @@ export default function GroupDetail() {
         </View>
       </Modal>
     </SafeAreaView>
+  )
+}
+
+// ── Module-level component — must live OUTSIDE GroupDetail so React sees a
+// stable component identity on every render. If defined inside the parent,
+// every setState call creates a new function reference, React unmounts/remounts
+// the component, and the TextInput loses focus (keyboard dismissed after each letter).
+function ExpenseFormFields({
+  desc, setDesc, amount, setAmount, category, setCategory,
+  paidBy, setPaidBy, date, setDate,
+  members, gc, user,
+  splitType, setSplitType,
+  equallyIncluded, setEquallyIncluded,
+  percentageSplits, setPercentageSplits,
+  customSplits, setCustomSplits,
+}: any) {
+  const detectedCategory = guessCategory(desc)
+  const categoryEmoji = getExpenseEmoji(desc)
+
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      {/* Description */}
+      <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
+      <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>
+        <TextInput
+          className="text-white text-base flex-1"
+          placeholder="What was this for?"
+          placeholderTextColor="#475569"
+          value={desc}
+          onChangeText={(t) => { setDesc(t); setCategory(guessCategory(t)) }}
+        />
+      </View>
+      {desc.trim() ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+          <Text style={{ fontSize: 16 }}>{categoryEmoji}</Text>
+          <Text style={{ color: "#64748b", fontSize: 12, textTransform: "capitalize" }}>{detectedCategory}</Text>
+        </View>
+      ) : null}
+
+      {/* Amount */}
+      <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
+      <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
+        <Text style={{ color: "#475569", fontSize: 18, marginRight: 4 }}>{gc.symbol}</Text>
+        <TextInput className="text-white text-xl font-bold flex-1" placeholder="0.00" placeholderTextColor="#475569" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+      </View>
+
+      {/* Date */}
+      <Text className="text-slate-300 text-sm font-medium mb-2">Date</Text>
+      <TouchableOpacity
+        onPress={() => openDatePicker(date, setDate)}
+        style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
+      >
+        <Ionicons name="calendar-outline" size={18} color="#94a3b8" />
+        <Text className="text-white text-base">{formatDate(date)}</Text>
+      </TouchableOpacity>
+
+      {/* Paid by */}
+      <Text className="text-slate-300 text-sm font-medium mb-2">Paid by</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+        {members.map((m: any) => (
+          <TouchableOpacity
+            key={m.userId}
+            onPress={() => setPaidBy(m.userId)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: paidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: paidBy === m.userId ? 2 : 1, borderColor: paidBy === m.userId ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
+          >
+            <Avatar name={m.user?.name} email={m.user?.email} size={24} />
+            <Text style={{ color: paidBy === m.userId ? "#fff" : "#94a3b8", fontWeight: "600", fontSize: 13 }}>
+              {m.userId === user?.id ? "You" : m.user?.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* ── Split section ── */}
+      {(() => {
+        const numAmount = parseFloat(amount) || 0
+        const disabled = numAmount <= 0
+        const memberIds = members.map((m: any) => m.userId)
+        const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
+
+        const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
+        const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
+        const pctError = splitType === "PERCENTAGE" && numAmount > 0 && Math.abs(pctTotal - 100) > 0.01 ? `${pctTotal.toFixed(1)}% of 100%` : null
+        const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+        const fmt = (n: number) => isNoDec ? Math.round(n).toString() : n.toFixed(2)
+        const customError = splitType === "CUSTOM" && numAmount > 0 && Math.abs(customTotal - numAmount) > (isNoDec ? 0.5 : 0.01) ? `Total ${gc.symbol}${fmt(customTotal)} must equal ${gc.symbol}${fmt(numAmount)}` : null
+
+        return (
+          <View style={{ marginTop: 4, marginBottom: 8, opacity: disabled ? 0.4 : 1 }}>
+            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Split</Text>
+
+            {/* Tab row */}
+            <View style={{ flexDirection: "row", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 3, marginBottom: 14 }}>
+              {(["EQUAL", "PERCENTAGE", "CUSTOM"] as const).map((st) => (
+                <TouchableOpacity
+                  key={st}
+                  disabled={disabled}
+                  onPress={() => { if (!disabled) setSplitType(st) }}
+                  style={{ flex: 1, paddingVertical: 7, borderRadius: 10, alignItems: "center", backgroundColor: splitType === st ? "#6366f1" : "transparent" }}
+                >
+                  <Text style={{ color: splitType === st ? "#fff" : "#64748b", fontSize: 12, fontWeight: "600" }}>
+                    {st === "EQUAL" ? "Equally" : st === "PERCENTAGE" ? "%" : "Custom"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Equally */}
+            {splitType === "EQUAL" && (
+              <View style={{ gap: 8 }}>
+                {members.map((m: any) => {
+                  const isIncluded = included.includes(m.userId)
+                  const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+                  const rawPerPerson = included.length > 0 ? numAmount / included.length : 0
+                  const perPerson = isNoDec ? Math.round(rawPerPerson) : rawPerPerson
+                  return (
+                    <TouchableOpacity
+                      key={m.userId}
+                      disabled={disabled}
+                      onPress={() => {
+                        if (disabled) return
+                        const current = equallyIncluded.length > 0 ? equallyIncluded : memberIds
+                        if (isIncluded && current.length === 1) return
+                        setEquallyIncluded(isIncluded ? current.filter((id: string) => id !== m.userId) : [...current, m.userId])
+                      }}
+                      style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a2e", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isIncluded ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)" }}
+                    >
+                      <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
+                      <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }}>
+                        {m.userId === user?.id ? "You" : m.user?.name}
+                      </Text>
+                      {isIncluded && numAmount > 0 && (
+                        <Text style={{ color: "#94a3b8", fontSize: 12, marginRight: 10 }}>
+                          {gc.symbol}{perPerson.toFixed(2)}
+                        </Text>
+                      )}
+                      <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: isIncluded ? "#6366f1" : "#334155", backgroundColor: isIncluded ? "#6366f1" : "transparent", alignItems: "center", justifyContent: "center" }}>
+                        {isIncluded && <Ionicons name="checkmark" size={13} color="#fff" />}
+                      </View>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            )}
+
+            {/* Percentage */}
+            {splitType === "PERCENTAGE" && (
+              <View style={{ gap: 8 }}>
+                {members.map((m: any) => {
+                  const pct = percentageSplits[m.userId] ?? ""
+                  const pctNum = parseFloat(pct) || 0
+                  const perPerson = (pctNum / 100) * numAmount
+                  return (
+                    <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+                      <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
+                      <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
+                        {m.userId === user?.id ? "You" : m.user?.name}
+                      </Text>
+                      {numAmount > 0 && pctNum > 0 && (
+                        <Text style={{ color: "#64748b", fontSize: 11, marginRight: 6 }}>{gc.symbol}{perPerson.toFixed(2)}</Text>
+                      )}
+                      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 64 }}>
+                        <TextInput
+                          style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", textAlign: "right", padding: 0, height: 32 }}
+                          placeholder="0"
+                          placeholderTextColor="#475569"
+                          value={pct}
+                          onChangeText={(v) => setPercentageSplits({ ...percentageSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
+                          keyboardType="decimal-pad"
+                          editable={!disabled}
+                        />
+                        <Text style={{ color: "#64748b", fontSize: 12, marginLeft: 2 }}>%</Text>
+                      </View>
+                    </View>
+                  )
+                })}
+                {pctError && <Text style={{ color: "#f87171", fontSize: 12, marginTop: 4 }}>⚠ {pctError} used</Text>}
+                {!pctError && numAmount > 0 && <Text style={{ color: "#4ade80", fontSize: 12, marginTop: 4 }}>✓ Splits to 100%</Text>}
+              </View>
+            )}
+
+            {/* Custom */}
+            {splitType === "CUSTOM" && (
+              <View style={{ gap: 8 }}>
+                {members.map((m: any) => {
+                  const val = customSplits[m.userId] ?? ""
+                  return (
+                    <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+                      <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
+                      <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
+                        {m.userId === user?.id ? "You" : m.user?.name}
+                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 80 }}>
+                        <Text style={{ color: "#64748b", fontSize: 12, marginRight: 2 }}>{gc.symbol}</Text>
+                        <TextInput
+                          style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", padding: 0, height: 32 }}
+                          placeholder="0.00"
+                          placeholderTextColor="#475569"
+                          value={val}
+                          onChangeText={(v) => setCustomSplits({ ...customSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
+                          keyboardType="decimal-pad"
+                          editable={!disabled}
+                        />
+                      </View>
+                    </View>
+                  )
+                })}
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+                  <Text style={{ color: customError ? "#f87171" : "#64748b", fontSize: 12 }}>
+                    {customError ? `⚠ ${customError}` : `Total: ${gc.symbol}${customTotal.toFixed(2)}`}
+                  </Text>
+                  <Text style={{ color: "#64748b", fontSize: 12 }}>of {gc.symbol}{numAmount.toFixed(2)}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )
+      })()}
+
+    </ScrollView>
   )
 }
