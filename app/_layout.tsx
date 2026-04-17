@@ -1,16 +1,128 @@
 import "../global.css"
 import { useEffect } from "react"
-import { Platform, Keyboard, TouchableWithoutFeedback, View } from "react-native"
+import { Platform, Keyboard, TouchableWithoutFeedback, View, Text } from "react-native"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import Toast from "react-native-toast-message"
+import { Ionicons } from "@expo/vector-icons"
 import * as SplashScreen from "expo-splash-screen"
 import * as Notifications from "expo-notifications"
 import * as Device from "expo-device"
 import { useAuthStore } from "@/store/auth"
 import { pushApi } from "@/lib/api"
+
+// ── Custom Toast UI ───────────────────────────────────────────────────────────
+function ToastBase({
+  text1,
+  text2,
+  iconName,
+  accentColor,
+  bgColor,
+  borderColor,
+}: {
+  text1?: string
+  text2?: string
+  iconName: keyof typeof Ionicons.glyphMap
+  accentColor: string
+  bgColor: string
+  borderColor: string
+}) {
+  return (
+    <View style={{
+      marginHorizontal: 16,
+      borderRadius: 18,
+      backgroundColor: bgColor,
+      borderWidth: 1,
+      borderColor,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 14,
+      shadowColor: accentColor,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 12,
+      elevation: 12,
+      minHeight: 60,
+    }}>
+      {/* Icon circle */}
+      <View style={{
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: accentColor + "22",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        <Ionicons name={iconName} size={20} color={accentColor} />
+      </View>
+
+      {/* Text */}
+      <View style={{ flex: 1 }}>
+        {text1 ? (
+          <Text style={{ color: "#f1f5f9", fontWeight: "700", fontSize: 14, lineHeight: 19 }}
+            numberOfLines={2}>
+            {text1}
+          </Text>
+        ) : null}
+        {text2 ? (
+          <Text style={{ color: "#94a3b8", fontWeight: "400", fontSize: 12, marginTop: 2 }}
+            numberOfLines={2}>
+            {text2}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Right accent bar */}
+      <View style={{
+        position: "absolute",
+        left: 0,
+        top: 10,
+        bottom: 10,
+        width: 3,
+        borderRadius: 4,
+        backgroundColor: accentColor,
+      }} />
+    </View>
+  )
+}
+
+const toastConfig = {
+  success: ({ text1, text2 }: any) => (
+    <ToastBase
+      text1={text1}
+      text2={text2}
+      iconName="checkmark-circle"
+      accentColor="#4ade80"
+      bgColor="#0f1f17"
+      borderColor="rgba(74,222,128,0.25)"
+    />
+  ),
+  error: ({ text1, text2 }: any) => (
+    <ToastBase
+      text1={text1}
+      text2={text2}
+      iconName="close-circle"
+      accentColor="#f87171"
+      bgColor="#1f0f0f"
+      borderColor="rgba(248,113,113,0.25)"
+    />
+  ),
+  info: ({ text1, text2 }: any) => (
+    <ToastBase
+      text1={text1}
+      text2={text2}
+      iconName="information-circle"
+      accentColor="#818cf8"
+      bgColor="#0f0f1f"
+      borderColor="rgba(129,140,248,0.25)"
+    />
+  ),
+}
 
 SplashScreen.preventAutoHideAsync()
 
@@ -85,7 +197,7 @@ export default function RootLayout() {
               <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
             </Stack>
-            <Toast />
+            <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
           </View>
         </TouchableWithoutFeedback>
       </GestureHandlerRootView>
