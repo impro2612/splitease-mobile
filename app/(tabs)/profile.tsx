@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, Switch, Modal, FlatList,
@@ -6,11 +6,17 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
+import * as Notifications from "expo-notifications"
+import * as Device from "expo-device"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import Constants from "expo-constants"
 import { useAuthStore } from "@/store/auth"
-import { api } from "@/lib/api"
+import { api, pushApi } from "@/lib/api"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { CURRENCIES } from "@/lib/currencies"
+
+const NOTIF_PREF_KEY = "notifications_enabled"
 
 export default function Profile() {
   const { user, signOut, setUser, currency, setCurrency } = useAuthStore()
@@ -20,6 +26,32 @@ export default function Profile() {
   const [name, setName] = useState(user?.name ?? "")
   const [notifications, setNotifications] = useState(true)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
+
+  // Load persisted notification preference
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIF_PREF_KEY).then((val) => {
+      if (val !== null) setNotifications(val === "true")
+    })
+  }, [])
+
+  async function handleNotificationsToggle(enabled: boolean) {
+    setNotifications(enabled)
+    await AsyncStorage.setItem(NOTIF_PREF_KEY, String(enabled))
+    if (enabled) {
+      // Re-register push token
+      if (!Device.isDevice) return
+      const { status: existing } = await Notifications.getPermissionsAsync()
+      const { status } = existing === "granted"
+        ? { status: existing }
+        : await Notifications.requestPermissionsAsync()
+      if (status !== "granted") { setNotifications(false); return }
+      const token = await Notifications.getExpoPushTokenAsync().catch(() => null)
+      if (token?.data) await pushApi.saveToken(token.data).catch(() => {})
+    } else {
+      // Clear push token so the server stops delivering notifications
+      await pushApi.clearToken().catch(() => {})
+    }
+  }
   const [currencySearch, setCurrencySearch] = useState("")
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
 
@@ -123,7 +155,7 @@ export default function Profile() {
               <Text className="text-white flex-1">Push Notifications</Text>
               <Switch
                 value={notifications}
-                onValueChange={setNotifications}
+                onValueChange={handleNotificationsToggle}
                 trackColor={{ false: "#374151", true: "#6366f1" }}
                 thumbColor="#fff"
               />
@@ -178,7 +210,7 @@ export default function Profile() {
                 <Ionicons name="information-circle" size={18} color="#94a3b8" />
               </View>
               <Text className="text-white flex-1">Version</Text>
-              <Text className="text-muted text-sm">1.0.0</Text>
+              <Text className="text-muted text-sm">{Constants.expoConfig?.version ?? "—"}</Text>
             </View>
           </View>
         </View>

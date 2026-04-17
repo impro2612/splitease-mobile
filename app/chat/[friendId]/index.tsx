@@ -319,8 +319,6 @@ export default function ChatScreen() {
             keyExtractor={(item) => ("clientId" in item ? item.clientId : item.key)}
             contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16, flexGrow: 1, justifyContent: "flex-end" }}
             showsVerticalScrollIndicator={false}
-            onEndReachedThreshold={0.1}
-            onEndReached={loadOlderMessages}
             ListHeaderComponent={
               loadingOlder ? (
                 <View style={{ paddingVertical: 12, alignItems: "center" }}>
@@ -335,7 +333,13 @@ export default function ChatScreen() {
                 <Text style={{ color: "#475569", fontSize: 13, textAlign: "center" }}>Say hi to {friendName}!</Text>
               </View>
             }
-            onScroll={() => scheduleMarkRead()}
+            onScroll={(e) => {
+              scheduleMarkRead()
+              // Load older messages when user scrolls close to the top of the list
+              if (e.nativeEvent.contentOffset.y <= 80) {
+                loadOlderMessages()
+              }
+            }}
             scrollEventThrottle={300}
             renderItem={({ item }) => {
               if ("type" in item && item.type === "date") {

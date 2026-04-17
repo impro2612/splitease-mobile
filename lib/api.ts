@@ -126,4 +126,5 @@ export const dashboardApi = {
 // Push token registration
 export const pushApi = {
   saveToken: (pushToken: string) => api.post("/api/auth/push-token", { pushToken }),
+  clearToken: () => api.delete("/api/auth/push-token"),
 }
