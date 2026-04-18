@@ -1,6 +1,6 @@
 import "../global.css"
 import { useEffect } from "react"
-import { Platform, Keyboard, TouchableWithoutFeedback, View, Text } from "react-native"
+import { Platform, View, Text } from "react-native"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
@@ -188,18 +188,16 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={{ flex: 1 }}>
-            <StatusBar style="light" backgroundColor="#0a0a1a" />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#0a0a1a" } }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
-            </Stack>
-            <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
-          </View>
-        </TouchableWithoutFeedback>
+        <View style={{ flex: 1 }}>
+          <StatusBar style="light" backgroundColor="#0a0a1a" />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#0a0a1a" } }}>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
+          </Stack>
+          <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
+        </View>
       </GestureHandlerRootView>
     </QueryClientProvider>
   )
