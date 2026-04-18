@@ -61,12 +61,7 @@ export default function Dashboard() {
 
   return (
     <SafeAreaView className="flex-1 bg-base" edges={["top"]}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-      >
+      {/* ── STATIC TOP SECTION ── */}
       {/* Header */}
       <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
         <View>
@@ -142,9 +137,13 @@ export default function Dashboard() {
         )}
       </View>
 
-      {/* Recent Activity */}
-      <View className="px-5 mt-5">
+      {/* ── SCROLLABLE RECENT ACTIVITY ── */}
+      <View style={{ flex: 1, marginTop: 20, paddingHorizontal: 20 }}>
         <Text className="text-white font-semibold text-base mb-3">Recent Activity</Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 24 }}
+        >
         {recentActivity.length === 0 ? (
           <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 24, alignItems: "center" }}>
             <Text className="text-4xl mb-2">📝</Text>
@@ -215,8 +214,8 @@ export default function Dashboard() {
             return null
           })
         )}
+        </ScrollView>
       </View>
-      </ScrollView>
     </SafeAreaView>
   )
 }
