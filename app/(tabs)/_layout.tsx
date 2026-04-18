@@ -2,9 +2,12 @@ import { Tabs, Redirect } from "expo-router"
 import { useAuthStore } from "@/store/auth"
 import { View, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 export default function TabsLayout() {
   const { user, loading } = useAuthStore()
+  // bottom inset = system nav bar height (0 on gesture nav, ~48dp on 3-button nav, ~34pt on iPhone)
+  const { bottom } = useSafeAreaInsets()
 
   if (loading) {
     return <View className="flex-1 bg-base items-center justify-center"><ActivityIndicator color="#6366f1" /></View>
@@ -19,8 +22,9 @@ export default function TabsLayout() {
           backgroundColor: "#12121f",
           borderTopColor: "rgba(255,255,255,0.06)",
           borderTopWidth: 1,
-          height: 64,
-          paddingBottom: 10,
+          // Grow the bar to sit above any system nav bar (3-button or gesture indicator)
+          height: 64 + bottom,
+          paddingBottom: bottom > 0 ? bottom + 4 : 10,
           paddingTop: 8,
         },
         tabBarActiveTintColor: "#6366f1",
