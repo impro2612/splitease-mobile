@@ -1,9 +1,11 @@
 import { View, type ViewProps } from "react-native"
+import { useTheme } from "@/lib/theme"
 
-export function Card({ className, children, style, ...props }: ViewProps & { className?: string }) {
+export function Card({ children, style, ...props }: ViewProps) {
+  const C = useTheme()
   return (
     <View
-      style={[{ backgroundColor: "#1a1a2e", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", borderRadius: 16 }, style]}
+      style={[{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16 }, style]}
       {...props}
     >
       {children}

@@ -3,7 +3,8 @@ import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
+import { useTheme } from "@/lib/theme"
 import { Ionicons } from "@expo/vector-icons"
 import { router, useLocalSearchParams } from "expo-router"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -67,6 +68,8 @@ async function saveCache(key: string, messages: Message[]) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
+  const insets = useSafeAreaInsets()
+  const C = useTheme()
   const { friendId, name } = useLocalSearchParams<{ friendId: string; name?: string }>()
   const { user } = useAuthStore()
   const myId = user?.id ?? ""
@@ -287,17 +290,17 @@ export default function ChatScreen() {
   const listItems = buildListItems()
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a1a" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)", gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border, gap: 12 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color="#fff" />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{friendName.charAt(0).toUpperCase()}</Text>
+          <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{friendName.charAt(0).toUpperCase()}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
+          <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
           <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "500" }}>End-to-end encrypted</Text>
         </View>
       </View>
@@ -329,8 +332,8 @@ export default function ChatScreen() {
             ListEmptyComponent={
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 }}>
                 <Text style={{ fontSize: 48, marginBottom: 12 }}>💬</Text>
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16, marginBottom: 6 }}>No messages yet</Text>
-                <Text style={{ color: "#475569", fontSize: 13, textAlign: "center" }}>Say hi to {friendName}!</Text>
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 16, marginBottom: 6 }}>No messages yet</Text>
+                <Text style={{ color: C.textMuted, fontSize: 13, textAlign: "center" }}>Say hi to {friendName}!</Text>
               </View>
             }
             onScroll={(e) => {
@@ -345,8 +348,8 @@ export default function ChatScreen() {
               if ("type" in item && item.type === "date") {
                 return (
                   <View style={{ alignItems: "center", marginVertical: 12 }}>
-                    <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 }}>
-                      <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600" }}>{item.label}</Text>
+                    <View style={{ backgroundColor: C.iconBg, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 }}>
+                      <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600" }}>{item.label}</Text>
                     </View>
                   </View>
                 )
@@ -364,12 +367,12 @@ export default function ChatScreen() {
                     paddingHorizontal: 14,
                     paddingVertical: 10,
                     borderWidth: isMine ? 0 : 1,
-                    borderColor: "rgba(255,255,255,0.08)",
+                    borderColor: C.border,
                     opacity: msg.pending ? 0.65 : 1,
                   }}>
-                    <Text style={{ color: "#fff", fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
+                    <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3, justifyContent: "flex-end" }}>
-                      <Text style={{ color: isMine ? "rgba(255,255,255,0.55)" : "#475569", fontSize: 10 }}>
+                      <Text style={{ color: isMine ? "rgba(255,255,255,0.55)" : C.textMuted, fontSize: 10 }}>
                         {formatTime(msg.createdAt)}
                       </Text>
                       {isMine && (
@@ -388,12 +391,12 @@ export default function ChatScreen() {
         )}
 
         {/* Input */}
-        <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingVertical: 12, paddingBottom: Platform.OS === "ios" ? 4 : 12, gap: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" }}>
-          <View style={{ flex: 1, backgroundColor: "#1a1a2e", borderRadius: 24, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", paddingHorizontal: 16, paddingVertical: 10, minHeight: 46, maxHeight: 120, justifyContent: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10, borderTopWidth: 1, borderTopColor: C.border }}>
+          <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 24, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 16, paddingVertical: 10, minHeight: 46, maxHeight: 120, justifyContent: "center" }}>
             <TextInput
-              style={{ color: "#fff", fontSize: 15, lineHeight: 20 }}
+              style={{ color: C.text, fontSize: 15, lineHeight: 20 }}
               placeholder="Message…"
-              placeholderTextColor="#475569"
+              placeholderTextColor={C.textMuted}
               value={input}
               onChangeText={setInput}
               multiline
@@ -411,7 +414,7 @@ export default function ChatScreen() {
           >
             {sending
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Ionicons name="send" size={18} color={input.trim() ? "#fff" : "#475569"} />}
+              : <Ionicons name="send" size={18} color={input.trim() ? "#fff" : C.textMuted} />}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

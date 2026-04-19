@@ -1,14 +1,16 @@
 import { useState } from "react"
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
+  ScrollView, KeyboardAvoidingView, ActivityIndicator,
 } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
+import { useTheme } from "@/lib/theme"
 
 export default function SignUp() {
   const { signUp } = useAuthStore()
+  const C = useTheme()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
@@ -18,7 +20,7 @@ export default function SignUp() {
   const [error, setError] = useState("")
 
   const strength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3
-  const strengthColor = strength === 1 ? "bg-danger" : strength === 2 ? "bg-warning" : "bg-success"
+  const strengthColors = ["transparent", "#f43f5e", "#f59e0b", "#22c55e"]
 
   async function handleSignUp() {
     if (!name || !email || !phone || !password) { setError("All fields are required"); return }
@@ -35,125 +37,75 @@ export default function SignUp() {
     }
   }
 
+  const inputStyle = { flexDirection: "row" as const, alignItems: "center" as const, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 16, height: 56, marginBottom: 14 }
+
   return (
-    <KeyboardAvoidingView className="flex-1 bg-base" behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior="padding">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-        <View className="flex-1 justify-center px-6 py-12">
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingVertical: 48 }}>
           {/* Logo */}
-          <View className="items-center mb-8">
-            <View className="w-20 h-20 rounded-3xl bg-primary items-center justify-center mb-4">
-              <Text className="text-4xl">💸</Text>
+          <View style={{ alignItems: "center", marginBottom: 32 }}>
+            <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+              <Text style={{ fontSize: 36 }}>💸</Text>
             </View>
-            <Text className="text-3xl font-bold text-white">Create account</Text>
-            <Text className="text-muted text-base mt-1">Start splitting for free</Text>
+            <Text style={{ color: C.text, fontSize: 28, fontWeight: "700" }}>Create account</Text>
+            <Text style={{ color: C.textSub, fontSize: 15, marginTop: 4 }}>Start splitting for free</Text>
           </View>
 
-          <View className="space-y-4">
-            {/* Name */}
-            <View>
-              <Text className="text-slate-300 text-sm font-medium mb-2">Full name</Text>
-              <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-14">
-                <Ionicons name="person-outline" size={18} color="#94a3b8" />
-                <TextInput
-                  className="flex-1 text-white text-base ml-3"
-                  placeholder="John Doe"
-                  placeholderTextColor="#475569"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                />
-              </View>
-            </View>
+          {/* Name */}
+          <View style={inputStyle}>
+            <Ionicons name="person-outline" size={18} color={C.textSub} />
+            <TextInput style={{ flex: 1, color: C.text, fontSize: 15, marginLeft: 12 }} placeholder="Full name" placeholderTextColor={C.textMuted} value={name} onChangeText={setName} autoCapitalize="words" />
+          </View>
 
-            {/* Email */}
-            <View>
-              <Text className="text-slate-300 text-sm font-medium mb-2">Email</Text>
-              <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-14">
-                <Ionicons name="mail-outline" size={18} color="#94a3b8" />
-                <TextInput
-                  className="flex-1 text-white text-base ml-3"
-                  placeholder="you@email.com"
-                  placeholderTextColor="#475569"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
+          {/* Email */}
+          <View style={inputStyle}>
+            <Ionicons name="mail-outline" size={18} color={C.textSub} />
+            <TextInput style={{ flex: 1, color: C.text, fontSize: 15, marginLeft: 12 }} placeholder="you@email.com" placeholderTextColor={C.textMuted} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+          </View>
 
-            {/* Phone */}
-            <View>
-              <Text className="text-slate-300 text-sm font-medium mb-2">Phone number</Text>
-              <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-14">
-                <Ionicons name="call-outline" size={18} color="#94a3b8" />
-                <TextInput
-                  className="flex-1 text-white text-base ml-3"
-                  placeholder="+1 234 567 8900"
-                  placeholderTextColor="#475569"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
+          {/* Phone */}
+          <View style={inputStyle}>
+            <Ionicons name="call-outline" size={18} color={C.textSub} />
+            <TextInput style={{ flex: 1, color: C.text, fontSize: 15, marginLeft: 12 }} placeholder="+1 234 567 8900" placeholderTextColor={C.textMuted} value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoCorrect={false} />
+          </View>
 
-            {/* Password */}
-            <View>
-              <Text className="text-slate-300 text-sm font-medium mb-2">Password</Text>
-              <View className="flex-row items-center bg-card border border-border rounded-2xl px-4 h-14">
-                <Ionicons name="lock-closed-outline" size={18} color="#94a3b8" />
-                <TextInput
-                  className="flex-1 text-white text-base ml-3"
-                  placeholder="Min. 6 characters"
-                  placeholderTextColor="#475569"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPass}
-                />
-                <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-                  <Ionicons name={showPass ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
-                </TouchableOpacity>
-              </View>
-              {/* Strength bar */}
-              {password.length > 0 && (
-                <View className="flex-row gap-1 mt-2">
-                  {[1, 2, 3].map((i) => (
-                    <View
-                      key={i}
-                      className={`h-1 flex-1 rounded-full ${i <= strength ? strengthColor : "bg-white/10"}`}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {error ? (
-              <View className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-                <Text className="text-red-400 text-sm">{error}</Text>
-              </View>
-            ) : null}
-
-            <TouchableOpacity
-              onPress={handleSignUp}
-              disabled={loading}
-              className="h-14 bg-primary rounded-2xl items-center justify-center mt-2"
-              style={{ opacity: loading ? 0.7 : 1 }}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Create Account</Text>
-              )}
+          {/* Password */}
+          <View style={inputStyle}>
+            <Ionicons name="lock-closed-outline" size={18} color={C.textSub} />
+            <TextInput style={{ flex: 1, color: C.text, fontSize: 15, marginLeft: 12 }} placeholder="Min. 6 characters" placeholderTextColor={C.textMuted} value={password} onChangeText={setPassword} secureTextEntry={!showPass} />
+            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+              <Ionicons name={showPass ? "eye-off-outline" : "eye-outline"} size={18} color={C.textSub} />
             </TouchableOpacity>
           </View>
 
-          <View className="flex-row justify-center mt-8">
-            <Text className="text-muted">Already have an account? </Text>
+          {/* Strength bar */}
+          {password.length > 0 && (
+            <View style={{ flexDirection: "row", gap: 6, marginTop: -8, marginBottom: 14 }}>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={{ height: 4, flex: 1, borderRadius: 4, backgroundColor: i <= strength ? strengthColors[strength] : C.border }} />
+              ))}
+            </View>
+          )}
+
+          {error ? (
+            <View style={{ backgroundColor: "rgba(244,63,94,0.1)", borderWidth: 1, borderColor: "rgba(244,63,94,0.2)", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 14 }}>
+              <Text style={{ color: "#f87171", fontSize: 13 }}>{error}</Text>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={handleSignUp}
+            disabled={loading}
+            style={{ height: 56, backgroundColor: "#6366f1", borderRadius: 16, alignItems: "center", justifyContent: "center", opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Create Account</Text>}
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 24 }}>
+            <Text style={{ color: C.textSub }}>Already have an account? </Text>
             <TouchableOpacity onPress={() => router.back()}>
-              <Text className="text-primary font-semibold">Sign in</Text>
+              <Text style={{ color: "#6366f1", fontWeight: "600" }}>Sign in</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,6 +1,6 @@
 import "../global.css"
 import { useEffect } from "react"
-import { Platform, View, Text } from "react-native"
+import { Platform, View, Text, useColorScheme } from "react-native"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
@@ -165,6 +165,7 @@ async function registerForPushNotifications() {
 
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
+  const scheme = useColorScheme()
 
   useEffect(() => {
     loadSession()
@@ -189,8 +190,8 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
-          <StatusBar style="light" backgroundColor="#0a0a1a" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#0a0a1a" } }}>
+          <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="group/[id]" options={{ headerShown: false }} />

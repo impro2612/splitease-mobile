@@ -1,7 +1,10 @@
 import { create } from "zustand"
 import * as SecureStore from "expo-secure-store"
+import { Appearance } from "react-native"
 import axios from "axios"
 import { API_BASE_URL } from "@/lib/api"
+
+export type ThemePref = "light" | "dark" | "system"
 
 type User = {
   id: string
@@ -15,12 +18,22 @@ type AuthState = {
   token: string | null
   loading: boolean
   currency: string
+  theme: ThemePref
   signIn: (email: string, password: string) => Promise<void>
   signUp: (name: string, email: string, phone: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   loadSession: () => Promise<void>
   setUser: (user: User) => void
   setCurrency: (currency: string) => void
+  setTheme: (theme: ThemePref) => void
+}
+
+function applyAppearance(theme: ThemePref) {
+  if (theme === "system") {
+    Appearance.setColorScheme(null)
+  } else {
+    Appearance.setColorScheme(theme)
+  }
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -28,16 +41,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   loading: true,
   currency: "INR",
+  theme: "dark",
 
   loadSession: async () => {
     try {
       const token = await SecureStore.getItemAsync("session_token")
       const userJson = await SecureStore.getItemAsync("user_data")
       const currency = await SecureStore.getItemAsync("currency") ?? "INR"
+      const theme = (await SecureStore.getItemAsync("theme") as ThemePref) ?? "dark"
+      applyAppearance(theme)
       if (token && userJson) {
-        set({ user: JSON.parse(userJson), token, loading: false, currency })
+        set({ user: JSON.parse(userJson), token, loading: false, currency, theme })
       } else {
-        set({ loading: false, currency })
+        set({ loading: false, currency, theme })
       }
     } catch {
       set({ loading: false })
@@ -45,10 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signIn: async (email, password) => {
-    // We use the NextAuth credentials flow via a custom endpoint
-    const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-signin`, {
-      email, password,
-    })
+    const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-signin`, { email, password })
     const { token, user } = res.data
     await SecureStore.setItemAsync("session_token", token)
     await SecureStore.setItemAsync("user_data", JSON.stringify(user))
@@ -57,10 +70,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signUp: async (name, email, phone, password) => {
     await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, phone, password })
-    // Auto sign in after registration
-    const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-signin`, {
-      email, password,
-    })
+    const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-signin`, { email, password })
     const { token, user } = res.data
     await SecureStore.setItemAsync("session_token", token)
     await SecureStore.setItemAsync("user_data", JSON.stringify(user))
@@ -81,5 +91,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   setCurrency: (currency: string) => {
     SecureStore.setItemAsync("currency", currency)
     set({ currency })
+  },
+
+  setTheme: (theme: ThemePref) => {
+    SecureStore.setItemAsync("theme", theme)
+    applyAppearance(theme)
+    set({ theme })
   },
 }))

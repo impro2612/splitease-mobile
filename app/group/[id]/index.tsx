@@ -16,6 +16,7 @@ import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useTheme } from "@/lib/theme"
 import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg"
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 import * as Print from "expo-print"
@@ -30,6 +31,7 @@ function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
   size?: number
   symbol?: string
 }) {
+  const C = useTheme()
   const [selected, setSelected] = useState<number | null>(null)
   const mountAnim = useRef(new Animated.Value(0)).current
   const segAnims = useRef(data.map(() => new Animated.Value(0))).current
@@ -149,7 +151,7 @@ function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
           )}
         </Svg>
       </Animated.View>
-      <Text style={{ color: "#475569", fontSize: 11, marginTop: 2, fontStyle: "italic" }}>Tap a slice to explore</Text>
+      <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 2, fontStyle: "italic" }}>Tap a slice to explore</Text>
     </View>
   )
 }
@@ -171,6 +173,7 @@ function BarChart({ data, maxAmt, barHeight, symbol, code }: {
   symbol: string
   code: string
 }) {
+  const C = useTheme()
   const barAnims = useRef(data.map(() => new Animated.Value(0))).current
   useEffect(() => {
     Animated.stagger(100, barAnims.map(a =>
@@ -179,8 +182,8 @@ function BarChart({ data, maxAmt, barHeight, symbol, code }: {
   }, [])
 
   return (
-    <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 20 }}>
-      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Who Paid the Most</Text>
+    <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20 }}>
+      <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Who Paid the Most</Text>
       <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-around", height: barHeight + 40 }}>
         {data.map((d, i) => {
           const heightPct = maxAmt > 0 ? d.amount / maxAmt : 0
@@ -204,7 +207,7 @@ function BarChart({ data, maxAmt, barHeight, symbol, code }: {
                 }} />
               </View>
               {/* Name */}
-              <Text style={{ color: "#94a3b8", fontSize: 10, fontWeight: "600", textAlign: "center" }} numberOfLines={1}>
+              <Text style={{ color: C.textSub, fontSize: 10, fontWeight: "600", textAlign: "center" }} numberOfLines={1}>
                 {d.name}
               </Text>
             </View>
@@ -212,7 +215,7 @@ function BarChart({ data, maxAmt, barHeight, symbol, code }: {
         })}
       </View>
       {/* Baseline */}
-      <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.06)", marginTop: 4 }} />
+      <View style={{ height: 1, backgroundColor: C.iconBg, marginTop: 4 }} />
     </View>
   )
 }
@@ -222,6 +225,7 @@ export default function GroupDetail() {
   const insets = useSafeAreaInsets()
   const { height: windowH } = useWindowDimensions()
   const { user } = useAuthStore()
+  const C = useTheme()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>("expenses")
 
@@ -561,26 +565,26 @@ export default function GroupDetail() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-base items-center justify-center" edges={["top"]}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }} edges={["top"]}>
         <ActivityIndicator color="#6366f1" />
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-base" edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View className="flex-row items-center gap-3 mb-3">
-          <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 12, padding: 8 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: C.iconBg, borderRadius: 12, padding: 8 }}>
             <Ionicons name="arrow-back" size={18} color="#fff" />
           </TouchableOpacity>
           <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: (group?.color ?? "#6366f1") + "33", alignItems: "center", justifyContent: "center" }}>
             <Text style={{ fontSize: 22 }}>{group?.emoji}</Text>
           </View>
           <View className="flex-1">
-            <Text className="text-white text-xl font-bold" numberOfLines={1}>{group?.name}</Text>
-            {group?.description ? <Text className="text-muted text-xs">{group.description}</Text> : null}
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }} numberOfLines={1}>{group?.name}</Text>
+            {group?.description ? <Text style={{ color: C.textSub, fontSize: 12 }}>{group.description}</Text> : null}
           </View>
           <TouchableOpacity onPress={openEditGroup} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, padding: 10 }}>
             <Ionicons name="pencil" size={16} color="#a5b4fc" />
@@ -589,7 +593,7 @@ export default function GroupDetail() {
 
         <View className="flex-row gap-2 mb-3">
           <View style={{ flex: 1, backgroundColor: myNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 14, borderWidth: 1, borderColor: myNet >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 12 }}>
-            <Text className="text-muted text-xs mb-0.5">Your balance</Text>
+            <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 2 }}>Your balance</Text>
             <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "800", fontSize: 20 }}>
               {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, gc.symbol, gc.code)}
             </Text>
@@ -599,25 +603,25 @@ export default function GroupDetail() {
             style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", gap: 4 }}
           >
             <Ionicons name="add" size={20} color="#fff" />
-            <Text style={{ color: "#fff", fontSize: 10, fontWeight: "600" }}>Add</Text>
+            <Text style={{ color: C.text, fontSize: 10, fontWeight: "600" }}>Add</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12 }} contentContainerStyle={{ padding: 3, gap: 4 }}>
-          {(["expenses", "balances", "members", "analytics", "utility"] as Tab[]).map((t) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: C.iconBg, borderRadius: 12 }} contentContainerStyle={{ padding: 3, gap: 4 }}>
+          {(["expenses", "balances", "analytics", "members", "utility"] as Tab[]).map((t) => (
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}
               style={{ backgroundColor: tab === t ? "#6366f1" : "transparent", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, alignItems: "center" }}
             >
-              <Text style={{ color: tab === t ? "#fff" : "#94a3b8", fontWeight: "600", fontSize: 13, textTransform: "capitalize" }}>{t}</Text>
+              <Text style={{ color: tab === t ? "#fff" : C.textSub, fontWeight: "600", fontSize: 13, textTransform: "capitalize" }}>{t}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
       <ScrollView
-        className="flex-1 px-5"
+        style={{ flex: 1, paddingHorizontal: 20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Expenses Tab */}
@@ -625,10 +629,10 @@ export default function GroupDetail() {
           expenses.length === 0 ? (
             <View className="items-center py-16">
               <Text className="text-5xl mb-3">📝</Text>
-              <Text className="text-white font-semibold mb-1">No expenses yet</Text>
-              <Text className="text-muted text-sm text-center mb-5">Add the first expense for this group</Text>
-              <TouchableOpacity onPress={() => setShowAddExpense(true)} className="bg-primary rounded-2xl px-6 py-3">
-                <Text className="text-white font-semibold">Add expense</Text>
+              <Text style={{ color: C.text, fontWeight: "600", marginBottom: 4 }}>No expenses yet</Text>
+              <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 20 }}>Add the first expense for this group</Text>
+              <TouchableOpacity onPress={() => setShowAddExpense(true)} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+                <Text style={{ color: C.text, fontWeight: "600" }}>Add expense</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -647,23 +651,23 @@ export default function GroupDetail() {
                     key={exp.id}
                     onPress={() => openEdit(exp)}
                     activeOpacity={0.75}
-                    style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
+                    style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
                   >
-                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
                       <Text style={{ fontSize: 18 }}>{getExpenseEmoji(exp.description)}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text className="text-white font-semibold text-sm" numberOfLines={1}>{exp.description}</Text>
-                      <Text className="text-muted text-xs mt-0.5">
+                      <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{exp.description}</Text>
+                      <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
                         {isPayer ? "You paid" : `${payer?.user?.name ?? "Someone"} paid`}
                       </Text>
-                      <Text className="text-muted text-xs">{formatDate(exp.date ?? exp.createdAt)}</Text>
+                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatDate(exp.date ?? exp.createdAt)}</Text>
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
                       <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
                         {myAmount >= 0 ? "+" : ""}{formatCurrency(myAmount, gc.symbol, gc.code)}
                       </Text>
-                      <Text className="text-muted text-xs">{formatCurrency(exp.amount, gc.symbol, gc.code)} total</Text>
+                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, gc.symbol, gc.code)} total</Text>
                     </View>
                   </TouchableOpacity>
                 )
@@ -713,12 +717,12 @@ export default function GroupDetail() {
                 }
 
                 return (
-                  <View key={m.userId} style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                  <View key={m.userId} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
                     {/* Tappable header — collapsed by default */}
                     <TouchableOpacity onPress={toggleExpand} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 12 }}>
                       <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={40} />
                       <View style={{ flex: 1 }}>
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>{name}</Text>
+                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 14 }}>{name}</Text>
                         <Text style={{ color: netColor, fontWeight: "600", fontSize: 13, marginTop: 2 }}>
                           {net > 0
                             ? `gets back ${formatCurrency(net, gc.symbol, gc.code)} in total`
@@ -728,7 +732,7 @@ export default function GroupDetail() {
                         </Text>
                       </View>
                       {mb.debts.length > 0 && (
-                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="#64748b" />
+                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={C.textMuted} />
                       )}
                     </TouchableOpacity>
 
@@ -744,7 +748,7 @@ export default function GroupDetail() {
                           <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
                             <Avatar name={d.otherUser?.name} email={d.otherUser?.email} image={d.otherUser?.image} size={28} />
                             <View style={{ flex: 1 }}>
-                              <Text style={{ color: "#94a3b8", fontSize: 12 }}>
+                              <Text style={{ color: C.textSub, fontSize: 12 }}>
                                 {d.dir === "owes"
                                   ? `${isMe ? "You owe" : `${name} owes`} ${otherName}`
                                   : `${otherName} owes ${isMe ? "you" : name}`}
@@ -773,7 +777,7 @@ export default function GroupDetail() {
                                   }}
                                   style={{ backgroundColor: "#6366f1", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
                                 >
-                                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 11 }}>Settle up</Text>
+                                  <Text style={{ color: C.text, fontWeight: "600", fontSize: 11 }}>Settle up</Text>
                                 </TouchableOpacity>
                               </View>
                             )}
@@ -783,15 +787,15 @@ export default function GroupDetail() {
                           {(isMe || isAdmin) && isInlineSettle && (
                             <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 6 }}>
                               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(99,102,241,0.5)", paddingHorizontal: 12, height: 40 }}>
-                                  <Text style={{ color: "#94a3b8", fontSize: 14, marginRight: 4 }}>{gc.symbol}</Text>
+                                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 10, borderWidth: 1, borderColor: "rgba(99,102,241,0.5)", paddingHorizontal: 12, height: 40 }}>
+                                  <Text style={{ color: C.textSub, fontSize: 14, marginRight: 4 }}>{gc.symbol}</Text>
                                   <TextInput
-                                    style={{ flex: 1, color: "#fff", fontSize: 14 }}
+                                    style={{ flex: 1, color: C.text, fontSize: 14 }}
                                     keyboardType="decimal-pad"
                                     value={inlineSettleAmount}
                                     onChangeText={setInlineSettleAmount}
                                     placeholder={d.amount.toFixed(2)}
-                                    placeholderTextColor="#475569"
+                                    placeholderTextColor={C.textMuted}
                                     autoFocus
                                   />
                                 </View>
@@ -814,13 +818,13 @@ export default function GroupDetail() {
                                   }}
                                   style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, height: 40, alignItems: "center", justifyContent: "center" }}
                                 >
-                                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Confirm</Text>
+                                  <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>Confirm</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={() => { setInlineSettleKey(null); setInlineSettleAmount("") }} style={{ padding: 6 }}>
-                                  <Ionicons name="close" size={18} color="#64748b" />
+                                  <Ionicons name="close" size={18} color={C.textMuted} />
                                 </TouchableOpacity>
                               </View>
-                              <Text style={{ color: "#64748b", fontSize: 11 }}>
+                              <Text style={{ color: C.textMuted, fontSize: 11 }}>
                                 Max: {formatCurrency(d.amount, gc.symbol, gc.code)} — enter full amount to settle completely
                               </Text>
                             </View>
@@ -857,15 +861,15 @@ export default function GroupDetail() {
               return (
                 <View
                   key={m.id}
-                  style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
+                  style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
                 >
                   <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={44} />
                   <View style={{ flex: 1 }}>
                     <View className="flex-row items-center gap-2">
-                      <Text className="text-white font-semibold">{m.user?.name ?? "Unknown"}</Text>
+                      <Text style={{ color: C.text, fontWeight: "600" }}>{m.user?.name ?? "Unknown"}</Text>
                       {isMe && <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>(you)</Text>}
                     </View>
-                    <Text className="text-muted text-xs">{m.user?.email}</Text>
+                    <Text style={{ color: C.textSub, fontSize: 12 }}>{m.user?.email}</Text>
                   </View>
                   {/* Admin badge */}
                   {isMemberAdmin && (
@@ -941,15 +945,15 @@ export default function GroupDetail() {
             <View className="py-3 gap-4">
               {/* Summary cards */}
               <View style={{ flexDirection: "row", gap: 12 }}>
-                <View style={{ flex: 1, backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 16 }}>
-                  <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP TOTAL</Text>
-                  <Text style={{ color: "#fff", fontSize: 22, fontWeight: "800" }}>{formatCurrency(totalGroupExpense, gc.symbol, gc.code)}</Text>
-                  <Text style={{ color: "#64748b", fontSize: 11, marginTop: 4 }}>{expenses.length} expenses</Text>
+                <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 16 }}>
+                  <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP TOTAL</Text>
+                  <Text style={{ color: C.text, fontSize: 22, fontWeight: "800" }}>{formatCurrency(totalGroupExpense, gc.symbol, gc.code)}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>{expenses.length} expenses</Text>
                 </View>
-                <View style={{ flex: 1, backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 16 }}>
-                  <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "600", marginBottom: 6 }}>YOUR SHARE</Text>
+                <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 16 }}>
+                  <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>YOUR SHARE</Text>
                   <Text style={{ color: "#6366f1", fontSize: 22, fontWeight: "800" }}>{formatCurrency(myShare, gc.symbol, gc.code)}</Text>
-                  <Text style={{ color: "#64748b", fontSize: 11, marginTop: 4 }}>
+                  <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>
                     {totalGroupExpense > 0 ? `${((myShare / totalGroupExpense) * 100).toFixed(1)}% of total` : "—"}
                   </Text>
                 </View>
@@ -957,8 +961,8 @@ export default function GroupDetail() {
 
               {/* Pie chart */}
               {pieData.length > 0 && (
-                <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 20, alignItems: "center" }}>
-                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Expense Distribution</Text>
+                <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center" }}>
+                  <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Expense Distribution</Text>
                   <AnimatedPieChart data={pieData} size={240} symbol={gc.symbol} />
                   {/* Legend */}
                   <View style={{ width: "100%", marginTop: 20, gap: 10 }}>
@@ -966,8 +970,8 @@ export default function GroupDetail() {
                       <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: d.color }} />
                         <Text style={{ flex: 1, color: "#cbd5e1", fontSize: 13 }}>{d.name}</Text>
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>{formatCurrency(d.amount, gc.symbol, gc.code)}</Text>
-                        <Text style={{ color: "#64748b", fontSize: 12, width: 42, textAlign: "right" }}>
+                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{formatCurrency(d.amount, gc.symbol, gc.code)}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 12, width: 42, textAlign: "right" }}>
                           {totalGroupExpense > 0 ? `${((d.amount / totalGroupExpense) * 100).toFixed(1)}%` : "0%"}
                         </Text>
                       </View>
@@ -1012,18 +1016,18 @@ export default function GroupDetail() {
             {/* Write Notes */}
             <TouchableOpacity
               onPress={() => setShowNotes(true)}
-              style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}
+              style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}
             >
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
                 <Ionicons name="document-text-outline" size={22} color="#a5b4fc" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Write Notes</Text>
-                <Text style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Write Notes</Text>
+                <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>
                   {noteText.trim() ? `${noteText.trim().slice(0, 40)}${noteText.length > 40 ? "…" : ""}` : "Add notes for this group"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#64748b" />
+              <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>
 
             {/* Download Statement */}
@@ -1081,16 +1085,16 @@ export default function GroupDetail() {
                 }
               }}
               disabled={pdfLoading}
-              style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14, opacity: pdfLoading ? 0.6 : 1 }}
+              style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 18, flexDirection: "row", alignItems: "center", gap: 14, opacity: pdfLoading ? 0.6 : 1 }}
             >
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(16,185,129,0.15)", alignItems: "center", justifyContent: "center" }}>
                 {pdfLoading ? <ActivityIndicator color="#10b981" size="small" /> : <Ionicons name="download-outline" size={22} color="#10b981" />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Download Statement</Text>
-                <Text style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>Export all expenses as PDF</Text>
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Download Statement</Text>
+                <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>Export all expenses as PDF</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#64748b" />
+              <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>
           </View>
         )}
@@ -1100,26 +1104,26 @@ export default function GroupDetail() {
 
       {/* Custom Confirm Dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center", padding: 28 }}>
-          <View style={{ backgroundColor: "#1a1a2e", borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 20 }}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 20 }}>
             {/* Icon — centered */}
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: confirmDialog?.danger ? "rgba(239,68,68,0.15)" : "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
               <Ionicons name={confirmDialog?.danger ? "warning-outline" : "shield-outline"} size={26} color={confirmDialog?.danger ? "#f87171" : "#a5b4fc"} />
             </View>
-            <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
-            <Text style={{ color: "#94a3b8", fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
                 onPress={() => setConfirmDialog(null)}
-                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, alignItems: "center", justifyContent: "center" }}
               >
-                <Text style={{ color: "#94a3b8", fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
                 style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: confirmDialog?.danger ? "#ef4444" : "#6366f1", alignItems: "center", justifyContent: "center" }}
               >
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1128,18 +1132,18 @@ export default function GroupDetail() {
 
       {/* Notes Modal */}
       <Modal visible={showNotes} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowNotes(false)}>
-        <View className="flex-1 bg-base" style={{ paddingTop: insets.top + 16 }}>
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 20 }}>
-            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800" }}>Group Notes</Text>
-            <TouchableOpacity onPress={() => setShowNotes(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>Group Notes</Text>
+            <TouchableOpacity onPress={() => setShowNotes(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
           <TextInput
-            style={{ flex: 1, color: "#fff", fontSize: 14, lineHeight: 22, paddingHorizontal: 20, paddingTop: 8, textAlignVertical: "top" }}
+            style={{ flex: 1, color: C.text, fontSize: 14, lineHeight: 22, paddingHorizontal: 20, paddingTop: 8, textAlignVertical: "top" }}
             multiline
             placeholder="Write anything about this group — trip plans, reminders, important notes..."
-            placeholderTextColor="#475569"
+            placeholderTextColor={C.textMuted}
             value={noteText}
             onChangeText={setNoteText}
           />
@@ -1149,7 +1153,7 @@ export default function GroupDetail() {
               disabled={noteSaving}
               style={{ backgroundColor: "#6366f1", borderRadius: 14, height: 52, alignItems: "center", justifyContent: "center" }}
             >
-              {noteSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Save Note</Text>}
+              {noteSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Save Note</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -1157,112 +1161,120 @@ export default function GroupDetail() {
 
       {/* Add Expense Modal */}
       <Modal visible={showAddExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddExpense(false)}>
-        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
-          <View className="flex-row items-center justify-between mb-6">
-            <Text className="text-white text-xl font-bold">Add Expense</Text>
-            <TouchableOpacity onPress={() => { setShowAddExpense(false); resetAddForm() }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingHorizontal: 20 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Add Expense</Text>
+            <TouchableOpacity onPress={() => { setShowAddExpense(false); resetAddForm() }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
-          <ExpenseFormFields
-            desc={expDesc} setDesc={setExpDesc}
-            amount={expAmount} setAmount={setExpAmount}
-            category={expCategory} setCategory={setExpCategory}
-            paidBy={expPaidBy} setPaidBy={setExpPaidBy}
-            date={expDate} setDate={setExpDate}
-            members={members} gc={gc} user={user}
-            splitType={splitType} setSplitType={setSplitType}
-            equallyIncluded={equallyIncluded} setEquallyIncluded={setEquallyIncluded}
-            percentageSplits={percentageSplits} setPercentageSplits={setPercentageSplits}
-            customSplits={customSplits} setCustomSplits={setCustomSplits}
-          />
-          <TouchableOpacity
-            onPress={() => addExpenseMutation.mutate()}
-            disabled={(() => {
-              if (!expDesc.trim() || !expAmount || isNaN(parseFloat(expAmount)) || addExpenseMutation.isPending) return true
-              const numAmt = parseFloat(expAmount)
-              const memberIds = members.map((m: any) => m.userId)
-              if (splitType === "PERCENTAGE") {
-                const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
-                if (Math.abs(pctTotal - 100) > 0.01) return true
-              }
-              if (splitType === "CUSTOM") {
-                const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
-                if (Math.abs(customTotal - numAmt) > 0.01) return true
-              }
-              return false
-            })()}
-            style={{ backgroundColor: (!expDesc.trim() || !expAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center", marginBottom: 24 }}
-          >
-            {addExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Add Expense</Text>}
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <ExpenseFormFields
+              desc={expDesc} setDesc={setExpDesc}
+              amount={expAmount} setAmount={setExpAmount}
+              category={expCategory} setCategory={setExpCategory}
+              paidBy={expPaidBy} setPaidBy={setExpPaidBy}
+              date={expDate} setDate={setExpDate}
+              members={members} gc={gc} user={user}
+              splitType={splitType} setSplitType={setSplitType}
+              equallyIncluded={equallyIncluded} setEquallyIncluded={setEquallyIncluded}
+              percentageSplits={percentageSplits} setPercentageSplits={setPercentageSplits}
+              customSplits={customSplits} setCustomSplits={setCustomSplits}
+            />
+          </View>
+          <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(28, insets.bottom + 16), borderTopWidth: 1, borderTopColor: C.border }}>
+            <TouchableOpacity
+              onPress={() => addExpenseMutation.mutate()}
+              disabled={(() => {
+                if (!expDesc.trim() || !expAmount || isNaN(parseFloat(expAmount)) || addExpenseMutation.isPending) return true
+                const numAmt = parseFloat(expAmount)
+                const memberIds = members.map((m: any) => m.userId)
+                if (splitType === "PERCENTAGE") {
+                  const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
+                  if (Math.abs(pctTotal - 100) > 0.01) return true
+                }
+                if (splitType === "CUSTOM") {
+                  const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
+                  if (Math.abs(customTotal - numAmt) > 0.01) return true
+                }
+                return false
+              })()}
+              style={{ backgroundColor: (!expDesc.trim() || !expAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
+            >
+              {addExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Add Expense</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
       {/* Edit Expense Modal */}
       <Modal visible={showEditExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEditExpense(false)}>
-        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
-          <View className="flex-row items-center justify-between mb-6">
-            <Text className="text-white text-xl font-bold">Edit Expense</Text>
-            <View className="flex-row items-center gap-2">
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingHorizontal: 20 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Edit Expense</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <TouchableOpacity
                 onPress={() => { setShowEditExpense(false); confirmDelete(editTarget) }}
                 style={{ backgroundColor: "rgba(244,63,94,0.15)", borderRadius: 20, padding: 8 }}
               >
                 <Ionicons name="trash-outline" size={18} color="#f87171" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowEditExpense(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+              <TouchableOpacity onPress={() => setShowEditExpense(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
                 <Ionicons name="close" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
-          <ExpenseFormFields
-            desc={editDesc} setDesc={setEditDesc}
-            amount={editAmount} setAmount={setEditAmount}
-            category={editCategory} setCategory={setEditCategory}
-            paidBy={editPaidBy} setPaidBy={setEditPaidBy}
-            date={editDate} setDate={setEditDate}
-            members={members} gc={gc} user={user}
-            splitType={splitType} setSplitType={setSplitType}
-            equallyIncluded={equallyIncluded} setEquallyIncluded={setEquallyIncluded}
-            percentageSplits={percentageSplits} setPercentageSplits={setPercentageSplits}
-            customSplits={customSplits} setCustomSplits={setCustomSplits}
-          />
-          <TouchableOpacity
-            onPress={() => editExpenseMutation.mutate()}
-            disabled={!editDesc.trim() || !editAmount || isNaN(parseFloat(editAmount)) || editExpenseMutation.isPending}
-            style={{ backgroundColor: (!editDesc.trim() || !editAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center", marginBottom: 24 }}
-          >
-            {editExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Save Changes</Text>}
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <ExpenseFormFields
+              desc={editDesc} setDesc={setEditDesc}
+              amount={editAmount} setAmount={setEditAmount}
+              category={editCategory} setCategory={setEditCategory}
+              paidBy={editPaidBy} setPaidBy={setEditPaidBy}
+              date={editDate} setDate={setEditDate}
+              members={members} gc={gc} user={user}
+              splitType={splitType} setSplitType={setSplitType}
+              equallyIncluded={equallyIncluded} setEquallyIncluded={setEquallyIncluded}
+              percentageSplits={percentageSplits} setPercentageSplits={setPercentageSplits}
+              customSplits={customSplits} setCustomSplits={setCustomSplits}
+            />
+          </View>
+          <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(28, insets.bottom + 16), borderTopWidth: 1, borderTopColor: C.border }}>
+            <TouchableOpacity
+              onPress={() => editExpenseMutation.mutate()}
+              disabled={!editDesc.trim() || !editAmount || isNaN(parseFloat(editAmount)) || editExpenseMutation.isPending}
+              style={{ backgroundColor: (!editDesc.trim() || !editAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
+            >
+              {editExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Save Changes</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
       {/* Add Member Modal — Friends Picker */}
       <Modal visible={showAddMember} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowAddMember(false); setFriendSearch("") }}>
-        <View style={{ height: windowH, backgroundColor: "#0a0a1a", paddingTop: insets.top + 16 }}>
+        <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           {/* Header */}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
-            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Add to {group?.name}</Text>
-            <TouchableOpacity onPress={() => { setShowAddMember(false); setFriendSearch("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Add to {group?.name}</Text>
+            <TouchableOpacity onPress={() => { setShowAddMember(false); setFriendSearch("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
 
           {/* Search bar */}
-          <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
-            <Ionicons name="search-outline" size={16} color="#475569" style={{ marginRight: 8 }} />
+          <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
+            <Ionicons name="search-outline" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
             <TextInput
-              style={{ flex: 1, color: "#fff", fontSize: 14 }}
+              style={{ flex: 1, color: C.text, fontSize: 14 }}
               placeholder="Search friends..."
-              placeholderTextColor="#475569"
+              placeholderTextColor={C.textMuted}
               value={friendSearch}
               onChangeText={setFriendSearch}
               autoCapitalize="none"
             />
             {friendSearch.length > 0 && (
               <TouchableOpacity onPress={() => setFriendSearch("")}>
-                <Ionicons name="close-circle" size={16} color="#475569" />
+                <Ionicons name="close-circle" size={16} color={C.textMuted} />
               </TouchableOpacity>
             )}
           </View>
@@ -1292,11 +1304,11 @@ export default function GroupDetail() {
             if (filtered.length === 0) {
               return (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
-                  <Ionicons name="people-outline" size={48} color="#334155" style={{ marginBottom: 12 }} />
-                  <Text style={{ color: "#94a3b8", fontSize: 15, fontWeight: "600", textAlign: "center" }}>
+                  <Ionicons name="people-outline" size={48} color={C.textMuted} style={{ marginBottom: 12 }} />
+                  <Text style={{ color: C.textSub, fontSize: 15, fontWeight: "600", textAlign: "center" }}>
                     {friendSearch.trim() ? "No friends match your search" : "All your friends are already in this group"}
                   </Text>
-                  <Text style={{ color: "#475569", fontSize: 13, textAlign: "center", marginTop: 6 }}>
+                  <Text style={{ color: C.textMuted, fontSize: 13, textAlign: "center", marginTop: 6 }}>
                     {!friendSearch.trim() && "Add friends from the Friends tab first."}
                   </Text>
                 </View>
@@ -1312,11 +1324,11 @@ export default function GroupDetail() {
                   const other = item.requesterId === user?.id ? item.addressee : item.requester
                   if (!other) return null
                   return (
-                    <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>
                       <Avatar name={other.name} image={other.image} size={42} />
                       <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>{other.name}</Text>
-                        <Text style={{ color: "#475569", fontSize: 12 }}>{other.email}</Text>
+                        <Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }}>{other.name}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 12 }}>{other.email}</Text>
                       </View>
                       <TouchableOpacity
                         onPress={() => {
@@ -1335,7 +1347,7 @@ export default function GroupDetail() {
                         disabled={addMemberMutation.isPending}
                         style={{ backgroundColor: "#6366f1", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 7 }}
                       >
-                        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 13 }}>Add</Text>
+                        <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }}>Add</Text>
                       </TouchableOpacity>
                     </View>
                   )
@@ -1348,13 +1360,13 @@ export default function GroupDetail() {
 
       {/* Edit Group Modal */}
       <Modal visible={showEditGroup} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEditGroup(false)}>
-        <View style={{ height: windowH, backgroundColor: "#0a0a1a", paddingTop: insets.top + 16 }}>
+        <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
 
           {/* Static top */}
           <View style={{ paddingHorizontal: 20 }}>
             {/* Header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Edit Group</Text>
+              <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Edit Group</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <TouchableOpacity
                   onPress={confirmDeleteGroup}
@@ -1362,46 +1374,46 @@ export default function GroupDetail() {
                 >
                   <Ionicons name="trash-outline" size={18} color="#f87171" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowEditGroup(false)} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+                <TouchableOpacity onPress={() => setShowEditGroup(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
                   <Ionicons name="close" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Preview card */}
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: editGroupColor + "33", alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ fontSize: 22 }}>{editGroupEmoji}</Text>
               </View>
               <View>
-                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>{editGroupName || "Group name"}</Text>
-                <Text style={{ color: "#475569", fontSize: 12 }}>{editGroupDesc || "No description"}</Text>
+                <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>{editGroupName || "Group name"}</Text>
+                <Text style={{ color: C.textMuted, fontSize: 12 }}>{editGroupDesc || "No description"}</Text>
               </View>
             </View>
 
             {/* Group name */}
             <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group name *</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
-              <TextInput style={{ color: "#fff", fontSize: 15 }} placeholder="e.g. NYC Trip, Apartment" placeholderTextColor="#475569" value={editGroupName} onChangeText={setEditGroupName} />
+            <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
+              <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="e.g. NYC Trip, Apartment" placeholderTextColor={C.textMuted} value={editGroupName} onChangeText={setEditGroupName} />
             </View>
 
             {/* Description */}
             <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Description (optional)</Text>
-            <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
-              <TextInput style={{ color: "#fff", fontSize: 15 }} placeholder="What's this group for?" placeholderTextColor="#475569" value={editGroupDesc} onChangeText={setEditGroupDesc} />
+            <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
+              <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="What's this group for?" placeholderTextColor={C.textMuted} value={editGroupDesc} onChangeText={setEditGroupDesc} />
             </View>
 
             {/* Currency */}
             <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group Currency</Text>
             <TouchableOpacity
               onPress={() => setShowEditCurrencyPicker(true)}
-              style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}
+              style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Text style={{ fontSize: 18 }}>{CURRENCIES.find(c => c.code === editGroupCurrency)?.flag}</Text>
-                <Text style={{ color: "#fff", fontSize: 15 }}>{editGroupCurrency} — {CURRENCIES.find(c => c.code === editGroupCurrency)?.name}</Text>
+                <Text style={{ color: C.text, fontSize: 15 }}>{editGroupCurrency} — {CURRENCIES.find(c => c.code === editGroupCurrency)?.name}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#475569" />
+              <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>
 
             <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6, marginTop: 2 }}>Icon</Text>
@@ -1438,13 +1450,13 @@ export default function GroupDetail() {
           </ScrollView>
 
           {/* Static bottom: Save button */}
-          <View style={{ paddingHorizontal: 20, paddingBottom: 28, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" }}>
+          <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(28, insets.bottom + 16), paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border }}>
             <TouchableOpacity
               onPress={() => updateGroupMutation.mutate()}
               disabled={!editGroupName.trim() || updateGroupMutation.isPending}
               style={{ backgroundColor: !editGroupName.trim() ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
             >
-              {updateGroupMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Save Changes</Text>}
+              {updateGroupMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Save Changes</Text>}
             </TouchableOpacity>
           </View>
 
@@ -1453,22 +1465,22 @@ export default function GroupDetail() {
 
       {/* Edit Group Currency Picker */}
       <Modal visible={showEditCurrencyPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEditCurrencyPicker(false)}>
-        <View style={{ flex: 1, backgroundColor: "#0a0a1a", paddingTop: insets.top + 16 }}>
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
-            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Group Currency</Text>
-            <TouchableOpacity onPress={() => { setShowEditCurrencyPicker(false); setEditCurrencySearch("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Group Currency</Text>
+            <TouchableOpacity onPress={() => { setShowEditCurrencyPicker(false); setEditCurrencySearch("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>
-            <Ionicons name="search" size={16} color="#475569" style={{ marginRight: 8 }} />
-            <TextInput style={{ color: "#fff", flex: 1, fontSize: 15 }} placeholder="Search currency..." placeholderTextColor="#475569" value={editCurrencySearch} onChangeText={setEditCurrencySearch} autoCapitalize="none" />
-            {editCurrencySearch.length > 0 && <TouchableOpacity onPress={() => setEditCurrencySearch("")}><Ionicons name="close-circle" size={16} color="#475569" /></TouchableOpacity>}
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>
+            <Ionicons name="search" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
+            <TextInput style={{ color: C.text, flex: 1, fontSize: 15 }} placeholder="Search currency..." placeholderTextColor={C.textMuted} value={editCurrencySearch} onChangeText={setEditCurrencySearch} autoCapitalize="none" />
+            {editCurrencySearch.length > 0 && <TouchableOpacity onPress={() => setEditCurrencySearch("")}><Ionicons name="close-circle" size={16} color={C.textMuted} /></TouchableOpacity>}
           </View>
           <FlatList
             data={CURRENCIES.filter(c => c.code.toLowerCase().includes(editCurrencySearch.toLowerCase()) || c.name.toLowerCase().includes(editCurrencySearch.toLowerCase()))}
             keyExtractor={item => item.code}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(40, insets.bottom + 20) }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
@@ -1478,8 +1490,8 @@ export default function GroupDetail() {
               >
                 <Text style={{ fontSize: 24 }}>{item.flag}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#fff", fontWeight: "600" }}>{item.code}</Text>
-                  <Text style={{ color: "#475569", fontSize: 12 }}>{item.name}</Text>
+                  <Text style={{ color: C.text, fontWeight: "600" }}>{item.code}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12 }}>{item.name}</Text>
                 </View>
                 {editGroupCurrency === item.code && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
               </TouchableOpacity>
@@ -1490,23 +1502,23 @@ export default function GroupDetail() {
 
       {/* Settle Up Modal */}
       <Modal visible={showSettle} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSettle(false)}>
-        <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 16 }}>
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 8 }}>
           <View className="flex-row items-center justify-between mb-6">
-            <Text className="text-white text-xl font-bold">Settle Up</Text>
-            <TouchableOpacity onPress={() => { setShowSettle(false); setSettleNote("") }} style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 8 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Settle Up</Text>
+            <TouchableOpacity onPress={() => { setShowSettle(false); setSettleNote("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
           {settleTarget && (
             <>
-              <View style={{ backgroundColor: "#1a1a2e", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 20, alignItems: "center", marginBottom: 20 }}>
-                <Text className="text-muted text-sm mb-1">You're paying</Text>
-                <Text className="text-white text-2xl font-bold mb-1">{settleTarget.name}</Text>
+              <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center", marginBottom: 20 }}>
+                <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 4 }}>You're paying</Text>
+                <Text style={{ color: C.text, fontSize: 24, fontWeight: "700", marginBottom: 4 }}>{settleTarget.name}</Text>
                 <Text style={{ color: "#6366f1", fontSize: 32, fontWeight: "800" }}>{formatCurrency(settleTarget.amount, gc.symbol, gc.code)}</Text>
               </View>
               <Text className="text-slate-300 text-sm font-medium mb-2">Note (optional)</Text>
-              <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
-                <TextInput className="text-white text-base" placeholder="e.g. Venmo, Cash…" placeholderTextColor="#475569" value={settleNote} onChangeText={setSettleNote} />
+              <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
+                <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="e.g. Venmo, Cash…" placeholderTextColor={C.textMuted} value={settleNote} onChangeText={setSettleNote} />
               </View>
               <TouchableOpacity
                 onPress={() => settleMutation.mutate()}
@@ -1516,7 +1528,7 @@ export default function GroupDetail() {
                 {settleMutation.isPending ? <ActivityIndicator color="#fff" /> : (
                   <View className="flex-row items-center gap-2">
                     <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                    <Text className="text-white font-bold text-base">Confirm Settlement</Text>
+                    <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Confirm Settlement</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -1541,18 +1553,19 @@ function ExpenseFormFields({
   percentageSplits, setPercentageSplits,
   customSplits, setCustomSplits,
 }: any) {
+  const C = useTheme()
   const detectedCategory = guessCategory(desc)
   const categoryEmoji = getExpenseEmoji(desc)
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       {/* Description */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
-      <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>
+      <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>
         <TextInput
-          className="text-white text-base flex-1"
+          style={{ color: C.text, fontSize: 15, flex: 1 }}
           placeholder="What was this for?"
-          placeholderTextColor="#475569"
+          placeholderTextColor={C.textMuted}
           value={desc}
           onChangeText={(t) => { setDesc(t); setCategory(guessCategory(t)) }}
         />
@@ -1560,25 +1573,25 @@ function ExpenseFormFields({
       {desc.trim() ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
           <Text style={{ fontSize: 16 }}>{categoryEmoji}</Text>
-          <Text style={{ color: "#64748b", fontSize: 12, textTransform: "capitalize" }}>{detectedCategory}</Text>
+          <Text style={{ color: C.textMuted, fontSize: 12, textTransform: "capitalize" }}>{detectedCategory}</Text>
         </View>
       ) : null}
 
       {/* Amount */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
-      <View style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ color: "#475569", fontSize: 18, marginRight: 4 }}>{gc.symbol}</Text>
-        <TextInput className="text-white text-xl font-bold flex-1" placeholder="0.00" placeholderTextColor="#475569" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+      <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
+        <Text style={{ color: C.textMuted, fontSize: 18, marginRight: 4 }}>{gc.symbol}</Text>
+        <TextInput style={{ color: C.text, fontSize: 20, fontWeight: "700", flex: 1 }} placeholder="0.00" placeholderTextColor={C.textMuted} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
       </View>
 
       {/* Date */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Date</Text>
       <TouchableOpacity
         onPress={() => openDatePicker(date, setDate)}
-        style={{ backgroundColor: "#1a1a2e", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
+        style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
       >
-        <Ionicons name="calendar-outline" size={18} color="#94a3b8" />
-        <Text className="text-white text-base">{formatDate(date)}</Text>
+        <Ionicons name="calendar-outline" size={18} color={C.textSub} />
+        <Text style={{ color: C.text, fontSize: 15 }}>{formatDate(date)}</Text>
       </TouchableOpacity>
 
       {/* Paid by */}
@@ -1591,7 +1604,7 @@ function ExpenseFormFields({
             style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: paidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: paidBy === m.userId ? 2 : 1, borderColor: paidBy === m.userId ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
           >
             <Avatar name={m.user?.name} email={m.user?.email} size={24} />
-            <Text style={{ color: paidBy === m.userId ? "#fff" : "#94a3b8", fontWeight: "600", fontSize: 13 }}>
+            <Text style={{ color: paidBy === m.userId ? "#fff" : C.textSub, fontWeight: "600", fontSize: 13 }}>
               {m.userId === user?.id ? "You" : m.user?.name}
             </Text>
           </TouchableOpacity>
@@ -1617,7 +1630,7 @@ function ExpenseFormFields({
             <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Split</Text>
 
             {/* Tab row */}
-            <View style={{ flexDirection: "row", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 3, marginBottom: 14 }}>
+            <View style={{ flexDirection: "row", backgroundColor: C.iconBg, borderRadius: 12, padding: 3, marginBottom: 14 }}>
               {(["EQUAL", "PERCENTAGE", "CUSTOM"] as const).map((st) => (
                 <TouchableOpacity
                   key={st}
@@ -1650,14 +1663,14 @@ function ExpenseFormFields({
                         if (isIncluded && current.length === 1) return
                         setEquallyIncluded(isIncluded ? current.filter((id: string) => id !== m.userId) : [...current, m.userId])
                       }}
-                      style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1a1a2e", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isIncluded ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)" }}
+                      style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isIncluded ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)" }}
                     >
                       <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
-                      <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }}>
+                      <Text style={{ flex: 1, color: C.text, fontWeight: "600", fontSize: 13, marginLeft: 10 }}>
                         {m.userId === user?.id ? "You" : m.user?.name}
                       </Text>
                       {isIncluded && numAmount > 0 && (
-                        <Text style={{ color: "#94a3b8", fontSize: 12, marginRight: 10 }}>
+                        <Text style={{ color: C.textSub, fontSize: 12, marginRight: 10 }}>
                           {gc.symbol}{perPerson.toFixed(2)}
                         </Text>
                       )}
@@ -1678,25 +1691,25 @@ function ExpenseFormFields({
                   const pctNum = parseFloat(pct) || 0
                   const perPerson = (pctNum / 100) * numAmount
                   return (
-                    <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+                    <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: C.border }}>
                       <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
-                      <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
+                      <Text style={{ flex: 1, color: C.text, fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
                         {m.userId === user?.id ? "You" : m.user?.name}
                       </Text>
                       {numAmount > 0 && pctNum > 0 && (
-                        <Text style={{ color: "#64748b", fontSize: 11, marginRight: 6 }}>{gc.symbol}{perPerson.toFixed(2)}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 11, marginRight: 6 }}>{gc.symbol}{perPerson.toFixed(2)}</Text>
                       )}
-                      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 64 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 8, paddingHorizontal: 6, height: 32, width: 64 }}>
                         <TextInput
-                          style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", textAlign: "right", padding: 0, height: 32 }}
+                          style={{ flex: 1, color: C.text, fontSize: 13, fontWeight: "600", textAlign: "right", padding: 0, height: 32 }}
                           placeholder="0"
-                          placeholderTextColor="#475569"
+                          placeholderTextColor={C.textMuted}
                           value={pct}
                           onChangeText={(v) => setPercentageSplits({ ...percentageSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
                           keyboardType="decimal-pad"
                           editable={!disabled}
                         />
-                        <Text style={{ color: "#64748b", fontSize: 12, marginLeft: 2 }}>%</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 12, marginLeft: 2 }}>%</Text>
                       </View>
                     </View>
                   )
@@ -1712,17 +1725,17 @@ function ExpenseFormFields({
                 {members.map((m: any) => {
                   const val = customSplits[m.userId] ?? ""
                   return (
-                    <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: "#1a1a2e", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+                    <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: C.border }}>
                       <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
-                      <Text style={{ flex: 1, color: "#fff", fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
+                      <Text style={{ flex: 1, color: C.text, fontWeight: "600", fontSize: 13, marginLeft: 10 }} numberOfLines={1}>
                         {m.userId === user?.id ? "You" : m.user?.name}
                       </Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, paddingHorizontal: 6, height: 32, width: 80 }}>
-                        <Text style={{ color: "#64748b", fontSize: 12, marginRight: 2 }}>{gc.symbol}</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 8, paddingHorizontal: 6, height: 32, width: 80 }}>
+                        <Text style={{ color: C.textMuted, fontSize: 12, marginRight: 2 }}>{gc.symbol}</Text>
                         <TextInput
-                          style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600", padding: 0, height: 32 }}
+                          style={{ flex: 1, color: C.text, fontSize: 13, fontWeight: "600", padding: 0, height: 32 }}
                           placeholder="0.00"
-                          placeholderTextColor="#475569"
+                          placeholderTextColor={C.textMuted}
                           value={val}
                           onChangeText={(v) => setCustomSplits({ ...customSplits, [m.userId]: v.replace(/[^0-9.]/g, "") })}
                           keyboardType="decimal-pad"
@@ -1736,7 +1749,7 @@ function ExpenseFormFields({
                   <Text style={{ color: customError ? "#f87171" : "#64748b", fontSize: 12 }}>
                     {customError ? `⚠ ${customError}` : `Total: ${gc.symbol}${customTotal.toFixed(2)}`}
                   </Text>
-                  <Text style={{ color: "#64748b", fontSize: 12 }}>of {gc.symbol}{numAmount.toFixed(2)}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12 }}>of {gc.symbol}{numAmount.toFixed(2)}</Text>
                 </View>
               </View>
             )}
