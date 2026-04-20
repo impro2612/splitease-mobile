@@ -1,4 +1,9 @@
-import { createHash } from "crypto"
+// Simple djb2 hash — works in React Native (no Node crypto needed)
+function djb2(str: string): string {
+  let h = 5381
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i)
+  return (h >>> 0).toString(16).padStart(8, "0")
+}
 
 export type ParsedSms = {
   amount: number
@@ -75,7 +80,7 @@ const MERCHANT_REGEX = /(?:\bat\s+([A-Z][A-Za-z0-9\s&'.,-]{1,40}))|(?:\bto\s+([A
 const ALPHA_SENDER_REGEX = /^[A-Z]{6}$/
 
 export function hashSms(body: string): string {
-  return createHash("sha256").update(body).digest("hex").slice(0, 16)
+  return djb2(body)
 }
 
 function parseCurrencyCode(amountStr: string): string {

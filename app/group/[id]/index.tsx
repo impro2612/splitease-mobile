@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, FlatList,
+  Modal, ActivityIndicator, FlatList, Platform, PermissionsAndroid,
   useWindowDimensions, Animated,
 } from "react-native"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -312,8 +312,36 @@ export default function GroupDetail() {
     })
   }, [id])
 
-  function openTrackDatePicker() {
-    setShowTrackModal(true)
+  async function openTrackDatePicker() {
+    if (Platform.OS !== "android") {
+      Toast.show({ type: "error", text1: "SMS tracking is Android only" })
+      return
+    }
+    try {
+      const already = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECEIVE_SMS)
+      if (!already) {
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
+          {
+            title: "SMS Permission Required",
+            message: "SplitEase needs to read incoming SMS to auto-detect expenses for this group.",
+            buttonPositive: "Allow",
+            buttonNegative: "Deny",
+          }
+        )
+        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+          Toast.show({
+            type: "error",
+            text1: "Permission denied",
+            text2: "Enable SMS permission in device settings to use expense tracking.",
+          })
+          return
+        }
+      }
+      setShowTrackModal(true)
+    } catch {
+      Toast.show({ type: "error", text1: "Could not request SMS permission" })
+    }
   }
 
   function pickTrackEndDate() {
