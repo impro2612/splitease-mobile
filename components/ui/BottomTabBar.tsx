@@ -22,6 +22,7 @@ export function BottomTabBar({ activeTab }: Props) {
 
   const paddingBottom = bottom > 0 ? bottom + 4 : 10
   const height = 64 + (bottom > 0 ? bottom : 0)
+  const inactiveColor = C.textSub
 
   return (
     <View
@@ -33,13 +34,14 @@ export function BottomTabBar({ activeTab }: Props) {
         flexDirection: "row",
         paddingBottom,
         paddingTop: 8,
+        elevation: 8,
       }}
     >
       {TABS.map((tab) => {
         const isActive = activeTab
           ? tab.name === activeTab
           : pathname.startsWith(tab.route.replace("/(tabs)", ""))
-        const color = isActive ? "#6366f1" : C.icon
+        const color = isActive ? "#6366f1" : inactiveColor
         return (
           <TouchableOpacity
             key={tab.name}
