@@ -46,25 +46,13 @@ class SmsReceiver : BroadcastReceiver() {
             val processedHashes = prefs.getStringSet("processedHashes", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
             if (processedHashes.contains(hash)) continue
 
-            val result = parseSms(body, sender) ?: run {
-                // Still store hash for low-confidence SMS to avoid re-processing
-                processedHashes.add(hash)
-                if (processedHashes.size > 500) {
-                    val trimmed = processedHashes.toList().takeLast(500).toMutableSet()
-                    prefs.edit().putStringSet("processedHashes", trimmed).apply()
-                } else {
-                    prefs.edit().putStringSet("processedHashes", processedHashes).apply()
-                }
-                continue
-            }
+            val result = parseSms(body, sender)
 
             processedHashes.add(hash)
-            if (processedHashes.size > 500) {
-                val trimmed = processedHashes.toList().takeLast(500).toMutableSet()
-                prefs.edit().putStringSet("processedHashes", trimmed).apply()
-            } else {
-                prefs.edit().putStringSet("processedHashes", processedHashes).apply()
-            }
+            val trimmedHashes = if (processedHashes.size > 500) processedHashes.toList().takeLast(500).toMutableSet() else processedHashes
+            prefs.edit().putStringSet("processedHashes", trimmedHashes).apply()
+
+            if (result == null) continue
 
             val suggestion = JSONObject().apply {
                 put("id", hash)
