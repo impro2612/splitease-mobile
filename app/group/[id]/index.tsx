@@ -1155,13 +1155,26 @@ export default function GroupDetail() {
 
         {/* Analytics Tab */}
         {tab === "analytics" && (() => {
-          const totalGroupExpense = expenses.reduce((sum: number, e: any) => sum + e.amount, 0)
-          const myShare = expenses.reduce((sum: number, e: any) => {
-            const s = e.splits?.find((sp: any) => sp.userId === user?.id)
-            return sum + (s?.amount ?? 0)
-          }, 0)
+          // Per-currency totals and my-share
+          const totalByCurrency: Record<string, number> = {}
+          const myShareByCurrency: Record<string, number> = {}
+          for (const e of expenses) {
+            const cur = e.currency ?? gc.code
+            totalByCurrency[cur] = (totalByCurrency[cur] ?? 0) + e.amount
+            const mySplit = e.splits?.find((sp: any) => sp.userId === user?.id)
+            if (mySplit) myShareByCurrency[cur] = (myShareByCurrency[cur] ?? 0) + mySplit.amount
+          }
+          const totalGroupExpense = totalByCurrency[gc.code] ?? 0
+          const myShare = myShareByCurrency[gc.code] ?? 0
 
-          // Per-member share
+          // Sorted currency lists: default first, then alphabetical
+          const currencyOrder = [
+            gc.code,
+            ...Object.keys(totalByCurrency).filter(c => c !== gc.code).sort(),
+          ]
+          const isMultiCurrency = currencyOrder.length > 1
+
+          // Per-member share (all currencies combined in gc for pie — gc-only expenses)
           const memberShareMap: Record<string, number> = {}
           for (const m of members) memberShareMap[m.userId] = 0
           for (const e of expenses) {
@@ -1182,17 +1195,46 @@ export default function GroupDetail() {
             <View className="py-3 gap-4">
               {/* Summary cards */}
               <View style={{ flexDirection: "row", gap: 12 }}>
+                {/* GROUP TOTAL */}
                 <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 16 }}>
                   <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP TOTAL</Text>
                   <Text style={{ color: C.text, fontSize: 22, fontWeight: "800" }}>{formatCurrency(totalGroupExpense, gc.symbol, gc.code)}</Text>
                   <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>{expenses.length} expenses</Text>
+                  {isMultiCurrency && (
+                    <View style={{ marginTop: 10, gap: 4, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 8 }}>
+                      {currencyOrder.filter(c => c !== gc.code && totalByCurrency[c] > 0).map(c => {
+                        const ci = CURRENCIES.find(x => x.code === c) ?? { symbol: c, code: c, flag: "" }
+                        return (
+                          <View key={c} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                            <Text style={{ color: C.textMuted, fontSize: 11 }}>{ci.flag} {c}</Text>
+                            <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600" }}>{formatCurrency(totalByCurrency[c], ci.symbol, ci.code)}</Text>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  )}
                 </View>
+
+                {/* YOUR SHARE */}
                 <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 16 }}>
                   <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>YOUR SHARE</Text>
                   <Text style={{ color: "#6366f1", fontSize: 22, fontWeight: "800" }}>{formatCurrency(myShare, gc.symbol, gc.code)}</Text>
                   <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>
                     {totalGroupExpense > 0 ? `${((myShare / totalGroupExpense) * 100).toFixed(1)}% of total` : "—"}
                   </Text>
+                  {isMultiCurrency && (
+                    <View style={{ marginTop: 10, gap: 4, borderTopWidth: 1, borderTopColor: "rgba(99,102,241,0.15)", paddingTop: 8 }}>
+                      {currencyOrder.filter(c => c !== gc.code && (myShareByCurrency[c] ?? 0) > 0).map(c => {
+                        const ci = CURRENCIES.find(x => x.code === c) ?? { symbol: c, code: c, flag: "" }
+                        return (
+                          <View key={c} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                            <Text style={{ color: C.textMuted, fontSize: 11 }}>{ci.flag} {c}</Text>
+                            <Text style={{ color: "#a5b4fc", fontSize: 11, fontWeight: "600" }}>{formatCurrency(myShareByCurrency[c], ci.symbol, ci.code)}</Text>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  )}
                 </View>
               </View>
 
