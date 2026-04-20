@@ -690,13 +690,10 @@ export default function GroupDetail() {
 
       {/* Tracking Banner */}
       {isTracking && (
-        <View style={{ backgroundColor: "rgba(99,102,241,0.12)", borderBottomWidth: 1, borderBottomColor: "rgba(99,102,241,0.2)", paddingHorizontal: 20, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Text style={{ flex: 1, color: "#a5b4fc", fontSize: 13, fontWeight: "600" }}>
-            📡 Tracking expenses{trackConfig?.expiresAt ? ` · ends ${formatDate(new Date(trackConfig.expiresAt))}` : " · manual stop"}
+        <View style={{ backgroundColor: "rgba(99,102,241,0.12)", borderBottomWidth: 1, borderBottomColor: "rgba(99,102,241,0.2)", paddingHorizontal: 20, paddingVertical: 10 }}>
+          <Text style={{ color: "#a5b4fc", fontSize: 13, fontWeight: "600" }}>
+            📡 Tracking expenses{trackConfig?.expiresAt ? ` · ends ${formatDate(new Date(trackConfig.expiresAt))}` : ""}
           </Text>
-          <TouchableOpacity onPress={confirmStopTracking} style={{ backgroundColor: "rgba(244,63,94,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: "#f87171", fontSize: 12, fontWeight: "700" }}>Stop</Text>
-          </TouchableOpacity>
         </View>
       )}
 
