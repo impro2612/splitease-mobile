@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
 import { useTheme } from "@/lib/theme"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
+import { getRate } from "@/lib/exchange"
 import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg"
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 import * as Print from "expo-print"
@@ -429,18 +430,8 @@ export default function GroupDetail() {
       .filter((c) => c !== defaultCode && !fxRates[c])
     if (nonDefault.length === 0) return
     Promise.all(nonDefault.map(async (cur) => {
-      try {
-        const from = cur.toLowerCase()
-        const to = defaultCode.toLowerCase()
-        const res = await fetch(
-          `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${from}.min.json`
-        )
-        const data = await res.json()
-        const rate = data[from]?.[to] as number | undefined
-        return { currency: cur, rate: rate ?? null }
-      } catch {
-        return { currency: cur, rate: null }
-      }
+      const rate = await getRate(cur, defaultCode)
+      return { currency: cur, rate }
     })).then((results) => {
       setFxRates((prev) => {
         const next = { ...prev }
