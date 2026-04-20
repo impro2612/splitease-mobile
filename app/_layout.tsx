@@ -1,7 +1,7 @@
 import "../global.css"
 import { useEffect } from "react"
 import { Platform, View, Text, useColorScheme } from "react-native"
-import { Stack } from "expo-router"
+import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -178,6 +178,22 @@ export default function RootLayout() {
     }
   }, [user?.id])
 
+  // Handle notification tap — deep link to confirm-expense
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const url = response.notification.request.content.data?.url as string | undefined
+      if (url?.startsWith("splitease://confirm-expense")) {
+        const params = new URL(url.replace("splitease://", "https://x.com/")).searchParams
+        const suggestionId = params.get("suggestionId")
+        const groupId = params.get("groupId")
+        if (suggestionId && groupId) {
+          router.push(`/confirm-expense?suggestionId=${suggestionId}&groupId=${groupId}`)
+        }
+      }
+    })
+    return () => sub.remove()
+  }, [])
+
   useEffect(() => {
     if (!loading) {
       SplashScreen.hideAsync().catch(() => {})
@@ -196,6 +212,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
+            <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
           </Stack>
           <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
         </View>

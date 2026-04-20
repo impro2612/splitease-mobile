@@ -16,6 +16,7 @@ import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
 import { useTheme } from "@/lib/theme"
 import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg"
 const AnimatedPath = Animated.createAnimatedComponent(Path)
@@ -344,12 +345,14 @@ export default function GroupDetail() {
       expiresAt: expiresAt ? expiresAt.toISOString() : null,
     }
     await AsyncStorage.setItem(TRACK_KEY, JSON.stringify(cfg))
+    await syncTrackConfigToNative(cfg)
     setTrackConfig(cfg)
     Toast.show({ type: "success", text1: "📡 Tracking started!", text2: expiresAt ? `Until ${formatDate(expiresAt)}` : "Stops manually" })
   }
 
   async function stopTracking() {
     await AsyncStorage.removeItem(TRACK_KEY)
+    await syncTrackConfigToNative(null)
     setTrackConfig(null)
     Toast.show({ type: "info", text1: "Tracking stopped" })
   }
