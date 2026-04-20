@@ -14,7 +14,10 @@
         "buildType": "apk"
       },
       "env": {
-        "ANDROID_HOME": "/Users/pratikp/Library/Android/sdk"
+        "ANDROID_HOME": "/Users/pratikp/Library/Android/sdk",
+        "ANDROID_NDK_HOME": "/Users/pratikp/Library/Android/sdk/ndk/27.1.12297006",
+        "JAVA_HOME": "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home",
+        "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
       }
     },
     "apk": {
