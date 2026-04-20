@@ -747,7 +747,7 @@ export default function GroupDetail() {
                     <View key={code} style={{ backgroundColor: bgColor, borderRadius: 10, borderWidth: 1, borderColor, paddingHorizontal: 12, paddingVertical: 6, alignItems: "center" }}>
                       <Text style={{ color: C.textMuted, fontSize: 10, fontWeight: "600", marginBottom: 2 }}>{code}</Text>
                       <Text style={{ color, fontWeight: "800", fontSize: 18 }}>
-                        {net >= 0 ? "+" : ""}{formatCurrency(Math.abs(net), ci.symbol, ci.code)}
+                        {net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(net), ci.symbol, ci.code)}
                       </Text>
                     </View>
                   )
