@@ -297,6 +297,7 @@ export default function GroupDetail() {
   const [trackConfig, setTrackConfig] = useState<TrackConfig | null>(null)
   const isTracking = trackConfig?.groupId === id &&
     (trackConfig?.expiresAt === null || new Date(trackConfig.expiresAt) > new Date())
+  const otherGroupTracking = !!trackConfig && !isTracking
 
   useEffect(() => {
     AsyncStorage.getItem(TRACK_KEY).then((raw) => {
@@ -691,7 +692,7 @@ export default function GroupDetail() {
       {/* Tracking Banner */}
       {isTracking && (
         <View style={{ backgroundColor: "rgba(99,102,241,0.12)", borderBottomWidth: 1, borderBottomColor: "rgba(99,102,241,0.2)", paddingHorizontal: 20, paddingVertical: 10 }}>
-          <Text style={{ color: "#a5b4fc", fontSize: 13, fontWeight: "600" }}>
+          <Text style={{ color: "#a5b4fc", fontSize: 13, fontWeight: "600", textAlign: "center" }}>
             📡 Tracking expenses{trackConfig?.expiresAt ? ` · ends ${formatDate(new Date(trackConfig.expiresAt))}` : ""}
           </Text>
         </View>
@@ -1175,10 +1176,10 @@ export default function GroupDetail() {
             </TouchableOpacity>
 
             {/* Track Expense */}
-            <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: isTracking ? "rgba(99,102,241,0.4)" : C.border, padding: 18, gap: 14 }}>
+            <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: isTracking ? "rgba(99,102,241,0.4)" : C.border, padding: 18, gap: 14, opacity: otherGroupTracking ? 0.6 : 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: isTracking ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name={isTracking ? "radio" : "radio-outline"} size={22} color="#a5b4fc" />
+                  <Ionicons name={isTracking ? "radio" : "radio-outline"} size={22} color={otherGroupTracking ? C.textMuted : "#a5b4fc"} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -1207,6 +1208,15 @@ export default function GroupDetail() {
                   <Ionicons name="stop-circle-outline" size={18} color="#f87171" />
                   <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 14 }}>Stop Tracking</Text>
                 </TouchableOpacity>
+              ) : otherGroupTracking ? (
+                <View style={{ backgroundColor: C.iconBg, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, gap: 4 }}>
+                  <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600", textAlign: "center" }}>
+                    Already tracking "{trackConfig?.groupName}"
+                  </Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12, textAlign: "center" }}>
+                    Disable it first to enable tracking here
+                  </Text>
+                </View>
               ) : (
                 <TouchableOpacity
                   onPress={openTrackDatePicker}
@@ -1259,7 +1269,7 @@ export default function GroupDetail() {
               <Ionicons name="radio" size={26} color="#a5b4fc" />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Enable Expense Tracking</Text>
-            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>Auto-detect debit SMS for this group. Pick an end date — tracking stops automatically on that day.</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>Auto-detect debit SMS for this group. Pick an end date to begin.</Text>
             <TouchableOpacity
               onPress={pickTrackEndDate}
               style={{ height: 50, borderRadius: 14, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginBottom: 10 }}
