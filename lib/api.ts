@@ -77,11 +77,11 @@ export const membersApi = {
 export const expensesApi = {
   add: (groupId: string, data: {
     description: string; amount: number; category: string
-    paidById: string; splitType: string; splits?: any[]; date?: string
+    paidById: string; splitType: string; splits?: any[]; date?: string; currency?: string
   }) => api.post(`/api/groups/${groupId}/expenses`, data),
   update: (groupId: string, expenseId: string, data: {
     description?: string; amount?: number; category?: string
-    paidById?: string; date?: string
+    paidById?: string; date?: string; currency?: string
   }) => api.patch(`/api/groups/${groupId}/expenses/${expenseId}`, data),
   delete: (groupId: string, expenseId: string) =>
     api.delete(`/api/groups/${groupId}/expenses/${expenseId}`),

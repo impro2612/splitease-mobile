@@ -244,6 +244,7 @@ export default function GroupDetail() {
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [expDesc, setExpDesc] = useState("")
   const [expAmount, setExpAmount] = useState("")
+  const [expCurrency, setExpCurrency] = useState("")
   const [expCategory, setExpCategory] = useState("general")
   const [expPaidBy, setExpPaidBy] = useState<string>(user?.id ?? "")
   const [expDate, setExpDate] = useState(new Date())
@@ -260,6 +261,7 @@ export default function GroupDetail() {
   const [editTarget, setEditTarget] = useState<any>(null)
   const [editDesc, setEditDesc] = useState("")
   const [editAmount, setEditAmount] = useState("")
+  const [editCurrency, setEditCurrency] = useState("")
   const [editCategory, setEditCategory] = useState("general")
   const [editPaidBy, setEditPaidBy] = useState("")
   const [editDate, setEditDate] = useState(new Date())
@@ -417,6 +419,7 @@ export default function GroupDetail() {
       const numAmount = parseFloat(expAmount)
       const memberIds = members.map((m: any) => m.userId)
       const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
+      const activeCurrency = expCurrency || gc.code
 
       let apiSplitType: string
       let splits: any[] | undefined
@@ -424,7 +427,7 @@ export default function GroupDetail() {
       if (splitType === "EQUAL") {
         apiSplitType = "EXACT"
         const n = included.length
-        const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+        const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrency)
         if (isNoDec) {
           // 0-decimal currencies (JPY, KRW, …): split at base-unit level
           const totalUnits = Math.round(numAmount)
@@ -464,6 +467,7 @@ export default function GroupDetail() {
         splitType: apiSplitType,
         splits,
         date: expDate.toISOString(),
+        currency: activeCurrency,
       })
     },
     onSuccess: () => {
@@ -485,6 +489,7 @@ export default function GroupDetail() {
       category: editCategory,
       paidById: editPaidBy,
       date: editDate.toISOString(),
+      currency: editCurrency || gc.code,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
@@ -610,6 +615,7 @@ export default function GroupDetail() {
 
   function resetAddForm() {
     setExpDesc(""); setExpAmount(""); setExpCategory("general")
+    setExpCurrency(gc.code)
     setExpPaidBy(user?.id ?? ""); setExpDate(new Date())
     setSplitType("EQUAL"); setEquallyIncluded([]); setPercentageSplits({}); setCustomSplits({})
   }
@@ -618,6 +624,7 @@ export default function GroupDetail() {
     setEditTarget(exp)
     setEditDesc(exp.description)
     setEditAmount(String(exp.amount))
+    setEditCurrency(exp.currency ?? gc.code)
     setEditCategory(exp.category ?? "general")
     setEditPaidBy(exp.paidById)
     setEditDate(new Date(exp.date ?? exp.createdAt))
@@ -648,17 +655,26 @@ export default function GroupDetail() {
   // Group currency info — used for all amount display in this screen
   const gc = CURRENCIES.find((c) => c.code === (group?.currency ?? "USD")) ?? CURRENCIES[0]
 
-  let myOwed = 0, myOwes = 0
+  // Per-currency net balance
+  const myNetByCurrency: Record<string, number> = {}
   for (const exp of expenses) {
+    const currency = exp.currency ?? gc.code
     const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
     if (!mySplit) continue
+    if (!myNetByCurrency[currency]) myNetByCurrency[currency] = 0
     if (exp.paidById === user?.id) {
-      exp.splits?.forEach((s: any) => { if (s.userId !== user?.id && !s.paid) myOwed += s.amount })
+      exp.splits?.forEach((s: any) => {
+        if (s.userId !== user?.id && !s.paid) myNetByCurrency[currency] += s.amount
+      })
     } else if (!mySplit.paid) {
-      myOwes += mySplit.amount
+      myNetByCurrency[currency] -= mySplit.amount
     }
   }
-  const myNet = myOwed - myOwes
+  // Keep default currency first, then others sorted by code
+  const balanceEntries = Object.entries(myNetByCurrency)
+    .filter(([, v]) => v !== 0)
+    .sort(([a], [b]) => a === gc.code ? -1 : b === gc.code ? 1 : a.localeCompare(b))
+  const myNet = myNetByCurrency[gc.code] ?? 0
 
   if (isLoading) {
     return (
@@ -690,13 +706,24 @@ export default function GroupDetail() {
 
         <View className="flex-row gap-2 mb-3">
           <View style={{ flex: 1, backgroundColor: myNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 14, borderWidth: 1, borderColor: myNet >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 12 }}>
-            <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 2 }}>Your balance</Text>
-            <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "800", fontSize: 20 }}>
-              {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, gc.symbol, gc.code)}
-            </Text>
+            <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 4 }}>Your balance</Text>
+            {balanceEntries.length === 0 ? (
+              <Text style={{ color: "#64748b", fontWeight: "800", fontSize: 20 }}>Settled up ✅</Text>
+            ) : (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+                {balanceEntries.map(([code, net]) => {
+                  const ci = CURRENCIES.find(c => c.code === code) ?? { symbol: code, code }
+                  return (
+                    <Text key={code} style={{ color: net >= 0 ? "#4ade80" : "#f87171", fontWeight: "800", fontSize: net !== 0 ? 20 : 14 }}>
+                      {net >= 0 ? "+" : ""}{formatCurrency(Math.abs(net), ci.symbol, ci.code)}
+                    </Text>
+                  )
+                })}
+              </View>
+            )}
           </View>
           <TouchableOpacity
-            onPress={() => setShowAddExpense(true)}
+            onPress={() => { setExpCurrency(gc.code); setShowAddExpense(true) }}
             style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", gap: 4 }}
           >
             <Ionicons name="add" size={20} color="#fff" />
@@ -737,7 +764,7 @@ export default function GroupDetail() {
               <Text className="text-5xl mb-3">📝</Text>
               <Text style={{ color: C.text, fontWeight: "600", marginBottom: 4 }}>No expenses yet</Text>
               <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 20 }}>Add the first expense for this group</Text>
-              <TouchableOpacity onPress={() => setShowAddExpense(true)} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+              <TouchableOpacity onPress={() => { setExpCurrency(gc.code); setShowAddExpense(true) }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
                 <Text style={{ color: C.text, fontWeight: "600" }}>Add expense</Text>
               </TouchableOpacity>
             </View>
@@ -752,6 +779,7 @@ export default function GroupDetail() {
                 const isPayer = exp.paidById === user?.id
                 const payer = members.find((m: any) => m.userId === exp.paidById)
                 const myAmount = isPayer ? exp.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
+                const expCurr = CURRENCIES.find(c => c.code === (exp.currency ?? gc.code)) ?? gc
                 return (
                   <TouchableOpacity
                     key={exp.id}
@@ -771,9 +799,9 @@ export default function GroupDetail() {
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
                       <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                        {myAmount >= 0 ? "+" : ""}{formatCurrency(myAmount, gc.symbol, gc.code)}
+                        {myAmount >= 0 ? "+" : ""}{formatCurrency(Math.abs(myAmount), expCurr.symbol, expCurr.code)}
                       </Text>
-                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, gc.symbol, gc.code)} total</Text>
+                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, expCurr.symbol, expCurr.code)} total</Text>
                     </View>
                   </TouchableOpacity>
                 )
@@ -1357,6 +1385,7 @@ export default function GroupDetail() {
             <ExpenseFormFields
               desc={expDesc} setDesc={setExpDesc}
               amount={expAmount} setAmount={setExpAmount}
+              currency={expCurrency || gc.code} setCurrency={setExpCurrency}
               category={expCategory} setCategory={setExpCategory}
               paidBy={expPaidBy} setPaidBy={setExpPaidBy}
               date={expDate} setDate={setExpDate}
@@ -1413,6 +1442,7 @@ export default function GroupDetail() {
             <ExpenseFormFields
               desc={editDesc} setDesc={setEditDesc}
               amount={editAmount} setAmount={setEditAmount}
+              currency={editCurrency || gc.code} setCurrency={setEditCurrency}
               category={editCategory} setCategory={setEditCategory}
               paidBy={editPaidBy} setPaidBy={setEditPaidBy}
               date={editDate} setDate={setEditDate}
@@ -1730,7 +1760,7 @@ export default function GroupDetail() {
 // every setState call creates a new function reference, React unmounts/remounts
 // the component, and the TextInput loses focus (keyboard dismissed after each letter).
 function ExpenseFormFields({
-  desc, setDesc, amount, setAmount, category, setCategory,
+  desc, setDesc, amount, setAmount, currency, setCurrency, category, setCategory,
   paidBy, setPaidBy, date, setDate,
   members, gc, user,
   splitType, setSplitType,
@@ -1739,8 +1769,12 @@ function ExpenseFormFields({
   customSplits, setCustomSplits,
 }: any) {
   const C = useTheme()
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
+  const [currencySearch, setCurrencySearch] = useState("")
   const detectedCategory = guessCategory(desc)
   const categoryEmoji = getExpenseEmoji(desc)
+  const activeCurrencyCode = currency || gc.code
+  const activeCurrencyInfo = CURRENCIES.find(c => c.code === activeCurrencyCode) ?? gc
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -1762,12 +1796,79 @@ function ExpenseFormFields({
         </View>
       ) : null}
 
-      {/* Amount */}
+      {/* Amount + Currency picker */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
-      <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ color: C.textMuted, fontSize: 18, marginRight: 4 }}>{gc.symbol}</Text>
-        <TextInput style={{ color: C.text, fontSize: 20, fontWeight: "700", flex: 1 }} placeholder="0.00" placeholderTextColor={C.textMuted} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+        {/* Tappable currency chip */}
+        <TouchableOpacity
+          onPress={() => setShowCurrencyPicker(true)}
+          style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: activeCurrencyCode !== gc.code ? "rgba(99,102,241,0.5)" : C.border, paddingHorizontal: 12, height: 52, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 4 }}
+        >
+          <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>{activeCurrencyInfo.symbol}</Text>
+          <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600" }}>{activeCurrencyCode}</Text>
+          <Ionicons name="chevron-down" size={11} color={C.textMuted} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center" }}>
+          <TextInput style={{ color: C.text, fontSize: 20, fontWeight: "700" }} placeholder="0.00" placeholderTextColor={C.textMuted} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+        </View>
       </View>
+
+      {/* Currency picker modal (inline within form fields component) */}
+      <Modal visible={showCurrencyPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}>
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: 32 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Expense Currency</Text>
+            <TouchableOpacity onPress={() => { setShowCurrencyPicker(false); setCurrencySearch("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>
+            <Ionicons name="search" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
+            <TextInput style={{ color: C.text, flex: 1, fontSize: 15 }} placeholder="Search currency..." placeholderTextColor={C.textMuted} value={currencySearch} onChangeText={setCurrencySearch} autoCapitalize="none" />
+            {currencySearch.length > 0 && <TouchableOpacity onPress={() => setCurrencySearch("")}><Ionicons name="close-circle" size={16} color={C.textMuted} /></TouchableOpacity>}
+          </View>
+          {/* Default currency first */}
+          {!currencySearch && (
+            <View style={{ marginHorizontal: 20, marginBottom: 8 }}>
+              <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP DEFAULT</Text>
+              <TouchableOpacity
+                onPress={() => { setCurrency(gc.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+              >
+                <Text style={{ fontSize: 24 }}>{gc.flag}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontWeight: "600" }}>{gc.code}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12 }}>{gc.name}</Text>
+                </View>
+                {activeCurrencyCode === gc.code && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
+              </TouchableOpacity>
+            </View>
+          )}
+          <FlatList
+            data={CURRENCIES.filter(c =>
+              (currencySearch ? c.code.toLowerCase().includes(currencySearch.toLowerCase()) || c.name.toLowerCase().includes(currencySearch.toLowerCase()) : c.code !== gc.code)
+            )}
+            keyExtractor={item => item.code}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={!currencySearch ? <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>OTHER CURRENCIES</Text> : null}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => { setCurrency(item.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+              >
+                <Text style={{ fontSize: 24 }}>{item.flag}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontWeight: "600" }}>{item.code}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12 }}>{item.name}</Text>
+                </View>
+                {activeCurrencyCode === item.code && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
 
       {/* Date */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Date</Text>
@@ -1806,9 +1907,9 @@ function ExpenseFormFields({
         const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
         const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
         const pctError = splitType === "PERCENTAGE" && numAmount > 0 && Math.abs(pctTotal - 100) > 0.01 ? `${pctTotal.toFixed(1)}% of 100%` : null
-        const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+        const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrencyCode)
         const fmt = (n: number) => isNoDec ? Math.round(n).toString() : n.toFixed(2)
-        const customError = splitType === "CUSTOM" && numAmount > 0 && Math.abs(customTotal - numAmount) > (isNoDec ? 0.5 : 0.01) ? `Total ${gc.symbol}${fmt(customTotal)} must equal ${gc.symbol}${fmt(numAmount)}` : null
+        const customError = splitType === "CUSTOM" && numAmount > 0 && Math.abs(customTotal - numAmount) > (isNoDec ? 0.5 : 0.01) ? `Total ${activeCurrencyInfo.symbol}${fmt(customTotal)} must equal ${activeCurrencyInfo.symbol}${fmt(numAmount)}` : null
 
         return (
           <View style={{ marginTop: 4, marginBottom: 8, opacity: disabled ? 0.4 : 1 }}>
@@ -1835,7 +1936,7 @@ function ExpenseFormFields({
               <View style={{ gap: 8 }}>
                 {members.map((m: any) => {
                   const isIncluded = included.includes(m.userId)
-                  const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+                  const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrencyCode)
                   const rawPerPerson = included.length > 0 ? numAmount / included.length : 0
                   const perPerson = isNoDec ? Math.round(rawPerPerson) : rawPerPerson
                   return (
@@ -1856,7 +1957,7 @@ function ExpenseFormFields({
                       </Text>
                       {isIncluded && numAmount > 0 && (
                         <Text style={{ color: C.textSub, fontSize: 12, marginRight: 10 }}>
-                          {gc.symbol}{perPerson.toFixed(2)}
+                          {activeCurrencyInfo.symbol}{perPerson.toFixed(2)}
                         </Text>
                       )}
                       <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: isIncluded ? "#6366f1" : "#334155", backgroundColor: isIncluded ? "#6366f1" : "transparent", alignItems: "center", justifyContent: "center" }}>
@@ -1882,7 +1983,7 @@ function ExpenseFormFields({
                         {m.userId === user?.id ? "You" : m.user?.name}
                       </Text>
                       {numAmount > 0 && pctNum > 0 && (
-                        <Text style={{ color: C.textMuted, fontSize: 11, marginRight: 6 }}>{gc.symbol}{perPerson.toFixed(2)}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 11, marginRight: 6 }}>{activeCurrencyInfo.symbol}{perPerson.toFixed(2)}</Text>
                       )}
                       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 8, paddingHorizontal: 6, height: 32, width: 64 }}>
                         <TextInput
