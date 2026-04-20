@@ -12,6 +12,8 @@ import * as Notifications from "expo-notifications"
 import * as Device from "expo-device"
 import { useAuthStore } from "@/store/auth"
 import { pushApi } from "@/lib/api"
+import { getTrackConfig, clearTrackConfig } from "@/lib/trackExpense"
+import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
 
 // ── Custom Toast UI ───────────────────────────────────────────────────────────
 function ToastBase({
@@ -169,6 +171,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     loadSession()
+    // Auto-expiry check on app open (Step 8)
+    getTrackConfig().then((cfg) => {
+      if (cfg === null) {
+        // getTrackConfig already cleared expired config from AsyncStorage
+        syncTrackConfigToNative(null).catch(() => {})
+      }
+    })
   }, [])
 
   // Register push token once user is logged in
