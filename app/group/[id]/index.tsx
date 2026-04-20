@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, FlatList, Alert,
+  Modal, ActivityIndicator, FlatList,
   useWindowDimensions, Animated,
 } from "react-native"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -289,6 +289,7 @@ export default function GroupDetail() {
   const [noteText, setNoteText] = useState("")
   const [noteSaving, setNoteSaving] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [showTrackModal, setShowTrackModal] = useState(false)
 
   // Track Expense
   type TrackConfig = { groupId: string; groupName: string; enabledAt: string; expiresAt: string | null }
@@ -311,30 +312,19 @@ export default function GroupDetail() {
   }, [id])
 
   function openTrackDatePicker() {
-    Alert.alert(
-      "Enable Expense Tracking",
-      "How long should tracking run?",
-      [
-        {
-          text: "Pick end date",
-          onPress: () => {
-            DateTimePickerAndroid.open({
-              value: new Date(Date.now() + 86400000),
-              mode: "date",
-              minimumDate: new Date(Date.now() + 86400000),
-              onChange: (_, selected) => {
-                if (selected) enableTracking(selected)
-              },
-            })
-          },
-        },
-        {
-          text: "No end date (manual stop)",
-          onPress: () => enableTracking(null),
-        },
-        { text: "Cancel", style: "cancel" },
-      ]
-    )
+    setShowTrackModal(true)
+  }
+
+  function pickTrackEndDate() {
+    setShowTrackModal(false)
+    DateTimePickerAndroid.open({
+      value: new Date(Date.now() + 86400000),
+      mode: "date",
+      minimumDate: new Date(Date.now() + 86400000),
+      onChange: (_, selected) => {
+        if (selected) enableTracking(selected)
+      },
+    })
   }
 
   async function enableTracking(expiresAt: Date | null) {
@@ -1260,6 +1250,32 @@ export default function GroupDetail() {
                 <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Enable Tracking Modal */}
+      <Modal visible={showTrackModal} transparent animationType="fade" onRequestClose={() => setShowTrackModal(false)}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 20 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name="radio" size={26} color="#a5b4fc" />
+            </View>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Enable Expense Tracking</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>Auto-detect debit SMS for this group. Pick an end date — tracking stops automatically on that day.</Text>
+            <TouchableOpacity
+              onPress={pickTrackEndDate}
+              style={{ height: 50, borderRadius: 14, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginBottom: 10 }}
+            >
+              <Ionicons name="calendar-outline" size={18} color="#fff" />
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Pick end date</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowTrackModal(false)}
+              style={{ height: 44, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
