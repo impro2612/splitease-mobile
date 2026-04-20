@@ -142,7 +142,7 @@ export default function Dashboard() {
             recentActivity.map((item: any) => {
               if (item.type === "expense") {
                 const expense = item.expense
-                const gc = item.gc
+                const expCurr = CURRENCIES.find((c: any) => c.code === (expense.currency ?? item.gc.code)) ?? item.gc
                 const mySplit = expense.splits?.find((s: any) => s.userId === user?.id)
                 const isPayer = expense.paidById === user?.id
                 const myNet = isPayer ? expense.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
@@ -157,9 +157,9 @@ export default function Dashboard() {
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                       <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                        {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, gc.symbol, gc.code)}
+                        {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, expCurr.symbol, expCurr.code)}
                       </Text>
-                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(expense.amount, gc.symbol, gc.code)}</Text>
+                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(expense.amount, expCurr.symbol, expCurr.code)}</Text>
                     </View>
                   </View>
                 )
