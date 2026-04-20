@@ -280,6 +280,10 @@ export default function GroupDetail() {
   const [inlineSettleKey, setInlineSettleKey] = useState<string | null>(null)
   const [inlineSettleAmount, setInlineSettleAmount] = useState("")
 
+  // Currency conversion in Balances tab: { "USD": 84.52 } means 1 USD = 84.52 INR
+  const [fxRates, setFxRates] = useState<Record<string, number>>({})
+  const [convertedSections, setConvertedSections] = useState<Record<string, boolean>>({})
+
   // Custom confirm dialog (replaces native Alert.alert)
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string; message: string; confirmText: string; danger?: boolean; onConfirm: () => void
@@ -413,6 +417,38 @@ export default function GroupDetail() {
     queryFn: () => balancesApi.get(id).then((r) => (Array.isArray(r.data) ? r.data : [])),
     enabled: !!id,
   })
+
+  // Fetch FX rates for non-default currencies when balances tab is open
+  useEffect(() => {
+    if (tab !== "balances") return
+    const rawBalances = balances as any[]
+    if (!rawBalances.length || rawBalances[0]?.currency === undefined) return
+    const defaultCode = group?.currency ?? "USD"
+    const nonDefault = rawBalances
+      .map((g: any) => g.currency as string)
+      .filter((c) => c !== defaultCode && !fxRates[c])
+    if (nonDefault.length === 0) return
+    Promise.all(nonDefault.map(async (cur) => {
+      try {
+        const from = cur.toLowerCase()
+        const to = defaultCode.toLowerCase()
+        const res = await fetch(
+          `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${from}.min.json`
+        )
+        const data = await res.json()
+        const rate = data[from]?.[to] as number | undefined
+        return { currency: cur, rate: rate ?? null }
+      } catch {
+        return { currency: cur, rate: null }
+      }
+    })).then((results) => {
+      setFxRates((prev) => {
+        const next = { ...prev }
+        for (const r of results) if (r.rate !== null) next[r.currency] = r.rate
+        return next
+      })
+    })
+  }, [tab, balances, group?.currency])
 
   const addExpenseMutation = useMutation({
     mutationFn: () => {
@@ -862,10 +898,16 @@ export default function GroupDetail() {
                   }
                 }
 
+                // Per-section: converted flag + display currency info
+                const isConverted = !isDefaultCurrency && !!convertedSections[currency]
+                const rate = fxRates[currency] ?? null
+                const dispCi = isConverted ? gc : ci
+                const convertAmt = (amt: number) => isConverted && rate ? amt * rate : amt
+
                 return (
                   <View key={currency}>
                     {/* Section divider header */}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                       <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 5 }}>
                         <Text style={{ fontSize: 16 }}>{ci.flag}</Text>
@@ -876,7 +918,29 @@ export default function GroupDetail() {
                           </View>
                         )}
                       </View>
-                      <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+                      {/* Convert / Revert button — non-default sections only */}
+                      {!isDefaultCurrency && (
+                        <>
+                          <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+                          <TouchableOpacity
+                            onPress={() => setConvertedSections(prev => ({ ...prev, [currency]: !prev[currency] }))}
+                            disabled={!rate}
+                            style={{ backgroundColor: isConverted ? "rgba(99,102,241,0.15)" : "rgba(16,185,129,0.12)", borderRadius: 10, borderWidth: 1, borderColor: isConverted ? "rgba(99,102,241,0.4)" : "rgba(16,185,129,0.3)", paddingHorizontal: 8, paddingVertical: 5, opacity: rate ? 1 : 0.4 }}
+                          >
+                            <Text style={{ color: isConverted ? "#a5b4fc" : "#34d399", fontWeight: "700", fontSize: 11 }}>
+                              {isConverted ? "⟲ Revert" : `→ ${gc.code}`}
+                            </Text>
+                            {rate ? (
+                              <Text style={{ color: C.textMuted, fontSize: 9, textAlign: "center", marginTop: 1 }}>
+                                1 {currency} = {gc.symbol}{rate.toFixed(2)}
+                              </Text>
+                            ) : (
+                              <Text style={{ color: C.textMuted, fontSize: 9, textAlign: "center", marginTop: 1 }}>loading…</Text>
+                            )}
+                          </TouchableOpacity>
+                        </>
+                      )}
+                      {isDefaultCurrency && <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />}
                     </View>
 
                     {/* Member cards */}
@@ -884,7 +948,7 @@ export default function GroupDetail() {
                       {sorted.map((m: any) => {
                         const mb = map[m.userId] ?? { getsBack: 0, owes: 0, debts: [] }
                         if (mb.debts.length === 0) return null
-                        const net = mb.getsBack - mb.owes
+                        const net = convertAmt(mb.getsBack - mb.owes)
                         const isMe = m.userId === user?.id
                         const name = isMe ? "You" : (m.user?.name ?? "Someone")
                         const netColor = net > 0 ? "#4ade80" : net < 0 ? "#f87171" : "#64748b"
@@ -907,9 +971,9 @@ export default function GroupDetail() {
                                 <Text style={{ color: C.text, fontWeight: "700", fontSize: 14 }}>{name}</Text>
                                 <Text style={{ color: netColor, fontWeight: "600", fontSize: 13, marginTop: 2 }}>
                                   {net > 0
-                                    ? `gets back ${formatCurrency(net, ci.symbol, ci.code)}`
+                                    ? `gets back ${formatCurrency(net, dispCi.symbol, dispCi.code)}`
                                     : net < 0
-                                    ? `owes ${formatCurrency(Math.abs(net), ci.symbol, ci.code)}`
+                                    ? `owes ${formatCurrency(Math.abs(net), dispCi.symbol, dispCi.code)}`
                                     : "settled up ✅"}
                                 </Text>
                               </View>
@@ -920,6 +984,7 @@ export default function GroupDetail() {
                               const settleKey = `${currency}-${m.userId}-${di}`
                               const isInlineSettle = inlineSettleKey === settleKey
                               const otherName = d.otherUser?.name ?? "Someone"
+                              const displayAmt = convertAmt(d.amount)
                               return (
                                 <View key={di} style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.05)" }}>
                                   <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -931,7 +996,7 @@ export default function GroupDetail() {
                                           : `${otherName} owes ${isMe ? "you" : name}`}
                                       </Text>
                                       <Text style={{ color: d.dir === "owes" ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 14 }}>
-                                        {formatCurrency(d.amount, ci.symbol, ci.code)}
+                                        {formatCurrency(displayAmt, dispCi.symbol, dispCi.code)}
                                       </Text>
                                     </View>
                                     {(isMe || isAdmin) && (
