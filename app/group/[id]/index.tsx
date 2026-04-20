@@ -418,14 +418,13 @@ export default function GroupDetail() {
     enabled: !!id,
   })
 
-  // Fetch FX rates for non-default currencies when balances tab is open
+  // Fetch FX rates for non-default currencies when balances or analytics tab is open
   useEffect(() => {
-    if (tab !== "balances") return
-    const rawBalances = balances as any[]
-    if (!rawBalances.length || rawBalances[0]?.currency === undefined) return
+    if (tab !== "balances" && tab !== "analytics") return
     const defaultCode = group?.currency ?? "USD"
-    const nonDefault = rawBalances
-      .map((g: any) => g.currency as string)
+    const fromBalances = (balances as any[]).map((g: any) => g.currency as string).filter(Boolean)
+    const fromExpenses = (expenses as any[]).map((e: any) => e.currency ?? defaultCode).filter(Boolean)
+    const nonDefault = [...new Set([...fromBalances, ...fromExpenses])]
       .filter((c) => c !== defaultCode && !fxRates[c])
     if (nonDefault.length === 0) return
     Promise.all(nonDefault.map(async (cur) => {
@@ -448,7 +447,7 @@ export default function GroupDetail() {
         return next
       })
     })
-  }, [tab, balances, group?.currency])
+  }, [tab, balances, expenses, group?.currency])
 
   const addExpenseMutation = useMutation({
     mutationFn: () => {
@@ -1164,15 +1163,25 @@ export default function GroupDetail() {
             const mySplit = e.splits?.find((sp: any) => sp.userId === user?.id)
             if (mySplit) myShareByCurrency[cur] = (myShareByCurrency[cur] ?? 0) + mySplit.amount
           }
-          const totalGroupExpense = totalByCurrency[gc.code] ?? 0
-          const myShare = myShareByCurrency[gc.code] ?? 0
-
           // Sorted currency lists: default first, then alphabetical
           const currencyOrder = [
             gc.code,
             ...Object.keys(totalByCurrency).filter(c => c !== gc.code).sort(),
           ]
           const isMultiCurrency = currencyOrder.length > 1
+
+          // Convert all non-default currencies to default for main totals
+          const totalGroupExpense = Object.entries(totalByCurrency).reduce((sum, [c, amt]) => {
+            if (c === gc.code) return sum + amt
+            const rate = fxRates[c]
+            return sum + (rate ? amt * rate : 0)
+          }, 0)
+          const myShare = Object.entries(myShareByCurrency).reduce((sum, [c, amt]) => {
+            if (c === gc.code) return sum + amt
+            const rate = fxRates[c]
+            return sum + (rate ? amt * rate : 0)
+          }, 0)
+          const ratesLoaded = !isMultiCurrency || currencyOrder.slice(1).every(c => !!fxRates[c])
 
           // Per-member share (all currencies combined in gc for pie — gc-only expenses)
           const memberShareMap: Record<string, number> = {}
@@ -1198,11 +1207,13 @@ export default function GroupDetail() {
                 {/* GROUP TOTAL */}
                 <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 16 }}>
                   <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP TOTAL</Text>
-                  <Text style={{ color: C.text, fontSize: 22, fontWeight: "800" }}>{formatCurrency(totalGroupExpense, gc.symbol, gc.code)}</Text>
+                  <Text style={{ color: C.text, fontSize: 22, fontWeight: "800" }}>
+                    {ratesLoaded ? formatCurrency(totalGroupExpense, gc.symbol, gc.code) : "…"}
+                  </Text>
                   <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>{expenses.length} expenses</Text>
                   {isMultiCurrency && (
                     <View style={{ marginTop: 10, gap: 4, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 8 }}>
-                      {currencyOrder.filter(c => c !== gc.code && totalByCurrency[c] > 0).map(c => {
+                      {currencyOrder.filter(c => (totalByCurrency[c] ?? 0) > 0).map(c => {
                         const ci = CURRENCIES.find(x => x.code === c) ?? { symbol: c, code: c, flag: "" }
                         return (
                           <View key={c} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -1218,13 +1229,15 @@ export default function GroupDetail() {
                 {/* YOUR SHARE */}
                 <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 16 }}>
                   <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>YOUR SHARE</Text>
-                  <Text style={{ color: "#6366f1", fontSize: 22, fontWeight: "800" }}>{formatCurrency(myShare, gc.symbol, gc.code)}</Text>
+                  <Text style={{ color: "#6366f1", fontSize: 22, fontWeight: "800" }}>
+                    {ratesLoaded ? formatCurrency(myShare, gc.symbol, gc.code) : "…"}
+                  </Text>
                   <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>
-                    {totalGroupExpense > 0 ? `${((myShare / totalGroupExpense) * 100).toFixed(1)}% of total` : "—"}
+                    {totalGroupExpense > 0 && ratesLoaded ? `${((myShare / totalGroupExpense) * 100).toFixed(1)}% of total` : "—"}
                   </Text>
                   {isMultiCurrency && (
                     <View style={{ marginTop: 10, gap: 4, borderTopWidth: 1, borderTopColor: "rgba(99,102,241,0.15)", paddingTop: 8 }}>
-                      {currencyOrder.filter(c => c !== gc.code && (myShareByCurrency[c] ?? 0) > 0).map(c => {
+                      {currencyOrder.filter(c => (myShareByCurrency[c] ?? 0) > 0).map(c => {
                         const ci = CURRENCIES.find(x => x.code === c) ?? { symbol: c, code: c, flag: "" }
                         return (
                           <View key={c} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
