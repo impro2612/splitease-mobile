@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, FlatList,
+  Modal, ActivityIndicator, FlatList, Alert,
   useWindowDimensions, Animated,
 } from "react-native"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -288,6 +288,81 @@ export default function GroupDetail() {
   const [noteText, setNoteText] = useState("")
   const [noteSaving, setNoteSaving] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
+
+  // Track Expense
+  type TrackConfig = { groupId: string; groupName: string; enabledAt: string; expiresAt: string | null }
+  const TRACK_KEY = "trackExpense"
+  const [trackConfig, setTrackConfig] = useState<TrackConfig | null>(null)
+  const isTracking = trackConfig?.groupId === id &&
+    (trackConfig?.expiresAt === null || new Date(trackConfig.expiresAt) > new Date())
+
+  useEffect(() => {
+    AsyncStorage.getItem(TRACK_KEY).then((raw) => {
+      if (!raw) return
+      const cfg: TrackConfig = JSON.parse(raw)
+      // auto-clear if expired
+      if (cfg.expiresAt && new Date(cfg.expiresAt) <= new Date()) {
+        AsyncStorage.removeItem(TRACK_KEY)
+      } else {
+        setTrackConfig(cfg)
+      }
+    })
+  }, [id])
+
+  function openTrackDatePicker() {
+    Alert.alert(
+      "Enable Expense Tracking",
+      "How long should tracking run?",
+      [
+        {
+          text: "Pick end date",
+          onPress: () => {
+            DateTimePickerAndroid.open({
+              value: new Date(Date.now() + 86400000),
+              mode: "date",
+              minimumDate: new Date(Date.now() + 86400000),
+              onChange: (_, selected) => {
+                if (selected) enableTracking(selected)
+              },
+            })
+          },
+        },
+        {
+          text: "No end date (manual stop)",
+          onPress: () => enableTracking(null),
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    )
+  }
+
+  async function enableTracking(expiresAt: Date | null) {
+    const cfg: TrackConfig = {
+      groupId: id as string,
+      groupName: group?.name ?? "Group",
+      enabledAt: new Date().toISOString(),
+      expiresAt: expiresAt ? expiresAt.toISOString() : null,
+    }
+    await AsyncStorage.setItem(TRACK_KEY, JSON.stringify(cfg))
+    setTrackConfig(cfg)
+    Toast.show({ type: "success", text1: "📡 Tracking started!", text2: expiresAt ? `Until ${formatDate(expiresAt)}` : "Stops manually" })
+  }
+
+  async function stopTracking() {
+    await AsyncStorage.removeItem(TRACK_KEY)
+    setTrackConfig(null)
+    Toast.show({ type: "info", text1: "Tracking stopped" })
+  }
+
+  function confirmStopTracking() {
+    showConfirm({
+      title: "Stop Tracking?",
+      message: "SMS expense tracking will be disabled for this group.",
+      confirmText: "Stop",
+      danger: true,
+      onConfirm: stopTracking,
+    })
+  }
 
   useEffect(() => {
     if (id) {
@@ -619,6 +694,18 @@ export default function GroupDetail() {
           ))}
         </ScrollView>
       </View>
+
+      {/* Tracking Banner */}
+      {isTracking && (
+        <View style={{ backgroundColor: "rgba(99,102,241,0.12)", borderBottomWidth: 1, borderBottomColor: "rgba(99,102,241,0.2)", paddingHorizontal: 20, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Text style={{ flex: 1, color: "#a5b4fc", fontSize: 13, fontWeight: "600" }}>
+            📡 Tracking expenses{trackConfig?.expiresAt ? ` · ends ${formatDate(new Date(trackConfig.expiresAt))}` : " · manual stop"}
+          </Text>
+          <TouchableOpacity onPress={confirmStopTracking} style={{ backgroundColor: "rgba(244,63,94,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Text style={{ color: "#f87171", fontSize: 12, fontWeight: "700" }}>Stop</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         style={{ flex: 1, paddingHorizontal: 20 }}
@@ -1096,6 +1183,50 @@ export default function GroupDetail() {
               </View>
               <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>
+
+            {/* Track Expense */}
+            <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: isTracking ? "rgba(99,102,241,0.4)" : C.border, padding: 18, gap: 14 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: isTracking ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name={isTracking ? "radio" : "radio-outline"} size={22} color="#a5b4fc" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Track Expense</Text>
+                    {isTracking && (
+                      <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
+                        <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "700" }}>ACTIVE</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>
+                    {isTracking
+                      ? trackConfig?.expiresAt
+                        ? `Ends ${formatDate(new Date(trackConfig.expiresAt))}`
+                        : "Running until stopped manually"
+                      : "Auto-detect debit SMS for this group"}
+                  </Text>
+                </View>
+              </View>
+
+              {isTracking ? (
+                <TouchableOpacity
+                  onPress={confirmStopTracking}
+                  style={{ backgroundColor: "rgba(244,63,94,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(244,63,94,0.25)", paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                >
+                  <Ionicons name="stop-circle-outline" size={18} color="#f87171" />
+                  <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 14 }}>Stop Tracking</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={openTrackDatePicker}
+                  style={{ backgroundColor: "#6366f1", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                >
+                  <Ionicons name="radio-outline" size={18} color="#fff" />
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Enable Tracking</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
 
