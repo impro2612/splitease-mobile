@@ -705,18 +705,24 @@ export default function GroupDetail() {
         </View>
 
         <View className="flex-row gap-2 mb-3">
-          <View style={{ flex: 1, backgroundColor: myNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 14, borderWidth: 1, borderColor: myNet >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 12 }}>
-            <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 4 }}>Your balance</Text>
+          <View style={{ flex: 1, backgroundColor: myNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 14, borderWidth: 1, borderColor: myNet >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 12, alignItems: "center" }}>
+            <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 8 }}>Your balance</Text>
             {balanceEntries.length === 0 ? (
-              <Text style={{ color: "#64748b", fontWeight: "800", fontSize: 20 }}>Settled up ✅</Text>
+              <Text style={{ color: "#64748b", fontWeight: "800", fontSize: 18 }}>Settled up ✅</Text>
             ) : (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
-                {balanceEntries.map(([code, net]) => {
+              <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
+                {balanceEntries.map(([code, net], idx) => {
                   const ci = CURRENCIES.find(c => c.code === code) ?? { symbol: code, code }
+                  const color = net >= 0 ? "#4ade80" : "#f87171"
+                  const bgColor = net >= 0 ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)"
+                  const borderColor = net >= 0 ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"
                   return (
-                    <Text key={code} style={{ color: net >= 0 ? "#4ade80" : "#f87171", fontWeight: "800", fontSize: net !== 0 ? 20 : 14 }}>
-                      {net >= 0 ? "+" : ""}{formatCurrency(Math.abs(net), ci.symbol, ci.code)}
-                    </Text>
+                    <View key={code} style={{ backgroundColor: bgColor, borderRadius: 10, borderWidth: 1, borderColor, paddingHorizontal: 12, paddingVertical: 6, alignItems: "center" }}>
+                      <Text style={{ color: C.textMuted, fontSize: 10, fontWeight: "600", marginBottom: 2 }}>{code}</Text>
+                      <Text style={{ color, fontWeight: "800", fontSize: 18 }}>
+                        {net >= 0 ? "+" : ""}{formatCurrency(Math.abs(net), ci.symbol, ci.code)}
+                      </Text>
+                    </View>
                   )
                 })}
               </View>
