@@ -18,6 +18,7 @@ import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
 import { useTheme } from "@/lib/theme"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg"
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 import * as Print from "expo-print"
@@ -840,7 +841,7 @@ export default function GroupDetail() {
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
                       <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                        {myAmount >= 0 ? "+" : ""}{formatCurrency(Math.abs(myAmount), expCurr.symbol, expCurr.code)}
+                        {myAmount >= 0 ? "+" : "-"}{formatCurrency(Math.abs(myAmount), expCurr.symbol, expCurr.code)}
                       </Text>
                       <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, expCurr.symbol, expCurr.code)} total</Text>
                     </View>
@@ -1909,6 +1910,8 @@ export default function GroupDetail() {
           )}
         </View>
       </Modal>
+
+      <BottomTabBar activeTab="Groups" />
     </SafeAreaView>
   )
 }
