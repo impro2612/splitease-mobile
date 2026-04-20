@@ -816,162 +816,194 @@ export default function GroupDetail() {
           )
         )}
 
-        {/* Balances Tab — Splitwise-style per-person view */}
+        {/* Balances Tab — currency-sectioned */}
         {tab === "balances" && (() => {
-          // Build per-member balance map
           type MemberBalance = { getsBack: number; owes: number; debts: any[] }
-          const map: Record<string, MemberBalance> = {}
-          for (const m of members) map[m.userId] = { getsBack: 0, owes: 0, debts: [] }
 
-          for (const b of (balances as any[])) {
-            if (map[b.fromUserId]) {
-              map[b.fromUserId].owes += b.amount
-              map[b.fromUserId].debts.push({ dir: "owes", otherId: b.toUserId, otherUser: b.toUser, amount: b.amount })
-            }
-            if (map[b.toUserId]) {
-              map[b.toUserId].getsBack += b.amount
-              map[b.toUserId].debts.push({ dir: "getsBack", otherId: b.fromUserId, otherUser: b.fromUser, amount: b.amount })
-            }
+          // New API returns [{currency, balances:[]}]; guard against old flat format
+          const rawBalances = balances as any[]
+          const currencyGroups: Array<{ currency: string; balances: any[] }> =
+            rawBalances.length > 0 && rawBalances[0]?.currency !== undefined
+              ? rawBalances
+              : [{ currency: gc.code, balances: rawBalances }]
+
+          const sorted = [...members].sort((a: any, b: any) =>
+            a.userId === user?.id ? -1 : b.userId === user?.id ? 1 : 0
+          )
+
+          if (currencyGroups.every(g => g.balances.length === 0)) {
+            return (
+              <View style={{ alignItems: "center", paddingVertical: 48 }}>
+                <Text style={{ fontSize: 40, marginBottom: 12 }}>🎉</Text>
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>All settled up!</Text>
+                <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>No outstanding balances</Text>
+              </View>
+            )
           }
 
-          // Current user first, then rest
-          const sorted = [...members].sort((a: any, b: any) => (a.userId === user?.id ? -1 : b.userId === user?.id ? 1 : 0))
-
           return (
-            <View className="py-3 gap-3">
-              {sorted.map((m: any) => {
-                const mb = map[m.userId] ?? { getsBack: 0, owes: 0, debts: [] }
-                const net = mb.getsBack - mb.owes
-                const isMe = m.userId === user?.id
-                const name = isMe ? "You" : (m.user?.name ?? "Someone")
-                const netColor = net > 0 ? "#4ade80" : net < 0 ? "#f87171" : "#64748b"
-                const isExpanded = expandedMembers.has(m.userId)
+            <View style={{ paddingTop: 12, gap: 24, paddingBottom: 8 }}>
+              {currencyGroups.map(({ currency, balances: currBalances }, groupIdx) => {
+                if (currBalances.length === 0) return null
+                const ci = CURRENCIES.find(c => c.code === currency) ?? gc
+                const isDefaultCurrency = currency === gc.code
 
-                function toggleExpand() {
-                  setExpandedMembers(prev => {
-                    const next = new Set(prev)
-                    if (next.has(m.userId)) next.delete(m.userId)
-                    else next.add(m.userId)
-                    return next
-                  })
+                // Build per-member map for this currency group
+                const map: Record<string, MemberBalance> = {}
+                for (const m of members) map[m.userId] = { getsBack: 0, owes: 0, debts: [] }
+                for (const b of currBalances) {
+                  if (map[b.fromUserId]) {
+                    map[b.fromUserId].owes += b.amount
+                    map[b.fromUserId].debts.push({ dir: "owes", otherId: b.toUserId, otherUser: b.toUser, amount: b.amount })
+                  }
+                  if (map[b.toUserId]) {
+                    map[b.toUserId].getsBack += b.amount
+                    map[b.toUserId].debts.push({ dir: "getsBack", otherId: b.fromUserId, otherUser: b.fromUser, amount: b.amount })
+                  }
                 }
 
                 return (
-                  <View key={m.userId} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
-                    {/* Tappable header — collapsed by default */}
-                    <TouchableOpacity onPress={toggleExpand} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 12 }}>
-                      <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={40} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 14 }}>{name}</Text>
-                        <Text style={{ color: netColor, fontWeight: "600", fontSize: 13, marginTop: 2 }}>
-                          {net > 0
-                            ? `gets back ${formatCurrency(net, gc.symbol, gc.code)} in total`
-                            : net < 0
-                            ? `owes ${formatCurrency(Math.abs(net), gc.symbol, gc.code)} in total`
-                            : "is settled up ✅"}
-                        </Text>
-                      </View>
-                      {mb.debts.length > 0 && (
-                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={C.textMuted} />
-                      )}
-                    </TouchableOpacity>
-
-                    {/* Expanded individual debt rows */}
-                    {isExpanded && mb.debts.map((d: any, di: number) => {
-                      const settleKey = `${m.userId}-${di}`
-                      const isInlineSettle = inlineSettleKey === settleKey
-                      const otherName = d.otherUser?.name ?? "Someone"
-
-                      return (
-                        <View key={di} style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.05)" }}>
-                          {/* Debt row */}
-                          <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                            <Avatar name={d.otherUser?.name} email={d.otherUser?.email} image={d.otherUser?.image} size={28} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ color: C.textSub, fontSize: 12 }}>
-                                {d.dir === "owes"
-                                  ? `${isMe ? "You owe" : `${name} owes`} ${otherName}`
-                                  : `${otherName} owes ${isMe ? "you" : name}`}
-                              </Text>
-                              <Text style={{ color: d.dir === "owes" ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 14 }}>
-                                {formatCurrency(d.amount, gc.symbol, gc.code)}
-                              </Text>
-                            </View>
-                            {/* Remind + Settle up: own debts always, other members' debts only for admins */}
-                            {(isMe || isAdmin) && (
-                              <View style={{ flexDirection: "row", gap: 6 }}>
-                                <TouchableOpacity
-                                  style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
-                                >
-                                  <Text style={{ color: "#fbbf24", fontWeight: "600", fontSize: 11 }}>Remind</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    if (isInlineSettle) {
-                                      setInlineSettleKey(null)
-                                      setInlineSettleAmount("")
-                                    } else {
-                                      setInlineSettleKey(settleKey)
-                                      setInlineSettleAmount(d.amount.toFixed(2))
-                                    }
-                                  }}
-                                  style={{ backgroundColor: "#6366f1", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
-                                >
-                                  <Text style={{ color: C.text, fontWeight: "600", fontSize: 11 }}>Settle up</Text>
-                                </TouchableOpacity>
-                              </View>
-                            )}
+                  <View key={currency}>
+                    {/* Section divider header */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 5 }}>
+                        <Text style={{ fontSize: 16 }}>{ci.flag}</Text>
+                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{currency}</Text>
+                        {isDefaultCurrency && (
+                          <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                            <Text style={{ color: "#a5b4fc", fontSize: 9, fontWeight: "700" }}>DEFAULT</Text>
                           </View>
+                        )}
+                      </View>
+                      <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+                    </View>
 
-                          {/* Inline settle input */}
-                          {(isMe || isAdmin) && isInlineSettle && (
-                            <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 6 }}>
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 10, borderWidth: 1, borderColor: "rgba(99,102,241,0.5)", paddingHorizontal: 12, height: 40 }}>
-                                  <Text style={{ color: C.textSub, fontSize: 14, marginRight: 4 }}>{gc.symbol}</Text>
-                                  <TextInput
-                                    style={{ flex: 1, color: C.text, fontSize: 14 }}
-                                    keyboardType="decimal-pad"
-                                    value={inlineSettleAmount}
-                                    onChangeText={setInlineSettleAmount}
-                                    placeholder={d.amount.toFixed(2)}
-                                    placeholderTextColor={C.textMuted}
-                                    autoFocus
-                                  />
-                                </View>
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    const amt = parseFloat(inlineSettleAmount)
-                                    if (!amt || amt <= 0) return
-                                    const capped = Math.min(amt, d.amount)
-                                    balancesApi.settle(id, { toUserId: d.otherId, amount: capped })
-                                      .then(() => {
-                                        queryClient.invalidateQueries({ queryKey: ["group", id] })
-                                        queryClient.invalidateQueries({ queryKey: ["balances", id] })
-                                        queryClient.invalidateQueries({ queryKey: ["groups"] })
-                                        queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
-                                        setInlineSettleKey(null)
-                                        setInlineSettleAmount("")
-                                        Toast.show({ type: "success", text1: amt >= d.amount ? "Fully settled! 🎉" : "Partial settlement recorded!" })
-                                      })
-                                      .catch(() => Toast.show({ type: "error", text1: "Failed to record settlement" }))
-                                  }}
-                                  style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, height: 40, alignItems: "center", justifyContent: "center" }}
-                                >
-                                  <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>Confirm</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => { setInlineSettleKey(null); setInlineSettleAmount("") }} style={{ padding: 6 }}>
-                                  <Ionicons name="close" size={18} color={C.textMuted} />
-                                </TouchableOpacity>
+                    {/* Member cards */}
+                    <View style={{ gap: 10 }}>
+                      {sorted.map((m: any) => {
+                        const mb = map[m.userId] ?? { getsBack: 0, owes: 0, debts: [] }
+                        if (mb.debts.length === 0) return null
+                        const net = mb.getsBack - mb.owes
+                        const isMe = m.userId === user?.id
+                        const name = isMe ? "You" : (m.user?.name ?? "Someone")
+                        const netColor = net > 0 ? "#4ade80" : net < 0 ? "#f87171" : "#64748b"
+                        const cardKey = `${currency}-${m.userId}`
+                        const isExpanded = expandedMembers.has(cardKey)
+
+                        return (
+                          <View key={cardKey} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
+                            <TouchableOpacity
+                              onPress={() => setExpandedMembers(prev => {
+                                const next = new Set(prev)
+                                next.has(cardKey) ? next.delete(cardKey) : next.add(cardKey)
+                                return next
+                              })}
+                              activeOpacity={0.7}
+                              style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 12 }}
+                            >
+                              <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={40} />
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ color: C.text, fontWeight: "700", fontSize: 14 }}>{name}</Text>
+                                <Text style={{ color: netColor, fontWeight: "600", fontSize: 13, marginTop: 2 }}>
+                                  {net > 0
+                                    ? `gets back ${formatCurrency(net, ci.symbol, ci.code)}`
+                                    : net < 0
+                                    ? `owes ${formatCurrency(Math.abs(net), ci.symbol, ci.code)}`
+                                    : "settled up ✅"}
+                                </Text>
                               </View>
-                              <Text style={{ color: C.textMuted, fontSize: 11 }}>
-                                Max: {formatCurrency(d.amount, gc.symbol, gc.code)} — enter full amount to settle completely
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      )
-                    })}
+                              <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={C.textMuted} />
+                            </TouchableOpacity>
+
+                            {isExpanded && mb.debts.map((d: any, di: number) => {
+                              const settleKey = `${currency}-${m.userId}-${di}`
+                              const isInlineSettle = inlineSettleKey === settleKey
+                              const otherName = d.otherUser?.name ?? "Someone"
+                              return (
+                                <View key={di} style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.05)" }}>
+                                  <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                    <Avatar name={d.otherUser?.name} email={d.otherUser?.email} image={d.otherUser?.image} size={28} />
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={{ color: C.textSub, fontSize: 12 }}>
+                                        {d.dir === "owes"
+                                          ? `${isMe ? "You owe" : `${name} owes`} ${otherName}`
+                                          : `${otherName} owes ${isMe ? "you" : name}`}
+                                      </Text>
+                                      <Text style={{ color: d.dir === "owes" ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 14 }}>
+                                        {formatCurrency(d.amount, ci.symbol, ci.code)}
+                                      </Text>
+                                    </View>
+                                    {(isMe || isAdmin) && (
+                                      <View style={{ flexDirection: "row", gap: 6 }}>
+                                        <TouchableOpacity style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                          <Text style={{ color: "#fbbf24", fontWeight: "600", fontSize: 11 }}>Remind</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                          onPress={() => {
+                                            if (isInlineSettle) { setInlineSettleKey(null); setInlineSettleAmount("") }
+                                            else { setInlineSettleKey(settleKey); setInlineSettleAmount(d.amount.toFixed(2)) }
+                                          }}
+                                          style={{ backgroundColor: "#6366f1", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                                        >
+                                          <Text style={{ color: C.text, fontWeight: "600", fontSize: 11 }}>Settle up</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    )}
+                                  </View>
+
+                                  {(isMe || isAdmin) && isInlineSettle && (
+                                    <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 6 }}>
+                                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                        <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 10, borderWidth: 1, borderColor: "rgba(99,102,241,0.5)", paddingHorizontal: 12, height: 40 }}>
+                                          <Text style={{ color: C.textSub, fontSize: 14, marginRight: 4 }}>{ci.symbol}</Text>
+                                          <TextInput
+                                            style={{ flex: 1, color: C.text, fontSize: 14 }}
+                                            keyboardType="decimal-pad"
+                                            value={inlineSettleAmount}
+                                            onChangeText={setInlineSettleAmount}
+                                            placeholder={d.amount.toFixed(2)}
+                                            placeholderTextColor={C.textMuted}
+                                            autoFocus
+                                          />
+                                        </View>
+                                        <TouchableOpacity
+                                          onPress={() => {
+                                            const amt = parseFloat(inlineSettleAmount)
+                                            if (!amt || amt <= 0) return
+                                            const capped = Math.min(amt, d.amount)
+                                            balancesApi.settle(id, { toUserId: d.otherId, amount: capped })
+                                              .then(() => {
+                                                queryClient.invalidateQueries({ queryKey: ["group", id] })
+                                                queryClient.invalidateQueries({ queryKey: ["balances", id] })
+                                                queryClient.invalidateQueries({ queryKey: ["groups"] })
+                                                queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+                                                setInlineSettleKey(null)
+                                                setInlineSettleAmount("")
+                                                Toast.show({ type: "success", text1: amt >= d.amount ? "Fully settled! 🎉" : "Partial settlement recorded!" })
+                                              })
+                                              .catch(() => Toast.show({ type: "error", text1: "Failed to record settlement" }))
+                                          }}
+                                          style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, height: 40, alignItems: "center", justifyContent: "center" }}
+                                        >
+                                          <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>Confirm</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => { setInlineSettleKey(null); setInlineSettleAmount("") }} style={{ padding: 6 }}>
+                                          <Ionicons name="close" size={18} color={C.textMuted} />
+                                        </TouchableOpacity>
+                                      </View>
+                                      <Text style={{ color: C.textMuted, fontSize: 11 }}>
+                                        Max: {formatCurrency(d.amount, ci.symbol, ci.code)} — enter full amount to settle completely
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              )
+                            })}
+                          </View>
+                        )
+                      })}
+                    </View>
                   </View>
                 )
               })}
