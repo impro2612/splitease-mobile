@@ -41,13 +41,23 @@ class ExpenseNotificationListener : NotificationListenerService() {
 
         val extras = sbn.notification.extras
 
-        // Prefer big text (full message) over the ticker/summary text
+        // Collect every text field the notification exposes — tickerText is often
+        // the closest to the raw SMS body; bigText is the expanded full message.
+        val ticker = sbn.notification.tickerText?.toString()
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+        val bigTitle = extras.getCharSequence(Notification.EXTRA_TITLE_BIG)?.toString()
+        val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+        val summaryText = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
 
-        // Combine title + body so patterns that appear in title (e.g. "Debited") still match
-        val rawBody = listOfNotNull(title, bigText ?: text).joinToString(" ")
+        // Deduplicate and join — longer strings (bigText, ticker) go first so the
+        // amount regex finds the fullest representation of the message first.
+        val rawBody = listOfNotNull(ticker, bigText, text, subText, summaryText, bigTitle, title)
+            .distinct()
+            .joinToString(" ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
         if (rawBody.isBlank()) return
 
         // Use package + notification tag/id as the "sender" to deduplicate across restores
