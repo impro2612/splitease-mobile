@@ -51,5 +51,9 @@ export async function checkNotificationAccess(): Promise<boolean> {
 }
 
 export async function openNotificationAccessSettings(): Promise<void> {
-  await Linking.openSettings()
+  // Opens the Android Notification Access screen where the user toggles
+  // the NotificationListenerService — not the generic app settings page.
+  if (Platform.OS === "android") {
+    await Linking.sendIntent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+  }
 }
