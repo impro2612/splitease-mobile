@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, ActivityIndicator, Alert, FlatList,
@@ -15,6 +15,7 @@ import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { useTheme } from "@/lib/theme"
+import { getRate } from "@/lib/exchange"
 
 export default function Groups() {
   const { user, currency: defaultCurrency } = useAuthStore()
@@ -37,6 +38,36 @@ export default function Groups() {
     queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
 
+  // FX rates keyed by "USD->INR" etc, for cross-currency balance conversion
+  const [fxRates, setFxRates] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (!groups.length) return
+    const pairs: { from: string; to: string }[] = []
+    for (const g of groups) {
+      const defaultCode = g.currency ?? "USD"
+      for (const e of (g.expenses ?? [])) {
+        const expCur = e.currency ?? defaultCode
+        if (expCur !== defaultCode) {
+          const key = `${expCur}->${defaultCode}`
+          if (!fxRates[key]) pairs.push({ from: expCur, to: defaultCode })
+        }
+      }
+    }
+    const uniquePairs = pairs.filter((p, i) => pairs.findIndex(x => x.from === p.from && x.to === p.to) === i)
+    if (!uniquePairs.length) return
+    Promise.all(uniquePairs.map(async ({ from, to }) => {
+      const rate = await getRate(from, to)
+      return { key: `${from}->${to}`, rate }
+    })).then((results) => {
+      setFxRates((prev) => {
+        const next = { ...prev }
+        for (const r of results) if (r.rate !== null) next[r.key] = r.rate
+        return next
+      })
+    })
+  }, [groups])
+
   const createMutation = useMutation({
     mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency }),
     onSuccess: (res) => {
@@ -50,15 +81,19 @@ export default function Groups() {
     onError: () => Toast.show({ type: "error", text1: "Failed to create group" }),
   })
 
-  function getGroupBalance(group: any) {
+  function getGroupBalance(group: any): number {
+    const defaultCode = group.currency ?? "USD"
     let owed = 0, owes = 0
     for (const expense of (group.expenses ?? [])) {
       const mySplit = expense.splits?.find((s: any) => s.userId === user?.id)
       if (!mySplit) continue
+      const expCur = expense.currency ?? defaultCode
+      const rate = expCur === defaultCode ? 1 : (fxRates[`${expCur}->${defaultCode}`] ?? null)
+      if (rate === null) continue // skip until rate loaded
       if (expense.paidById === user?.id) {
-        expense.splits?.forEach((s: any) => { if (s.userId !== user?.id && !s.paid) owed += s.amount })
+        expense.splits?.forEach((s: any) => { if (s.userId !== user?.id && !s.paid) owed += s.amount * rate })
       } else if (!mySplit.paid) {
-        owes += mySplit.amount
+        owes += mySplit.amount * rate
       }
     }
     return owed - owes
