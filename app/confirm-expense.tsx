@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Modal, FlatList } from "react-native"
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
@@ -22,8 +22,11 @@ export default function ConfirmExpense() {
 
   const [description, setDescription] = useState("")
   const [amount, setAmount] = useState("")
+  const [currency, setCurrency] = useState("")
   const [paidById, setPaidById] = useState<string>("")
   const [date, setDate] = useState(new Date())
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
+  const [currencySearch, setCurrencySearch] = useState("")
 
   const { data: group, isLoading: groupLoading } = useQuery({
     queryKey: ["group", groupId],
@@ -34,6 +37,11 @@ export default function ConfirmExpense() {
   const members: any[] = group?.members ?? []
   const gc = CURRENCIES.find((c) => c.code === (group?.currency ?? "USD")) ?? CURRENCIES[0]
 
+  // Once group loads, set currency default to group currency (may be overridden by SMS currency below)
+  useEffect(() => {
+    if (group && !currency) setCurrency(group.currency ?? "USD")
+  }, [group])
+
   // Load suggestion from native SharedPreferences
   useEffect(() => {
     import("@/lib/nativeTrackExpense").then(({ getNativePendingSuggestion }) => {
@@ -42,6 +50,8 @@ export default function ConfirmExpense() {
         setDescription(s.merchant || "")
         setAmount(String(s.amount || ""))
         if (s.date) setDate(new Date(s.date))
+        // Use SMS-detected currency; fall back to group currency once group loads
+        if (s.currency) setCurrency(s.currency)
       })
     })
   }, [suggestionId])
@@ -50,13 +60,16 @@ export default function ConfirmExpense() {
     if (user?.id) setPaidById(user.id)
   }, [user?.id])
 
+  const activeCurrencyCode = currency || gc.code
+  const activeCurrencyInfo = CURRENCIES.find((c) => c.code === activeCurrencyCode) ?? gc
+
   const addMutation = useMutation({
     mutationFn: async () => {
       const numAmount = parseFloat(amount)
       if (!numAmount || numAmount <= 0) throw new Error("Invalid amount")
       const memberIds = members.map((m: any) => m.userId)
       const n = memberIds.length
-      const isNoDec = NO_DECIMAL_CURRENCIES.has(gc.code)
+      const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrencyCode)
       let splits: any[]
       if (isNoDec) {
         const totalUnits = Math.round(numAmount)
@@ -78,6 +91,7 @@ export default function ConfirmExpense() {
       return expensesApi.add(groupId, {
         description: description.trim() || "Expense",
         amount: numAmount,
+        currency: activeCurrencyCode,
         category: "other",
         paidById,
         splitType: "EXACT",
@@ -121,6 +135,8 @@ export default function ConfirmExpense() {
     )
   }
 
+  const isForeignCurrency = activeCurrencyCode !== gc.code
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
@@ -148,23 +164,56 @@ export default function ConfirmExpense() {
             />
           </View>
 
-          {/* Amount */}
+          {/* Amount + Currency picker */}
           <View>
-            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Amount ({gc.code})</Text>
-            <TextInput
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              placeholder={`0.00`}
-              placeholderTextColor={C.textMuted}
-              style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, color: C.text, fontSize: 22, fontWeight: "700", padding: 14 }}
-            />
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Amount</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {/* Currency chip — tappable */}
+              <TouchableOpacity
+                onPress={() => setShowCurrencyPicker(true)}
+                style={{
+                  backgroundColor: C.card,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: isForeignCurrency ? "rgba(99,102,241,0.5)" : C.border,
+                  paddingHorizontal: 12,
+                  height: 52,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  gap: 4,
+                }}
+              >
+                <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>{activeCurrencyInfo.symbol}</Text>
+                <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600" }}>{activeCurrencyCode}</Text>
+                <Ionicons name="chevron-down" size={11} color={C.textMuted} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center" }}>
+                <TextInput
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={C.textMuted}
+                  style={{ color: C.text, fontSize: 22, fontWeight: "700" }}
+                />
+              </View>
+            </View>
+            {/* Foreign currency hint */}
+            {isForeignCurrency && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
+                <Ionicons name="information-circle-outline" size={14} color="#a5b4fc" />
+                <Text style={{ color: "#a5b4fc", fontSize: 12 }}>
+                  Detected currency: {activeCurrencyCode} · Group default is {gc.code}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Paid by */}
           <View>
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Paid by</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {members.map((m: any) => (
                   <TouchableOpacity
@@ -225,6 +274,88 @@ export default function ConfirmExpense() {
           <Text style={{ color: C.textSub, fontSize: 14 }}>Dismiss suggestion</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Currency picker modal */}
+      <Modal
+        visible={showCurrencyPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}
+      >
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: 32 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Expense Currency</Text>
+            <TouchableOpacity
+              onPress={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}
+              style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}
+            >
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>
+            <Ionicons name="search" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
+            <TextInput
+              style={{ color: C.text, flex: 1, fontSize: 15 }}
+              placeholder="Search currency..."
+              placeholderTextColor={C.textMuted}
+              value={currencySearch}
+              onChangeText={setCurrencySearch}
+              autoCapitalize="none"
+            />
+            {currencySearch.length > 0 && (
+              <TouchableOpacity onPress={() => setCurrencySearch("")}>
+                <Ionicons name="close-circle" size={16} color={C.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {/* Group default currency pinned at top */}
+          {!currencySearch && (
+            <View style={{ marginHorizontal: 20, marginBottom: 8 }}>
+              <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP DEFAULT</Text>
+              <TouchableOpacity
+                onPress={() => { setCurrency(gc.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+              >
+                <Text style={{ fontSize: 24 }}>{gc.flag}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontWeight: "600" }}>{gc.code}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12 }}>{gc.name}</Text>
+                </View>
+                {activeCurrencyCode === gc.code && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
+              </TouchableOpacity>
+            </View>
+          )}
+          <FlatList
+            data={CURRENCIES.filter((c) =>
+              currencySearch
+                ? c.code.toLowerCase().includes(currencySearch.toLowerCase()) || c.name.toLowerCase().includes(currencySearch.toLowerCase())
+                : c.code !== gc.code
+            )}
+            keyExtractor={(item) => item.code}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              !currencySearch
+                ? <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>OTHER CURRENCIES</Text>
+                : null
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => { setCurrency(item.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+              >
+                <Text style={{ fontSize: 24 }}>{item.flag}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontWeight: "600" }}>{item.code}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12 }}>{item.name}</Text>
+                </View>
+                {activeCurrencyCode === item.code && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
