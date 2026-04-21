@@ -2,43 +2,35 @@ const { withAndroidManifest, withDangerousMod } = require("@expo/config-plugins"
 const fs = require("fs")
 const path = require("path")
 
-function addPermission(manifest, name) {
-  if (!manifest["uses-permission"]) manifest["uses-permission"] = []
-  if (!manifest["uses-permission"].find((p) => p.$["android:name"] === name)) {
-    manifest["uses-permission"].push({ $: { "android:name": name } })
-  }
-}
-
-function withSmsManifest(config) {
+function withNotificationListenerManifest(config) {
   return withAndroidManifest(config, (config) => {
     const manifest = config.modResults.manifest
-
-    addPermission(manifest, "android.permission.RECEIVE_SMS")
-    addPermission(manifest, "android.permission.READ_SMS")
-
     const app = manifest.application[0]
-    if (!app.receiver) app.receiver = []
 
-    const receiverName = "com.splitease.app.SmsReceiver"
-    const actionReceiverName = "com.splitease.app.SmsActionReceiver"
-
-    if (!app.receiver.find((r) => r.$["android:name"] === receiverName)) {
-      app.receiver.push({
+    // ── NotificationListenerService ──────────────────────────────────────────
+    if (!app.service) app.service = []
+    const serviceName = "com.splitease.app.ExpenseNotificationListener"
+    if (!app.service.find((s) => s.$["android:name"] === serviceName)) {
+      app.service.push({
         $: {
-          "android:name": receiverName,
-          "android:enabled": "true",
+          "android:name": serviceName,
+          "android:label": "Expense Tracking",
+          "android:permission": "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE",
           "android:exported": "true",
-          "android:permission": "android.permission.BROADCAST_SMS",
         },
         "intent-filter": [
           {
-            $: { "android:priority": "999" },
-            action: [{ $: { "android:name": "android.provider.Telephony.SMS_RECEIVED" } }],
+            action: [
+              { $: { "android:name": "android.service.notification.NotificationListenerService" } },
+            ],
           },
         ],
       })
     }
 
+    // ── Action receiver (approve / reject notification buttons) ───────────────
+    if (!app.receiver) app.receiver = []
+    const actionReceiverName = "com.splitease.app.SmsActionReceiver"
     if (!app.receiver.find((r) => r.$["android:name"] === actionReceiverName)) {
       app.receiver.push({
         $: {
@@ -61,7 +53,7 @@ function withSmsManifest(config) {
   })
 }
 
-function withSmsKotlinFiles(config) {
+function withNotificationListenerKotlinFiles(config) {
   return withDangerousMod(config, [
     "android",
     async (config) => {
@@ -72,7 +64,12 @@ function withSmsKotlinFiles(config) {
       fs.mkdirSync(packageDir, { recursive: true })
 
       const kotlinSrc = path.join(__dirname, "kotlin")
-      const files = ["SmsReceiver.kt", "SmsActionReceiver.kt", "TrackExpenseModule.kt", "TrackExpensePackage.kt"]
+      const files = [
+        "ExpenseNotificationListener.kt",
+        "SmsActionReceiver.kt",
+        "TrackExpenseModule.kt",
+        "TrackExpensePackage.kt",
+      ]
       for (const f of files) {
         fs.copyFileSync(path.join(kotlinSrc, f), path.join(packageDir, f))
       }
@@ -95,8 +92,8 @@ function withSmsKotlinFiles(config) {
   ])
 }
 
-module.exports = function withSmsReceiver(config) {
-  config = withSmsManifest(config)
-  config = withSmsKotlinFiles(config)
+module.exports = function withNotificationListener(config) {
+  config = withNotificationListenerManifest(config)
+  config = withNotificationListenerKotlinFiles(config)
   return config
 }

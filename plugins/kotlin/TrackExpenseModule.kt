@@ -1,6 +1,8 @@
 package com.splitease.app
 
 import android.content.Context
+import android.provider.Settings
+import android.text.TextUtils
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
@@ -47,5 +49,18 @@ class TrackExpenseModule(private val reactContext: ReactApplicationContext) :
     fun clearPendingSuggestionById(id: String, promise: Promise) {
         prefs().edit().remove("suggestion_$id").apply()
         promise.resolve(null)
+    }
+
+    @ReactMethod
+    fun isNotificationAccessGranted(promise: Promise) {
+        val packageName = reactContext.packageName
+        val flat = Settings.Secure.getString(
+            reactContext.contentResolver,
+            "enabled_notification_listeners"
+        ) ?: ""
+        // The setting is a colon-separated list of component names like
+        // "com.example.app/com.example.app.MyListener"
+        val granted = flat.split(":").any { it.startsWith("$packageName/") }
+        promise.resolve(granted)
     }
 }

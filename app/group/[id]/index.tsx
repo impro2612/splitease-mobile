@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, FlatList, Platform, PermissionsAndroid,
+  Modal, ActivityIndicator, FlatList, Platform,
   useWindowDimensions, Animated,
 } from "react-native"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -16,7 +16,7 @@ import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
+import { syncTrackConfigToNative, checkNotificationAccess, openNotificationAccessSettings } from "@/lib/nativeTrackExpense"
 import { useTheme } from "@/lib/theme"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
 import { getRate } from "@/lib/exchange"
@@ -322,33 +322,24 @@ export default function GroupDetail() {
 
   async function openTrackDatePicker() {
     if (Platform.OS !== "android") {
-      Toast.show({ type: "error", text1: "SMS tracking is Android only" })
+      Toast.show({ type: "error", text1: "Expense tracking is Android only" })
       return
     }
     try {
-      const already = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECEIVE_SMS)
-      if (!already) {
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
-          {
-            title: "SMS Permission Required",
-            message: "SplitEase needs to read incoming SMS to auto-detect expenses for this group.",
-            buttonPositive: "Allow",
-            buttonNegative: "Deny",
-          }
-        )
-        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-          Toast.show({
-            type: "error",
-            text1: "Permission denied",
-            text2: "Enable SMS permission in device settings to use expense tracking.",
-          })
-          return
-        }
+      const granted = await checkNotificationAccess()
+      if (!granted) {
+        Toast.show({
+          type: "info",
+          text1: "Notification access required",
+          text2: "Enable SplitEase in Settings → Notification Access, then try again.",
+          visibilityTime: 5000,
+          onPress: () => openNotificationAccessSettings(),
+        })
+        return
       }
       setShowTrackModal(true)
     } catch {
-      Toast.show({ type: "error", text1: "Could not request SMS permission" })
+      Toast.show({ type: "error", text1: "Could not check notification access" })
     }
   }
 

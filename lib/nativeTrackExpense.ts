@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from "react-native"
+import { NativeModules, Platform, Linking } from "react-native"
 
 const { TrackExpenseModule } = NativeModules
 
@@ -9,6 +9,7 @@ type NativeBridge = {
   clearPendingSuggestion(): Promise<void>
   getPendingSuggestionById(id: string): Promise<string | null>
   clearPendingSuggestionById(id: string): Promise<void>
+  isNotificationAccessGranted(): Promise<boolean>
 }
 
 const bridge: NativeBridge | null = Platform.OS === "android" ? TrackExpenseModule : null
@@ -42,4 +43,13 @@ export async function getNativePendingSuggestionById(id: string): Promise<object
 export async function clearNativePendingSuggestionById(id: string): Promise<void> {
   if (!bridge) return
   await bridge.clearPendingSuggestionById(id)
+}
+
+export async function checkNotificationAccess(): Promise<boolean> {
+  if (!bridge) return false
+  return bridge.isNotificationAccessGranted()
+}
+
+export async function openNotificationAccessSettings(): Promise<void> {
+  await Linking.openSettings()
 }
