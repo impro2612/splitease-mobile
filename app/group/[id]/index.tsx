@@ -1250,56 +1250,59 @@ export default function GroupDetail() {
                 </View>
               </View>
 
-              {/* Pie chart */}
-              {pieData.length > 0 && (
-                <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center" }}>
-                  <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Expense Distribution</Text>
-                  <AnimatedPieChart data={pieData} size={240} symbol={gc.symbol} />
-                  {/* Legend */}
-                  <View style={{ width: "100%", marginTop: 20, gap: 10 }}>
-                    {pieData.map((d, i) => (
-                      <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                        <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: d.color }} />
-                        <Text style={{ flex: 1, color: "#cbd5e1", fontSize: 13 }}>{d.name}</Text>
-                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{formatCurrency(d.amount, gc.symbol, gc.code)}</Text>
-                        <Text style={{ color: C.textMuted, fontSize: 12, width: 42, textAlign: "right" }}>
-                          {totalGroupExpense > 0 ? `${((d.amount / totalGroupExpense) * 100).toFixed(1)}%` : "0%"}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
+              {/* Charts — only render once all rates are loaded to avoid segAnims ref length mismatch */}
+              {!ratesLoaded ? (
+                <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 32, alignItems: "center" }}>
+                  <ActivityIndicator color="#6366f1" />
+                  <Text style={{ color: C.textSub, fontSize: 13, marginTop: 8 }}>Loading exchange rates…</Text>
                 </View>
+              ) : (
+                <>
+                  {/* Pie chart */}
+                  {pieData.length > 0 && (
+                    <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center" }}>
+                      <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Expense Distribution</Text>
+                      <AnimatedPieChart data={pieData} size={240} symbol={gc.symbol} />
+                      {/* Legend */}
+                      <View style={{ width: "100%", marginTop: 20, gap: 10 }}>
+                        {pieData.map((d, i) => (
+                          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                            <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: d.color }} />
+                            <Text style={{ flex: 1, color: C.textSub, fontSize: 13 }}>{d.name}</Text>
+                            <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{formatCurrency(d.amount, gc.symbol, gc.code)}</Text>
+                            <Text style={{ color: C.textMuted, fontSize: 12, width: 42, textAlign: "right" }}>
+                              {totalGroupExpense > 0 ? `${((d.amount / totalGroupExpense) * 100).toFixed(1)}%` : "0%"}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Who Paid Bar Chart */}
+                  {(() => {
+                    const paidMap: Record<string, number> = {}
+                    for (const m of members) paidMap[m.userId] = 0
+                    for (const e of expenses) {
+                      const expCur = e.currency ?? gc.code
+                      const rate = expCur === gc.code ? 1 : (fxRates[expCur] ?? 1)
+                      if (paidMap[e.paidById] !== undefined) paidMap[e.paidById] += e.amount * rate
+                    }
+                    const barData = members
+                      .map((m: any, i: number) => ({
+                        name: m.userId === user?.id ? "You" : (m.user?.name?.split(" ")[0] ?? "?"),
+                        amount: paidMap[m.userId] ?? 0,
+                        color: PIE_COLORS[i % PIE_COLORS.length],
+                        userId: m.userId,
+                      }))
+                      .filter(d => d.amount > 0)
+                      .sort((a, b) => b.amount - a.amount)
+
+                    if (barData.length === 0) return null
+                    return <BarChart data={barData} maxAmt={barData[0].amount} barHeight={140} symbol={gc.symbol} code={gc.code} />
+                  })()}
+                </>
               )}
-
-              {/* Who Paid Bar Chart */}
-              {(() => {
-                // Calculate how much each member actually paid — convert to default gc
-                const paidMap: Record<string, number> = {}
-                for (const m of members) paidMap[m.userId] = 0
-                for (const e of expenses) {
-                  const expCur = e.currency ?? gc.code
-                  const rate = expCur === gc.code ? 1 : (fxRates[expCur] ?? null)
-                  if (rate === null) continue // skip until rate is loaded
-                  if (paidMap[e.paidById] !== undefined) paidMap[e.paidById] += e.amount * rate
-                }
-                const barData = members
-                  .map((m: any, i: number) => ({
-                    name: m.userId === user?.id ? "You" : (m.user?.name?.split(" ")[0] ?? "?"),
-                    amount: paidMap[m.userId] ?? 0,
-                    color: PIE_COLORS[i % PIE_COLORS.length],
-                    userId: m.userId,
-                  }))
-                  .filter(d => d.amount > 0)
-                  .sort((a, b) => b.amount - a.amount)
-
-                if (barData.length === 0) return null
-                const maxAmt = barData[0].amount
-                const BAR_H = 140
-
-                return (
-                  <BarChart data={barData} maxAmt={maxAmt} barHeight={BAR_H} symbol={gc.symbol} code={gc.code} />
-                )
-              })()}
             </View>
           )
         })()}
