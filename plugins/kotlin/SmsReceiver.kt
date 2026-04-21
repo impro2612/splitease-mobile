@@ -42,7 +42,7 @@ class SmsReceiver : BroadcastReceiver() {
             val body = msg.messageBody ?: continue
             val sender = msg.originatingAddress ?: ""
 
-            val hash = sha256(body).take(16)
+            val hash = sha256("$sender|$body").take(16)
 
             // Dedup check
             val processedHashes = prefs.getStringSet("processedHashes", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
@@ -50,11 +50,13 @@ class SmsReceiver : BroadcastReceiver() {
 
             val result = parseSms(body, sender)
 
+            // Only mark processed after a successful parse so future parser
+            // improvements can still act on SMS that failed today
+            if (result == null) continue
+
             processedHashes.add(hash)
             val trimmedHashes = if (processedHashes.size > 500) processedHashes.toList().takeLast(500).toMutableSet() else processedHashes
             prefs.edit().putStringSet("processedHashes", trimmedHashes).apply()
-
-            if (result == null) continue
 
             val suggestion = JSONObject().apply {
                 put("id", hash)
