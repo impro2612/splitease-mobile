@@ -10,7 +10,7 @@ import { useAuthStore } from "@/store/auth"
 import { groupsApi, expensesApi } from "@/lib/api"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { formatDate } from "@/lib/utils"
-import { clearNativePendingSuggestion } from "@/lib/nativeTrackExpense"
+import { getNativePendingSuggestionById, clearNativePendingSuggestionById } from "@/lib/nativeTrackExpense"
 import Toast from "react-native-toast-message"
 
 export default function ConfirmExpense() {
@@ -42,17 +42,15 @@ export default function ConfirmExpense() {
     if (group && !currency) setCurrency(group.currency ?? "USD")
   }, [group])
 
-  // Load suggestion from native SharedPreferences
+  // Load suggestion by its unique ID — prevents loading a newer overwritten suggestion
   useEffect(() => {
-    import("@/lib/nativeTrackExpense").then(({ getNativePendingSuggestion }) => {
-      getNativePendingSuggestion().then((s: any) => {
-        if (!s) return
-        setDescription(s.merchant || "")
-        setAmount(String(s.amount || ""))
-        if (s.date) setDate(new Date(s.date))
-        // Use SMS-detected currency; fall back to group currency once group loads
-        if (s.currency) setCurrency(s.currency)
-      })
+    if (!suggestionId) return
+    getNativePendingSuggestionById(suggestionId).then((s: any) => {
+      if (!s) return
+      setDescription(s.merchant || "")
+      setAmount(String(s.amount || ""))
+      if (s.date) setDate(new Date(s.date))
+      if (s.currency) setCurrency(s.currency)
     })
   }, [suggestionId])
 
@@ -100,7 +98,7 @@ export default function ConfirmExpense() {
       })
     },
     onSuccess: async () => {
-      await clearNativePendingSuggestion()
+      await clearNativePendingSuggestionById(suggestionId)
       queryClient.invalidateQueries({ queryKey: ["group", groupId] })
       queryClient.invalidateQueries({ queryKey: ["balances", groupId] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
@@ -123,7 +121,7 @@ export default function ConfirmExpense() {
   }
 
   async function dismiss() {
-    await clearNativePendingSuggestion()
+    await clearNativePendingSuggestionById(suggestionId)
     router.back()
   }
 

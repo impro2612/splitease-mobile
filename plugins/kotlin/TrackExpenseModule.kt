@@ -36,4 +36,16 @@ class TrackExpenseModule(private val reactContext: ReactApplicationContext) :
         prefs().edit().remove("pendingSuggestion").apply()
         promise.resolve(null)
     }
+
+    @ReactMethod
+    fun getPendingSuggestionById(id: String, promise: Promise) {
+        val raw = prefs().getString("suggestion_$id", null)
+        promise.resolve(raw)
+    }
+
+    @ReactMethod
+    fun clearPendingSuggestionById(id: String, promise: Promise) {
+        prefs().edit().remove("suggestion_$id").apply()
+        promise.resolve(null)
+    }
 }

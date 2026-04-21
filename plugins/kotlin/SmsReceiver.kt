@@ -11,7 +11,9 @@ import android.provider.Telephony
 import androidx.core.app.NotificationCompat
 import org.json.JSONObject
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 class SmsReceiver : BroadcastReceiver() {
 
@@ -62,7 +64,7 @@ class SmsReceiver : BroadcastReceiver() {
                 put("date", result.date)
                 put("rawSms", body.take(300))
             }
-            prefs.edit().putString("pendingSuggestion", suggestion.toString()).apply()
+            prefs.edit().putString("suggestion_$hash", suggestion.toString()).apply()
 
             showNotification(context, config, result, hash)
             break // one suggestion at a time
@@ -79,9 +81,8 @@ class SmsReceiver : BroadcastReceiver() {
         }
 
         val groupName = config.optString("groupName", "your group")
-        val amountStr = "${result.currency} ${result.amount}"
         val title = "Expense detected"
-        val body = "₹${result.amount} at ${result.merchant} · $groupName"
+        val body = "${formatAmount(result.amount, result.currency)} at ${result.merchant} · $groupName"
 
         // Approve action — opens app with deep link
         val approveIntent = Intent(context, SmsActionReceiver::class.java).apply {
@@ -125,6 +126,8 @@ class SmsReceiver : BroadcastReceiver() {
     data class ParseResult(val amount: Double, val currency: String, val merchant: String, val date: String)
 
     private fun parseSms(body: String, sender: String): ParseResult? {
+        val normalizedBody = body.replace("\n", " ").replace(Regex("\\s+"), " ").trim()
+
         // Exclusion check
         val excludePatterns = listOf(
             Regex("\\botp\\b", RegexOption.IGNORE_CASE),
@@ -132,11 +135,18 @@ class SmsReceiver : BroadcastReceiver() {
             Regex("\\bcredit(ed)?\\b", RegexOption.IGNORE_CASE),
             Regex("\\bcash.?back\\b", RegexOption.IGNORE_CASE),
             Regex("\\brefund\\b", RegexOption.IGNORE_CASE),
+            Regex("\\breversed?\\b", RegexOption.IGNORE_CASE),
+            Regex("\\breversal\\b", RegexOption.IGNORE_CASE),
             Regex("\\bpromo\\b", RegexOption.IGNORE_CASE),
             Regex("\\breceived\\b", RegexOption.IGNORE_CASE),
             Regex("\\bdeposit(ed)?\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bsalary\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bstatement\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bminimum due\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bdeclined\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bfailed\\b", RegexOption.IGNORE_CASE),
         )
-        if (excludePatterns.any { it.containsMatchIn(body) }) return null
+        if (excludePatterns.any { it.containsMatchIn(normalizedBody) }) return null
 
         // Debit keyword check
         val debitPatterns = listOf(
@@ -144,75 +154,171 @@ class SmsReceiver : BroadcastReceiver() {
             Regex("\\bpaid\\b", RegexOption.IGNORE_CASE),
             Regex("\\bpurchased?\\b", RegexOption.IGNORE_CASE),
             Regex("\\bspent\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bsent\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bused\\b", RegexOption.IGNORE_CASE),
+            Regex("\\btransfer(red)?\\b", RegexOption.IGNORE_CASE),
             Regex("\\btransaction\\b", RegexOption.IGNORE_CASE),
             Regex("\\bwithdrawn?\\b", RegexOption.IGNORE_CASE),
             Regex("\\bcharged\\b", RegexOption.IGNORE_CASE),
             Regex("\\bpayment\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bupi\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bpos\\b", RegexOption.IGNORE_CASE),
             Regex("\\babbuchung\\b", RegexOption.IGNORE_CASE),
+            Regex("\\babgebucht\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bkartenzahlung\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bumsatz\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bzahlung\\b", RegexOption.IGNORE_CASE),
             Regex("\\bdébité[e]?\\b", RegexOption.IGNORE_CASE),
             Regex("\\bdébito\\b", RegexOption.IGNORE_CASE),
             Regex("\\baddebito\\b", RegexOption.IGNORE_CASE),
         )
-        if (!debitPatterns.any { it.containsMatchIn(body) }) return null
+        if (!debitPatterns.any { it.containsMatchIn(normalizedBody) }) return null
 
         var confidence = 25 // debit keyword found
 
         // Amount regex
         val amountRegex = Regex(
-            """(?:(?:RS\.?|INR|USD|\$|EUR|€|GBP|£|AED|SGD|AUD|CAD|JPY|¥|CHF)\s*[\d,]+(?:\.\d{1,2})?)|(?:[\d,]+(?:\.\d{1,2})?\s*(?:RS\.?|INR|USD|EUR|GBP|AED|SGD|AUD|CAD|JPY|CHF))""",
+            """(?:(?:₹|RS\.?|INR|USD|\$|EUR|€|GBP|£|AED|SGD|AUD|CAD|JPY|¥|CHF|DH|DHS)\s*[\d,]+(?:\.\d{1,2})?)|(?:[\d,]+(?:\.\d{1,2})?\s*(?:₹|RS\.?|INR|USD|EUR|GBP|AED|SGD|AUD|CAD|JPY|CHF|DH|DHS))""",
             RegexOption.IGNORE_CASE
         )
-        val amountMatch = amountRegex.find(body) ?: return null
+        val amountMatch = amountRegex.find(normalizedBody) ?: return null
         confidence += 20
 
         // Sender scoring
         if (Regex("^[A-Z]{6}\$").matches(sender)) confidence += 40
         else if (Regex("^[A-Za-z-]+\$").matches(sender)) confidence += 20
 
-        if (Regex("\\baccount\\b", RegexOption.IGNORE_CASE).containsMatchIn(body)) confidence += 5
-        if (Regex("\\bA/c\\b", RegexOption.IGNORE_CASE).containsMatchIn(body)) confidence += 5
-        if (Regex("\\bbalance\\b", RegexOption.IGNORE_CASE).containsMatchIn(body)) confidence += 5
+        if (Regex("\\baccount\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
+        if (Regex("\\bA/c\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
+        if (Regex("\\bbalance\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
+        if (Regex("\\bcard\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
+        if (Regex("\\bref\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
+        if (Regex("\\bon\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
 
-        if (confidence < 80) return null
+        if (confidence < 65) return null
 
         val amountStr = amountMatch.value
         val amount = amountStr.replace(Regex("[^\\d.]"), "").toDoubleOrNull() ?: return null
         if (amount <= 0) return null
 
         val currency = when {
-            amountStr.contains("INR", true) || amountStr.contains("RS", true) -> "INR"
+            amountStr.contains("₹") || amountStr.contains("INR", true) || amountStr.contains("RS", true) -> "INR"
             amountStr.contains("EUR", true) || amountStr.contains("€") -> "EUR"
             amountStr.contains("GBP", true) || amountStr.contains("£") -> "GBP"
             amountStr.contains("AED", true) -> "AED"
             amountStr.contains("SGD", true) -> "SGD"
+            amountStr.contains("AUD", true) -> "AUD"
+            amountStr.contains("CAD", true) -> "CAD"
+            amountStr.contains("JPY", true) || amountStr.contains("¥") -> "JPY"
+            amountStr.contains("CHF", true) -> "CHF"
+            amountStr.contains("DH", true) || amountStr.contains("DHS", true) -> "AED"
+            amountStr.contains("$") || amountStr.contains("USD", true) -> "USD"
             else -> "USD"
         }
 
-        val merchantRegex = Regex("""(?:\bat\s+([A-Z][A-Za-z0-9\s&'.,-]{1,40}))|(?:\bto\s+([A-Z][A-Za-z0-9\s&'.,-]{1,40}))""")
-        val merchantMatch = merchantRegex.find(body)
-        val merchant = (merchantMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() } ?: "Unknown").trim().take(40)
+        val merchant = extractMerchant(normalizedBody)
+        if (merchant == "Unknown" && confidence < 80) return null
 
-        val date = parseDate(body)
+        val date = parseDate(normalizedBody)
 
         return ParseResult(amount, currency, merchant, date)
     }
 
     private fun parseDate(body: String): String {
+        val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val patterns = listOf(
             Regex("""(\d{4}-\d{2}-\d{2})"""),
+            Regex("""(\d{2}[/-]\d{2}[/-]\d{2})"""),
             Regex("""(\d{2}[/-]\d{2}[/-]\d{4})"""),
+            Regex("""(\d{2}-[A-Za-z]{3}-\d{2})""", RegexOption.IGNORE_CASE),
+            Regex("""(\d{2}-[A-Za-z]{3}-\d{4})""", RegexOption.IGNORE_CASE),
+            Regex("""(\d{2}\.[0-9]{2}\.[0-9]{2,4})"""),
             Regex("""(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})""", RegexOption.IGNORE_CASE),
         )
-        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
         for (p in patterns) {
             val m = p.find(body) ?: continue
             try {
-                val d = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(m.groupValues[1])
-                    ?: java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).parse(m.groupValues[1])
-                    ?: continue
-                return sdf.format(d)
+                val value = m.groupValues[1]
+                val formats = listOf(
+                    "yyyy-MM-dd",
+                    "dd/MM/yyyy",
+                    "dd/MM/yy",
+                    "dd-MM-yyyy",
+                    "dd-MM-yy",
+                    "dd-MMM-yyyy",
+                    "dd-MMM-yy",
+                    "dd.MM.yyyy",
+                    "dd.MM.yy",
+                    "d MMM yyyy"
+                )
+                for (fmt in formats) {
+                    try {
+                        val parser = SimpleDateFormat(fmt, Locale.US).apply { isLenient = false }
+                        val d = parser.parse(value) ?: continue
+                        return iso.format(d)
+                    } catch (_: Exception) {
+                        // try next format
+                    }
+                }
             } catch (e: Exception) { /* try next */ }
         }
-        return sdf.format(Date())
+        return iso.format(Date())
+    }
+
+    private fun extractMerchant(body: String): String {
+        val stopWords = listOf(" on ", " ref ", " avl ", " avail ", " balance", " not you", " call ", " sms ", " block ", " card ", " a/c ", " acct ")
+
+        fun cleanMerchant(raw: String): String {
+            var merchant = raw.trim()
+            for (stop in stopWords) {
+                val idx = merchant.lowercase(Locale.US).indexOf(stop)
+                if (idx > 0) merchant = merchant.substring(0, idx).trim()
+            }
+            merchant = merchant.replace(Regex("""^[\-\s:]+|[\-\s:.,]+$"""), "").trim()
+            return if (merchant.isBlank()) "Unknown" else merchant.take(40)
+        }
+
+        val upiMatch = Regex("""\bUPI-[A-Za-z0-9]+-([A-Za-z][A-Za-z0-9\s&'.,-]{1,40})""", RegexOption.IGNORE_CASE).find(body)
+        if (upiMatch != null) {
+            return cleanMerchant(upiMatch.groupValues[1])
+        }
+
+        val patterns = listOf(
+            Regex("""\bto\s+([A-Za-z][A-Za-z0-9\s&'.,-]{1,60})""", RegexOption.IGNORE_CASE),
+            Regex("""\bat\s+([A-Za-z][A-Za-z0-9\s&'.,-]{1,60})""", RegexOption.IGNORE_CASE),
+            Regex("""\bbei\s+([A-Za-z][A-Za-z0-9\s&'.,-]{1,60})""", RegexOption.IGNORE_CASE),
+            Regex("""\bfor\s+([A-Za-z][A-Za-z0-9\s&'.,-]{1,60})""", RegexOption.IGNORE_CASE),
+        )
+
+        for (pattern in patterns) {
+            val match = pattern.find(body) ?: continue
+            val merchant = cleanMerchant(match.groupValues[1])
+            if (merchant != "Unknown" && !merchant.startsWith("INR ", true) && !merchant.startsWith("RS", true)) {
+                return merchant
+            }
+        }
+
+        return "Unknown"
+    }
+
+    private fun formatAmount(amount: Double, currency: String): String {
+        val symbol = when (currency.uppercase(Locale.US)) {
+            "INR" -> "₹"
+            "USD" -> "$"
+            "EUR" -> "€"
+            "GBP" -> "£"
+            "AED" -> "AED "
+            "SGD" -> "SGD "
+            "AUD" -> "AUD "
+            "CAD" -> "CAD "
+            "JPY" -> "¥"
+            "CHF" -> "CHF "
+            else -> "$"
+        }
+        return if (symbol.endsWith(" ")) {
+            symbol + String.format(Locale.US, "%.2f", amount)
+        } else {
+            symbol + String.format(Locale.US, "%.2f", amount)
+        }
     }
 }

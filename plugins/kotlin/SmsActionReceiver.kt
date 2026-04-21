@@ -26,7 +26,7 @@ class SmsActionReceiver : BroadcastReceiver() {
             }
             "com.splitease.REJECT_EXPENSE" -> {
                 val prefs = context.getSharedPreferences("TrackExpense", Context.MODE_PRIVATE)
-                prefs.edit().remove("pendingSuggestion").apply()
+                prefs.edit().remove("suggestion_$suggestionId").apply()
             }
         }
     }

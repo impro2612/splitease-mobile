@@ -7,6 +7,8 @@ type NativeBridge = {
   clearConfig(): Promise<void>
   getPendingSuggestion(): Promise<string | null>
   clearPendingSuggestion(): Promise<void>
+  getPendingSuggestionById(id: string): Promise<string | null>
+  clearPendingSuggestionById(id: string): Promise<void>
 }
 
 const bridge: NativeBridge | null = Platform.OS === "android" ? TrackExpenseModule : null
@@ -29,4 +31,15 @@ export async function getNativePendingSuggestion(): Promise<object | null> {
 export async function clearNativePendingSuggestion(): Promise<void> {
   if (!bridge) return
   await bridge.clearPendingSuggestion()
+}
+
+export async function getNativePendingSuggestionById(id: string): Promise<object | null> {
+  if (!bridge) return null
+  const raw = await bridge.getPendingSuggestionById(id)
+  return raw ? JSON.parse(raw) : null
+}
+
+export async function clearNativePendingSuggestionById(id: string): Promise<void> {
+  if (!bridge) return
+  await bridge.clearPendingSuggestionById(id)
 }
