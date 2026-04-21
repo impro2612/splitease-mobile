@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 
-class SmsActionReceiver : BroadcastReceiver() {
+class ExpenseActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val suggestionId = intent.getStringExtra("suggestionId") ?: return
@@ -16,7 +16,6 @@ class SmsActionReceiver : BroadcastReceiver() {
         when (intent.action) {
             "com.splitease.APPROVE_EXPENSE" -> {
                 val groupId = intent.getStringExtra("groupId") ?: return
-                // Open confirm-expense screen via deep link
                 val deepLink = Uri.parse("splitease://confirm-expense?suggestionId=$suggestionId&groupId=$groupId")
                 val launchIntent = Intent(Intent.ACTION_VIEW, deepLink).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)

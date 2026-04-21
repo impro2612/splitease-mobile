@@ -50,7 +50,7 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "./plugins/sms-receiver"
+      "./plugins/notification-listener"
     ],
     "experiments": {
       "typedRoutes": true

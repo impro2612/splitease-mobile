@@ -100,7 +100,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
         val groupName = config.optString("groupName", "your group")
         val body = "${formatAmount(result.amount, result.currency)} at ${result.merchant} · $groupName"
 
-        val approveIntent = Intent(this, SmsActionReceiver::class.java).apply {
+        val approveIntent = Intent(this, ExpenseActionReceiver::class.java).apply {
             action = "com.splitease.APPROVE_EXPENSE"
             putExtra("suggestionId", suggestionId)
             putExtra("groupId", config.optString("groupId"))
@@ -110,7 +110,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val rejectIntent = Intent(this, SmsActionReceiver::class.java).apply {
+        val rejectIntent = Intent(this, ExpenseActionReceiver::class.java).apply {
             action = "com.splitease.REJECT_EXPENSE"
             putExtra("suggestionId", suggestionId)
         }

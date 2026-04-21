@@ -30,7 +30,7 @@ function withNotificationListenerManifest(config) {
 
     // ── Action receiver (approve / reject notification buttons) ───────────────
     if (!app.receiver) app.receiver = []
-    const actionReceiverName = "com.splitease.app.SmsActionReceiver"
+    const actionReceiverName = "com.splitease.app.ExpenseActionReceiver"
     if (!app.receiver.find((r) => r.$["android:name"] === actionReceiverName)) {
       app.receiver.push({
         $: {
@@ -66,7 +66,7 @@ function withNotificationListenerKotlinFiles(config) {
       const kotlinSrc = path.join(__dirname, "kotlin")
       const files = [
         "ExpenseNotificationListener.kt",
-        "SmsActionReceiver.kt",
+        "ExpenseActionReceiver.kt",
         "TrackExpenseModule.kt",
         "TrackExpensePackage.kt",
       ]
