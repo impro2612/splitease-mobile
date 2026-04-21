@@ -50,6 +50,8 @@ export const authApi = {
 
   resetPassword: (data: { email: string; token: string; newPassword: string }) =>
     api.post("/api/auth/reset-password", data),
+
+  deleteAccount: () => api.delete("/api/auth/me"),
 }
 
 // Groups

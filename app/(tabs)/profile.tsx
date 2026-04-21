@@ -12,7 +12,7 @@ import * as ImagePicker from "expo-image-picker"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Constants from "expo-constants"
 import { useAuthStore, type ThemePref } from "@/store/auth"
-import { api, pushApi } from "@/lib/api"
+import { api, authApi, pushApi } from "@/lib/api"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { CURRENCIES } from "@/lib/currencies"
@@ -97,6 +97,18 @@ export default function Profile() {
 
   // Sign out confirm
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+
+  // Delete account confirm
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => authApi.deleteAccount(),
+    onSuccess: async () => {
+      setShowDeleteConfirm(false)
+      queryClient.clear()
+      await signOut()
+    },
+    onError: () => Toast.show({ type: "error", text1: "Failed to delete account" }),
+  })
 
   // Avatar upload
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -301,14 +313,21 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Sign Out */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 40 }}>
+        {/* Sign Out + Delete Account */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 40, gap: 10 }}>
           <TouchableOpacity
             onPress={() => setShowSignOutConfirm(true)}
             style={{ backgroundColor: "rgba(244,63,94,0.12)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(244,63,94,0.2)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16 }}
           >
             <Ionicons name="log-out-outline" size={18} color="#f87171" />
             <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 15 }}>Sign Out</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowDeleteConfirm(true)}
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12 }}
+          >
+            <Ionicons name="trash-outline" size={14} color={C.textMuted} />
+            <Text style={{ color: C.textMuted, fontSize: 13 }}>Delete Account</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -503,6 +522,39 @@ export default function Profile() {
               </TouchableOpacity>
               <TouchableOpacity onPress={doSignOut} style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Delete Account Confirm ───────────────────────────────────────────────── */}
+      <Modal visible={showDeleteConfirm} transparent animationType="fade" onRequestClose={() => setShowDeleteConfirm(false)}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name="trash" size={26} color="#f87171" />
+            </View>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Delete Account</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>
+              This will permanently delete your account, all your expenses, groups you created, and all associated data. This cannot be undone.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setShowDeleteConfirm(false)}
+                disabled={deleteAccountMutation.isPending}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => deleteAccountMutation.mutate()}
+                disabled={deleteAccountMutation.isPending}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
+              >
+                {deleteAccountMutation.isPending
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Delete</Text>}
               </TouchableOpacity>
             </View>
           </View>
