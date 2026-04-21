@@ -67,7 +67,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
         val processedHashes = prefs.getStringSet("processedHashes", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
         if (processedHashes.contains(hash)) return
 
-        val result = parseExpense(rawBody, sender) ?: return
+        val result = parseExpense(rawBody, sbn.packageName) ?: return
 
         processedHashes.add(hash)
         val trimmed = if (processedHashes.size > 500) processedHashes.toList().takeLast(500).toMutableSet() else processedHashes
@@ -136,7 +136,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
 
     data class ParseResult(val amount: Double, val currency: String, val merchant: String, val date: String)
 
-    private fun parseExpense(body: String, sender: String): ParseResult? {
+    private fun parseExpense(body: String, sourcePackage: String): ParseResult? {
         val normalizedBody = body.replace("\n", " ").replace(Regex("\\s+"), " ").trim()
 
         // Exclusion patterns — skip OTPs, credits, reversals, salary, etc.
@@ -192,6 +192,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
         var confidence = 25 // baseline: debit keyword present
 
         // Amount — covers all major currency symbols and codes
+        // (scored before package check so we can bail early on no-amount)
         val amountRegex = Regex(
             """(?:(?:₹|RS\.?|INR|USD|\$|EUR|€|GBP|£|AED|SGD|AUD|CAD|JPY|¥|CHF|DH|DHS)\s*[\d,]+(?:\.\d{1,2})?)|(?:[\d,]+(?:\.\d{1,2})?\s*(?:₹|RS\.?|INR|USD|EUR|GBP|AED|SGD|AUD|CAD|JPY|CHF|DH|DHS))""",
             RegexOption.IGNORE_CASE
@@ -199,10 +200,15 @@ class ExpenseNotificationListener : NotificationListenerService() {
         val amountMatch = amountRegex.find(normalizedBody) ?: return null
         confidence += 20
 
-        // Sender scoring — financial apps tend to have alphabetic package prefixes
-        // or notification senders (e.g. "HDFCBK", "iMobile")
-        if (Regex("^[A-Z]{6}\$").matches(sender)) confidence += 40
-        else if (Regex("^[A-Za-z-]+\$").matches(sender)) confidence += 20
+        // Package name scoring — replaces the SMS sender-ID heuristic.
+        // Financial apps reliably contain these terms in their package name.
+        val pkgLower = sourcePackage.lowercase(Locale.US)
+        val financialTerms = listOf(
+            "bank", "pay", "wallet", "upi", "money", "finance", "cash",
+            "credit", "debit", "card", "invest", "trade", "loan", "insurance",
+        )
+        if (financialTerms.any { pkgLower.contains(it) }) confidence += 35
+        else confidence += 10 // any app that posts a debit-keyword + amount notification
 
         if (Regex("\\baccount\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
         if (Regex("\\bA/c\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalizedBody)) confidence += 5
