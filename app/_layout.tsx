@@ -196,7 +196,7 @@ export default function RootLayout() {
         const suggestionId = params.get("suggestionId")
         const groupId = params.get("groupId")
         if (suggestionId && groupId) {
-          router.push(`/confirm-expense?suggestionId=${suggestionId}&groupId=${groupId}`)
+          router.push(`/confirm-expense?suggestionId=${suggestionId}&groupId=${groupId}` as any)
         }
       }
     })

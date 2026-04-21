@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, Switch, Modal, FlatList, Image,
@@ -409,7 +409,7 @@ export default function Profile() {
 
             {(["dark", "light", "system"] as ThemePref[]).map((opt) => {
               const labels: Record<ThemePref, string> = { dark: "Dark", light: "Light", system: "System default" }
-              const icons: Record<ThemePref, keyof typeof import("@expo/vector-icons/build/Ionicons").glyphMap> = { dark: "moon", light: "sunny", system: "phone-portrait" }
+              const icons: Record<ThemePref, React.ComponentProps<typeof Ionicons>["name"]> = { dark: "moon", light: "sunny", system: "phone-portrait" }
               const isSelected = theme === opt
               return (
                 <TouchableOpacity
