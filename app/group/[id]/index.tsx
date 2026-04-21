@@ -1175,12 +1175,15 @@ export default function GroupDetail() {
           }, 0)
           const ratesLoaded = !isMultiCurrency || currencyOrder.slice(1).every(c => !!fxRates[c])
 
-          // Per-member share (all currencies combined in gc for pie — gc-only expenses)
+          // Per-member share — convert all currencies to default gc before summing
           const memberShareMap: Record<string, number> = {}
           for (const m of members) memberShareMap[m.userId] = 0
           for (const e of expenses) {
+            const expCur = e.currency ?? gc.code
+            const rate = expCur === gc.code ? 1 : (fxRates[expCur] ?? null)
+            if (rate === null) continue // skip until rate is loaded
             for (const s of (e.splits ?? [])) {
-              if (memberShareMap[s.userId] !== undefined) memberShareMap[s.userId] += s.amount
+              if (memberShareMap[s.userId] !== undefined) memberShareMap[s.userId] += s.amount * rate
             }
           }
           const pieData = members
@@ -1266,11 +1269,14 @@ export default function GroupDetail() {
 
               {/* Who Paid Bar Chart */}
               {(() => {
-                // Calculate how much each member actually paid (paidById)
+                // Calculate how much each member actually paid — convert to default gc
                 const paidMap: Record<string, number> = {}
                 for (const m of members) paidMap[m.userId] = 0
                 for (const e of expenses) {
-                  if (paidMap[e.paidById] !== undefined) paidMap[e.paidById] += e.amount
+                  const expCur = e.currency ?? gc.code
+                  const rate = expCur === gc.code ? 1 : (fxRates[expCur] ?? null)
+                  if (rate === null) continue // skip until rate is loaded
+                  if (paidMap[e.paidById] !== undefined) paidMap[e.paidById] += e.amount * rate
                 }
                 const barData = members
                   .map((m: any, i: number) => ({
