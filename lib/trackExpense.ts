@@ -18,8 +18,6 @@ export type PendingSuggestion = {
 }
 
 const TRACK_KEY = "trackExpense"
-const HASHES_KEY = "processedHashes"
-const SUGGESTION_KEY = "pendingSuggestion"
 
 export async function getTrackConfig(): Promise<TrackConfig | null> {
   const raw = await AsyncStorage.getItem(TRACK_KEY)
@@ -38,40 +36,4 @@ export async function setTrackConfig(cfg: TrackConfig): Promise<void> {
 
 export async function clearTrackConfig(): Promise<void> {
   await AsyncStorage.removeItem(TRACK_KEY)
-}
-
-export async function isTrackingActive(): Promise<boolean> {
-  const cfg = await getTrackConfig()
-  return cfg !== null
-}
-
-export async function getProcessedHashes(): Promise<Set<string>> {
-  const raw = await AsyncStorage.getItem(HASHES_KEY)
-  return raw ? new Set(JSON.parse(raw)) : new Set()
-}
-
-export async function addProcessedHash(hash: string): Promise<void> {
-  const hashes = await getProcessedHashes()
-  hashes.add(hash)
-  // keep at most 500 recent hashes to avoid unbounded growth
-  const arr = Array.from(hashes).slice(-500)
-  await AsyncStorage.setItem(HASHES_KEY, JSON.stringify(arr))
-}
-
-export async function hasProcessedHash(hash: string): Promise<boolean> {
-  const hashes = await getProcessedHashes()
-  return hashes.has(hash)
-}
-
-export async function getPendingSuggestion(): Promise<PendingSuggestion | null> {
-  const raw = await AsyncStorage.getItem(SUGGESTION_KEY)
-  return raw ? JSON.parse(raw) : null
-}
-
-export async function setPendingSuggestion(s: PendingSuggestion): Promise<void> {
-  await AsyncStorage.setItem(SUGGESTION_KEY, JSON.stringify(s))
-}
-
-export async function clearPendingSuggestion(): Promise<void> {
-  await AsyncStorage.removeItem(SUGGESTION_KEY)
 }

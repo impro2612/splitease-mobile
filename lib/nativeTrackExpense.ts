@@ -5,8 +5,6 @@ const { TrackExpenseModule } = NativeModules
 type NativeBridge = {
   setConfig(json: string): Promise<void>
   clearConfig(): Promise<void>
-  getPendingSuggestion(): Promise<string | null>
-  clearPendingSuggestion(): Promise<void>
   getPendingSuggestionById(id: string): Promise<string | null>
   clearPendingSuggestionById(id: string): Promise<void>
   isNotificationAccessGranted(): Promise<boolean>
@@ -21,17 +19,6 @@ export async function syncTrackConfigToNative(config: object | null): Promise<vo
   } else {
     await bridge.clearConfig()
   }
-}
-
-export async function getNativePendingSuggestion(): Promise<object | null> {
-  if (!bridge) return null
-  const raw = await bridge.getPendingSuggestion()
-  return raw ? JSON.parse(raw) : null
-}
-
-export async function clearNativePendingSuggestion(): Promise<void> {
-  if (!bridge) return
-  await bridge.clearPendingSuggestion()
 }
 
 export async function getNativePendingSuggestionById(id: string): Promise<object | null> {
