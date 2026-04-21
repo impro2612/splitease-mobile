@@ -420,15 +420,15 @@ export default function GroupDetail() {
     enabled: !!id,
   })
 
-  // Keep a stable ref to expenses so the FX rate effect doesn't re-run on every expense refetch
-  const expensesRef = useRef<any[]>(expenses)
-  expensesRef.current = expenses
-
   // Fetch FX rates for non-default currencies when balances or analytics tab is open
+  // NOTE: expensesRef is defined after `expenses` is declared below (line ~680)
+  const fxRateEffect_tab = tab
+  const fxRateEffect_balances = balances
+  const fxRateEffect_groupCurrency = group?.currency
   useEffect(() => {
-    if (tab !== "balances" && tab !== "analytics") return
-    const defaultCode = group?.currency ?? "USD"
-    const fromBalances = (balances as any[]).map((g: any) => g.currency as string).filter(Boolean)
+    if (fxRateEffect_tab !== "balances" && fxRateEffect_tab !== "analytics") return
+    const defaultCode = fxRateEffect_groupCurrency ?? "USD"
+    const fromBalances = (fxRateEffect_balances as any[]).map((g: any) => g.currency as string).filter(Boolean)
     const fromExpenses = expensesRef.current.map((e: any) => e.currency ?? defaultCode).filter(Boolean)
     const nonDefault = [...new Set([...fromBalances, ...fromExpenses])]
       .filter((c) => c !== defaultCode && !fxRates[c])
@@ -443,7 +443,8 @@ export default function GroupDetail() {
         return next
       })
     })
-  }, [tab, balances, group?.currency])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fxRateEffect_tab, fxRateEffect_balances, fxRateEffect_groupCurrency])
 
   const addExpenseMutation = useMutation({
     mutationFn: () => {
@@ -679,6 +680,10 @@ export default function GroupDetail() {
 
   const expenses: any[] = group?.expenses ?? []
   const members: any[] = group?.members ?? []
+
+  // Ref used by the FX rate useEffect above — must be declared after `expenses`
+  const expensesRef = useRef<any[]>(expenses)
+  expensesRef.current = expenses
 
   // Is the current user an admin of this group?
   const isAdmin = members.some((m: any) => m.userId === user?.id && m.role === "ADMIN")
