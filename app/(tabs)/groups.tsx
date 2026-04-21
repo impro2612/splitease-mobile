@@ -186,7 +186,7 @@ export default function Groups() {
                       </View>
                     </View>
                     <Text style={{ color: balance > 0 ? "#4ade80" : balance < 0 ? "#f87171" : C.textMuted, fontWeight: "700", fontSize: 14 }}>
-                      {balance > 0 ? `+${formatCurrency(balance, gc.symbol, gc.code)}` : balance < 0 ? formatCurrency(balance, gc.symbol, gc.code) : "Settled"}
+                      {balance > 0 ? "+" : balance < 0 ? "-" : ""}{balance !== 0 ? formatCurrency(Math.abs(balance), gc.symbol, gc.code) : "Settled"}
                     </Text>
                   </View>
 

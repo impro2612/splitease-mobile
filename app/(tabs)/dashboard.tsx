@@ -157,7 +157,7 @@ export default function Dashboard() {
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                       <Text style={{ color: myNet >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                        {myNet >= 0 ? "+" : ""}{formatCurrency(myNet, expCurr.symbol, expCurr.code)}
+                        {myNet >= 0 ? "+" : "-"}{formatCurrency(Math.abs(myNet), expCurr.symbol, expCurr.code)}
                       </Text>
                       <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(expense.amount, expCurr.symbol, expCurr.code)}</Text>
                     </View>

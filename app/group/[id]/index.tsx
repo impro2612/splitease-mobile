@@ -420,12 +420,16 @@ export default function GroupDetail() {
     enabled: !!id,
   })
 
+  // Keep a stable ref to expenses so the FX rate effect doesn't re-run on every expense refetch
+  const expensesRef = useRef<any[]>(expenses)
+  expensesRef.current = expenses
+
   // Fetch FX rates for non-default currencies when balances or analytics tab is open
   useEffect(() => {
     if (tab !== "balances" && tab !== "analytics") return
     const defaultCode = group?.currency ?? "USD"
     const fromBalances = (balances as any[]).map((g: any) => g.currency as string).filter(Boolean)
-    const fromExpenses = (expenses as any[]).map((e: any) => e.currency ?? defaultCode).filter(Boolean)
+    const fromExpenses = expensesRef.current.map((e: any) => e.currency ?? defaultCode).filter(Boolean)
     const nonDefault = [...new Set([...fromBalances, ...fromExpenses])]
       .filter((c) => c !== defaultCode && !fxRates[c])
     if (nonDefault.length === 0) return
@@ -439,7 +443,7 @@ export default function GroupDetail() {
         return next
       })
     })
-  }, [tab, balances, expenses, group?.currency])
+  }, [tab, balances, group?.currency])
 
   const addExpenseMutation = useMutation({
     mutationFn: () => {
