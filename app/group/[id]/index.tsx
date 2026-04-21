@@ -274,7 +274,7 @@ export default function GroupDetail() {
 
   // Settle modal
   const [showSettle, setShowSettle] = useState(false)
-  const [settleTarget, setSettleTarget] = useState<{ userId: string; name: string; amount: number } | null>(null)
+  const [settleTarget, setSettleTarget] = useState<{ userId: string; name: string; amount: number; currency?: string } | null>(null)
   const [settleNote, setSettleNote] = useState("")
 
   // Balances tab — collapse/expand & inline settle
@@ -583,6 +583,7 @@ export default function GroupDetail() {
       toUserId: settleTarget!.userId,
       amount: settleTarget!.amount,
       note: settleNote.trim() || undefined,
+      currency: settleTarget!.currency,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
@@ -1037,7 +1038,7 @@ export default function GroupDetail() {
                                             const amt = parseFloat(inlineSettleAmount)
                                             if (!amt || amt <= 0) return
                                             const capped = Math.min(amt, d.amount)
-                                            balancesApi.settle(id, { toUserId: d.otherId, amount: capped })
+                                            balancesApi.settle(id, { toUserId: d.otherId, amount: capped, currency })
                                               .then(() => {
                                                 queryClient.invalidateQueries({ queryKey: ["group", id] })
                                                 queryClient.invalidateQueries({ queryKey: ["balances", id] })

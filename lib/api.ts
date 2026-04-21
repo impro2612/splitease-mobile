@@ -90,7 +90,7 @@ export const expensesApi = {
 // Balances & Settlements
 export const balancesApi = {
   get: (groupId: string) => api.get(`/api/groups/${groupId}/balances`),
-  settle: (groupId: string, data: { toUserId: string; amount: number; note?: string }) =>
+  settle: (groupId: string, data: { toUserId: string; amount: number; note?: string; currency?: string }) =>
     api.post(`/api/groups/${groupId}/settle`, data),
 }
 
