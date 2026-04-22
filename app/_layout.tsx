@@ -1,5 +1,5 @@
 import "../global.css"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Platform, View, Text, useColorScheme } from "react-native"
 import NetInfo from "@react-native-community/netinfo"
 import { Stack, router } from "expo-router"
@@ -191,15 +191,23 @@ export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   const scheme = useColorScheme()
   const [isOnline, setIsOnline] = useState(true)
+  const prevOnlineRef = useRef<boolean | null>(null)
 
   useEffect(() => {
-    // Fetch current state immediately, then subscribe to changes
     NetInfo.fetch().then((state) => setIsOnline(!!state.isConnected && !!state.isInternetReachable))
     const unsubscribe = NetInfo.addEventListener((state) => {
       setIsOnline(!!state.isConnected && !!state.isInternetReachable)
     })
     return () => unsubscribe()
   }, [])
+
+  // Refetch all active queries the moment connectivity is restored
+  useEffect(() => {
+    if (prevOnlineRef.current === false && isOnline) {
+      queryClient.refetchQueries({ type: "active" })
+    }
+    prevOnlineRef.current = isOnline
+  }, [isOnline])
 
   useEffect(() => {
     loadSession()
