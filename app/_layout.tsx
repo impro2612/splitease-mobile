@@ -5,6 +5,7 @@ import NetInfo from "@react-native-community/netinfo"
 import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import Toast from "react-native-toast-message"
 import { Ionicons } from "@expo/vector-icons"
@@ -129,20 +130,23 @@ const toastConfig = {
 
 // ── Offline Banner ────────────────────────────────────────────────────────────
 function OfflineBanner() {
+  const { top } = useSafeAreaInsets()
   return (
     <View style={{
       backgroundColor: "#1a1020",
       borderBottomWidth: 1,
       borderBottomColor: "rgba(248,113,113,0.3)",
-      paddingVertical: 8,
+      paddingTop: top + 6,
+      paddingBottom: 6,
       paddingHorizontal: 16,
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      justifyContent: "center",
+      gap: 6,
     }}>
-      <Ionicons name="cloud-offline-outline" size={16} color="#f87171" />
-      <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600", flex: 1 }}>
-        No internet connection — data may be outdated
+      <Ionicons name="cloud-offline-outline" size={14} color="#f87171" />
+      <Text style={{ color: "#f87171", fontSize: 12, fontWeight: "600" }}>
+        No internet connection
       </Text>
     </View>
   )
