@@ -27,8 +27,12 @@ export default function ForgotPassword() {
     try {
       await authApi.forgotPassword(email.trim().toLowerCase())
       setStep("otp")
-    } catch {
-      setError("Something went wrong. Please try again.")
+    } catch (e: any) {
+      if (!e?.response) {
+        setError("No internet connection. Please check your network and try again.")
+      } else {
+        setError("Something went wrong. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
@@ -43,7 +47,11 @@ export default function ForgotPassword() {
       setSuccess("Password reset! You can now sign in.")
       setTimeout(() => router.replace("/(auth)/signin"), 2000)
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? "Invalid or expired code")
+      if (!e?.response) {
+        setError("No internet connection. Please check your network and try again.")
+      } else {
+        setError(e.response.data?.error ?? "Invalid or expired code")
+      }
     } finally {
       setLoading(false)
     }

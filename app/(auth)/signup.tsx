@@ -31,7 +31,11 @@ export default function SignUp() {
       await signUp(name.trim(), email.trim().toLowerCase(), phone.trim(), password)
       router.replace("/(tabs)/dashboard")
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? "Something went wrong")
+      if (!e?.response) {
+        setError("No internet connection. Please check your network and try again.")
+      } else {
+        setError(e.response.data?.error ?? "Something went wrong")
+      }
     } finally {
       setLoading(false)
     }

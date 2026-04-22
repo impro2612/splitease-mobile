@@ -30,7 +30,11 @@ export default function SignIn() {
       await signIn(email.trim().toLowerCase(), password)
       router.replace("/(tabs)/dashboard")
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? "Invalid email or password")
+      if (!e?.response) {
+        setError("No internet connection. Please check your network and try again.")
+      } else {
+        setError(e.response.data?.error ?? "Invalid email or password")
+      }
     } finally {
       setLoading(false)
     }
