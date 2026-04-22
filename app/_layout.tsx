@@ -1,6 +1,7 @@
 import "../global.css"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Platform, View, Text, useColorScheme } from "react-native"
+import NetInfo from "@react-native-community/netinfo"
 import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
@@ -126,6 +127,27 @@ const toastConfig = {
   ),
 }
 
+// ── Offline Banner ────────────────────────────────────────────────────────────
+function OfflineBanner() {
+  return (
+    <View style={{
+      backgroundColor: "#1a1020",
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(248,113,113,0.3)",
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    }}>
+      <Ionicons name="cloud-offline-outline" size={16} color="#f87171" />
+      <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600", flex: 1 }}>
+        No internet connection — data may be outdated
+      </Text>
+    </View>
+  )
+}
+
 SplashScreen.preventAutoHideAsync()
 
 // Show notifications when app is in foreground
@@ -168,10 +190,19 @@ async function registerForPushNotifications() {
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   const scheme = useColorScheme()
+  const [isOnline, setIsOnline] = useState(true)
+
+  useEffect(() => {
+    // Fetch current state immediately, then subscribe to changes
+    NetInfo.fetch().then((state) => setIsOnline(!!state.isConnected && !!state.isInternetReachable))
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOnline(!!state.isConnected && !!state.isInternetReachable)
+    })
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     loadSession()
-    // Auto-expiry check on app open (Step 8)
     getTrackConfig().then((cfg) => {
       if (cfg === null) {
         // getTrackConfig already cleared expired config from AsyncStorage
@@ -216,6 +247,7 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
           <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
+          {!isOnline && <OfflineBanner />}
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
