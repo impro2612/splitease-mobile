@@ -2,6 +2,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator,
 } from "react-native"
+import { useState, useEffect } from "react"
 import { router } from "expo-router"
 import { useQuery } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
@@ -12,11 +13,16 @@ import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useTheme } from "@/lib/theme"
+import { getRate } from "@/lib/exchange"
 
 export default function Dashboard() {
   const { user, currency } = useAuthStore()
   const C = useTheme()
   const currencyInfo = CURRENCIES.find(c => c.code === currency) ?? CURRENCIES[0]
+
+  // Shared module-level rate cache in lib/exchange.ts means the same cached rate
+  // is used here, in the group balance page, and in the nextPayer banner — all in sync.
+  const [fxRates, setFxRates] = useState<Record<string, number>>({})
 
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
@@ -24,13 +30,42 @@ export default function Dashboard() {
   })
 
   const { data: summary } = useQuery({
-    queryKey: ["balance-summary", currency],
-    queryFn: () => dashboardApi.summary(currency).then((r) => r.data),
+    queryKey: ["balance-summary"],
+    queryFn: () => dashboardApi.summary().then((r) => r.data),
   })
 
-  const totalOwed: number = summary?.totalOwed ?? 0
-  const totalOwe: number = summary?.totalOwe ?? 0
-  const net: number = summary?.net ?? 0
+  // Load FX rates for all non-default currencies in the summary
+  useEffect(() => {
+    if (!summary?.perCurrency) return
+    const displayCode = currency ?? "USD"
+    const nonDefault = Object.keys(summary.perCurrency).filter(
+      (c) => c !== displayCode && !fxRates[c]
+    )
+    if (nonDefault.length === 0) return
+    Promise.all(
+      nonDefault.map(async (cur) => ({ currency: cur, rate: await getRate(cur, displayCode) }))
+    ).then((results) => {
+      setFxRates((prev) => {
+        const next = { ...prev }
+        for (const r of results) if (r.rate !== null) next[r.currency] = r.rate
+        return next
+      })
+    })
+  }, [summary, currency])
+
+  // Convert per-currency raw amounts to display currency using client-side rates
+  let totalOwed = 0
+  let totalOwe = 0
+  if (summary?.perCurrency) {
+    const displayCode = currency ?? "USD"
+    for (const [cur, { owe, owed }] of Object.entries(summary.perCurrency as Record<string, { owe: number; owed: number }>)) {
+      const rate = cur === displayCode ? 1 : (fxRates[cur] ?? null)
+      if (rate === null) continue
+      totalOwe += owe * rate
+      totalOwed += owed * rate
+    }
+  }
+  const net = totalOwed - totalOwe
 
   const activityItems: any[] = []
   for (const g of groups) {
@@ -70,7 +105,7 @@ export default function Dashboard() {
         <View style={{ backgroundColor: net >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 16, borderWidth: 1, borderColor: net >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 14 }}>
           <Text style={{ color: C.textSub, fontSize: 10, fontWeight: "500", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Net balance</Text>
           <Text style={{ color: net >= 0 ? "#4ade80" : "#f87171", fontSize: 26, fontWeight: "800" }}>
-            {net >= 0 ? "+" : "-"}{formatCurrency(net, currencyInfo.symbol, currencyInfo.code)}
+            {net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(net), currencyInfo.symbol, currencyInfo.code)}
           </Text>
           <Text style={{ color: C.textSub, fontSize: 11, marginTop: 2 }}>
             {net > 0 ? "Others owe you" : net < 0 ? "You owe others" : "All settled up! ✅"}

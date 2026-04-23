@@ -122,7 +122,7 @@ export const usersApi = {
 
 // Dashboard summary
 export const dashboardApi = {
-  summary: (currency: string) => api.get("/api/balance-summary", { params: { currency } }),
+  summary: () => api.get("/api/balance-summary"),
 }
 
 // Push token registration
