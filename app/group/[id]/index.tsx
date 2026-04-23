@@ -835,26 +835,6 @@ export default function GroupDetail() {
             </View>
           ) : (
             <View className="gap-2 py-3">
-              {nextPayer && (
-                <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ fontSize: 22 }}>🎯</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "#a5b4fc", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 2 }}>PAY NEXT TO REDUCE DEBT</Text>
-                    <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>
-                      {nextPayer.member.userId === user?.id ? "You" : (nextPayer.member.user?.name ?? "Someone")}
-                    </Text>
-                    <Text style={{ color: C.textSub, fontSize: 12, marginTop: 1 }}>
-                      owes {formatCurrency(nextPayer.amountOwed, gc.symbol, gc.code)} overall
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: "center", backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, padding: 8 }}>
-                    <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>should</Text>
-                    <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>pay next</Text>
-                  </View>
-                </View>
-              )}
               {expenses.slice().sort((a: any, b: any) => {
                 const dateDiff = new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()
                 if (dateDiff !== 0) return dateDiff
@@ -1358,6 +1338,27 @@ export default function GroupDetail() {
         {/* Utility Tab */}
         {tab === "utility" && (
           <View className="py-3 gap-3">
+            {/* Who should pay next */}
+            {nextPayer && (
+              <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
+                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 24 }}>🎯</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#a5b4fc", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 2 }}>PAY NEXT TO REDUCE DEBT</Text>
+                  <Text style={{ color: C.text, fontSize: 15, fontWeight: "700" }}>
+                    {nextPayer.member.userId === user?.id ? "You" : (nextPayer.member.user?.name ?? "Someone")}
+                  </Text>
+                  <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
+                    owes {formatCurrency(nextPayer.amountOwed, gc.symbol, gc.code)} overall
+                  </Text>
+                </View>
+                <View style={{ alignItems: "center", backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, padding: 8 }}>
+                  <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>should</Text>
+                  <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>pay next</Text>
+                </View>
+              </View>
+            )}
             {/* Write Notes */}
             <TouchableOpacity
               onPress={() => setShowNotes(true)}
