@@ -421,7 +421,7 @@ export default function GroupDetail() {
   const fxRateEffect_balances = balances
   const fxRateEffect_groupCurrency = group?.currency
   useEffect(() => {
-    if (fxRateEffect_tab !== "balances" && fxRateEffect_tab !== "analytics") return
+    if (fxRateEffect_tab !== "balances" && fxRateEffect_tab !== "analytics" && fxRateEffect_tab !== "expenses") return
     const defaultCode = fxRateEffect_groupCurrency ?? "USD"
     const fromBalances = (fxRateEffect_balances as any[]).map((g: any) => g.currency as string).filter(Boolean)
     const fromExpenses = expensesRef.current.map((e: any) => e.currency ?? defaultCode).filter(Boolean)
@@ -708,6 +708,33 @@ export default function GroupDetail() {
     .sort(([a], [b]) => a === gc.code ? -1 : b === gc.code ? 1 : a.localeCompare(b))
   const myNet = myNetByCurrency[gc.code] ?? 0
 
+  // Who should pay next: aggregate net debt across ALL currencies, converting to default via fxRates
+  const nextPayer = (() => {
+    if (members.length < 2) return null
+    const rawBalances = balances as any[]
+    if (rawBalances.length === 0) return null
+    const netByMember: Record<string, number> = {}
+    for (const m of members) netByMember[m.userId] = 0
+    for (const { currency, balances: currBalances } of rawBalances) {
+      if (!currBalances || currBalances.length === 0) continue
+      const rate = currency === gc.code ? 1 : (fxRates[currency] ?? null)
+      if (rate === null) continue
+      for (const b of currBalances) {
+        const converted = b.amount * rate
+        netByMember[b.fromUserId] = (netByMember[b.fromUserId] ?? 0) - converted
+        netByMember[b.toUserId] = (netByMember[b.toUserId] ?? 0) + converted
+      }
+    }
+    let minNet = -0.005
+    let nextMember: any = null
+    for (const m of members) {
+      const net = netByMember[m.userId] ?? 0
+      if (net < minNet) { minNet = net; nextMember = m }
+    }
+    if (!nextMember) return null
+    return { member: nextMember, amountOwed: -minNet }
+  })()
+
   if (isLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }} edges={["top"]}>
@@ -808,6 +835,26 @@ export default function GroupDetail() {
             </View>
           ) : (
             <View className="gap-2 py-3">
+              {nextPayer && (
+                <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
+                    <Text style={{ fontSize: 22 }}>🎯</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#a5b4fc", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 2 }}>PAY NEXT TO REDUCE DEBT</Text>
+                    <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>
+                      {nextPayer.member.userId === user?.id ? "You" : (nextPayer.member.user?.name ?? "Someone")}
+                    </Text>
+                    <Text style={{ color: C.textSub, fontSize: 12, marginTop: 1 }}>
+                      owes {formatCurrency(nextPayer.amountOwed, gc.symbol, gc.code)} overall
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: "center", backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, padding: 8 }}>
+                    <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>should</Text>
+                    <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>pay next</Text>
+                  </View>
+                </View>
+              )}
               {expenses.slice().sort((a: any, b: any) => {
                 const dateDiff = new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()
                 if (dateDiff !== 0) return dateDiff
