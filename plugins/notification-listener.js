@@ -9,7 +9,7 @@ function withNotificationListenerManifest(config) {
 
     // ── NotificationListenerService ──────────────────────────────────────────
     if (!app.service) app.service = []
-    const serviceName = "com.splitease.app.ExpenseNotificationListener"
+    const serviceName = "com.splitit.app.ExpenseNotificationListener"
     if (!app.service.find((s) => s.$["android:name"] === serviceName)) {
       app.service.push({
         $: {
@@ -30,7 +30,7 @@ function withNotificationListenerManifest(config) {
 
     // ── Action receiver (approve / reject notification buttons) ───────────────
     if (!app.receiver) app.receiver = []
-    const actionReceiverName = "com.splitease.app.ExpenseActionReceiver"
+    const actionReceiverName = "com.splitit.app.ExpenseActionReceiver"
     if (!app.receiver.find((r) => r.$["android:name"] === actionReceiverName)) {
       app.receiver.push({
         $: {
@@ -41,8 +41,8 @@ function withNotificationListenerManifest(config) {
         "intent-filter": [
           {
             action: [
-              { $: { "android:name": "com.splitease.APPROVE_EXPENSE" } },
-              { $: { "android:name": "com.splitease.REJECT_EXPENSE" } },
+              { $: { "android:name": "com.splitit.APPROVE_EXPENSE" } },
+              { $: { "android:name": "com.splitit.REJECT_EXPENSE" } },
             ],
           },
         ],
@@ -59,7 +59,7 @@ function withNotificationListenerKotlinFiles(config) {
     async (config) => {
       const packageDir = path.join(
         config.modRequest.platformProjectRoot,
-        "app/src/main/java/com/splitease/app"
+        "app/src/main/java/com/splitit/app"
       )
       fs.mkdirSync(packageDir, { recursive: true })
 

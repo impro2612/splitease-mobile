@@ -1,4 +1,4 @@
-package com.splitease.app
+package com.splitit.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -88,7 +88,7 @@ class SmsReceiver : BroadcastReceiver() {
 
         // Approve action — opens app with deep link
         val approveIntent = Intent(context, SmsActionReceiver::class.java).apply {
-            action = "com.splitease.APPROVE_EXPENSE"
+            action = "com.splitit.APPROVE_EXPENSE"
             putExtra("suggestionId", suggestionId)
             putExtra("groupId", config.optString("groupId"))
         }
@@ -99,7 +99,7 @@ class SmsReceiver : BroadcastReceiver() {
 
         // Reject action
         val rejectIntent = Intent(context, SmsActionReceiver::class.java).apply {
-            action = "com.splitease.REJECT_EXPENSE"
+            action = "com.splitit.REJECT_EXPENSE"
             putExtra("suggestionId", suggestionId)
         }
         val rejectPending = PendingIntent.getBroadcast(

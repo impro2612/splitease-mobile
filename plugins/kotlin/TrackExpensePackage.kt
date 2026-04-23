@@ -1,4 +1,4 @@
-package com.splitease.app
+package com.splitit.app
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule

@@ -1,10 +1,11 @@
 import { useState } from "react"
 import {
   View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, ActivityIndicator, ScrollView,
+  KeyboardAvoidingView, ActivityIndicator, ScrollView, Platform,
 } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { authApi } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
 
@@ -12,6 +13,7 @@ type Step = "email" | "otp"
 
 export default function ForgotPassword() {
   const C = useTheme()
+  const insets = useSafeAreaInsets()
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
@@ -60,20 +62,21 @@ export default function ForgotPassword() {
   const inputRow = { flexDirection: "row" as const, alignItems: "center" as const, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 16, height: 56, marginBottom: 16 }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior="padding">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top", "bottom", "left", "right"]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 48 }}>
           {/* Back */}
           <TouchableOpacity
             onPress={() => step === "otp" ? setStep("email") : router.back()}
-            style={{ position: "absolute", top: 56, left: 24, backgroundColor: C.iconBg, borderRadius: 12, padding: 10 }}
+            style={{ position: "absolute", top: insets.top + 16, left: 24, backgroundColor: C.iconBg, borderRadius: 12, padding: 10 }}
           >
             <Ionicons name="arrow-back" size={18} color={C.text} />
           </TouchableOpacity>
 
           {/* Icon */}
-          <View style={{ alignItems: "center", marginBottom: 40 }}>
-            <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <View style={{ marginBottom: 40 }}>
+            <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
               <Ionicons name={step === "email" ? "mail-outline" : "shield-checkmark-outline"} size={36} color="#6366f1" />
             </View>
             <Text style={{ color: C.text, fontSize: 26, fontWeight: "700", textAlign: "center" }}>
@@ -175,7 +178,8 @@ export default function ForgotPassword() {
             </View>
           )}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }

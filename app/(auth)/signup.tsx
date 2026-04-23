@@ -1,12 +1,15 @@
 import { useState } from "react"
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, KeyboardAvoidingView, ActivityIndicator,
+  ScrollView, KeyboardAvoidingView, ActivityIndicator, Image, Platform,
 } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { useAuthStore } from "@/store/auth"
 import { useTheme } from "@/lib/theme"
+
+const signInLogo = require("@/assets/Photoroom.png")
 
 export default function SignUp() {
   const { signUp } = useAuthStore()
@@ -44,16 +47,15 @@ export default function SignUp() {
   const inputStyle = { flexDirection: "row" as const, alignItems: "center" as const, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 16, height: 56, marginBottom: 14 }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior="padding">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top", "bottom", "left", "right"]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View style={{ flex: 1, paddingHorizontal: 24, paddingVertical: 48 }}>
           {/* Logo */}
-          <View style={{ alignItems: "center", marginBottom: 32 }}>
-            <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-              <Text style={{ fontSize: 36 }}>💸</Text>
-            </View>
-            <Text style={{ color: C.text, fontSize: 28, fontWeight: "700" }}>Create account</Text>
-            <Text style={{ color: C.textSub, fontSize: 15, marginTop: 4 }}>Start splitting for free</Text>
+          <View style={{ marginBottom: 32 }}>
+            <Image source={signInLogo} style={{ width: 80, height: 80, marginBottom: 16, alignSelf: "center" }} resizeMode="contain" />
+            <Text style={{ color: C.text, fontSize: 28, fontWeight: "700", textAlign: "center" }}>Create account</Text>
+            <Text style={{ color: C.textSub, fontSize: 15, marginTop: 4, textAlign: "center" }}>Start splitting for free</Text>
           </View>
 
           {/* Name */}
@@ -113,7 +115,8 @@ export default function SignUp() {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }

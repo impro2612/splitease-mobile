@@ -10,6 +10,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Pusher from "pusher-js/react-native"
 import CryptoJS from "crypto-js"
+import * as SecureStore from "expo-secure-store"
 import { useAuthStore } from "@/store/auth"
 
 function uuidv4() {
@@ -18,7 +19,7 @@ function uuidv4() {
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16)
   })
 }
-import { messagesApi } from "@/lib/api"
+import { API_BASE_URL, messagesApi } from "@/lib/api"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Message = {
@@ -184,12 +185,41 @@ export default function ChatScreen() {
 
   // ── Pusher subscription ──────────────────────────────────────────────────────
   useEffect(() => {
+    if (!myId) return
+
     const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
       cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
+      channelAuthorization: {
+        customHandler: async ({ socketId, channelName }, callback) => {
+          try {
+            const token = await SecureStore.getItemAsync("session_token")
+            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({
+                socket_id: socketId,
+                channel_name: channelName,
+              }),
+            })
+
+            if (!res.ok) {
+              callback(new Error("Pusher auth failed"), null)
+              return
+            }
+
+            callback(null, await res.json())
+          } catch (error) {
+            callback(error as Error, null)
+          }
+        },
+      },
     })
     pusherRef.current = pusher
 
-    const channel = pusher.subscribe(`user-${myId}`)
+    const channel = pusher.subscribe(`private-user-${myId}`)
     channel.bind("new-message", (data: { senderId: string }) => {
       if (data.senderId === friendId) {
         fetchDelta()
@@ -198,7 +228,7 @@ export default function ChatScreen() {
 
     return () => {
       channel.unbind_all()
-      pusher.unsubscribe(`user-${myId}`)
+      pusher.unsubscribe(`private-user-${myId}`)
       pusher.disconnect()
     }
   }, [myId, friendId, fetchDelta])

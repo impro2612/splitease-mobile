@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "SplitEase",
+    "name": "SplitIT",
     "slug": "splitease-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
-    "scheme": "splitease",
+    "scheme": "splitit",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.splitease.app"
+      "bundleIdentifier": "com.splitit.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a1a"
       },
-      "package": "com.splitease.app",
+      "package": "com.splitit.app",
       "versionCode": 5
     },
     "plugins": [
@@ -32,7 +32,7 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "SplitEase needs contacts to help you invite friends."
+          "contactsPermission": "SplitIT needs contacts to help you invite friends."
         }
       ],
       [
@@ -46,7 +46,7 @@
         {
           "backgroundColor": "#0a0a1a",
           "image": "./assets/splash-icon.png",
-          "imageWidth": 200
+          "imageWidth": 1
         }
       ],
       "@react-native-community/datetimepicker",

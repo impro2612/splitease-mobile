@@ -1,4 +1,4 @@
-package com.splitease.app
+package com.splitit.app
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -101,7 +101,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
         val body = "${formatAmount(result.amount, result.currency)} at ${result.merchant} · $groupName"
 
         val approveIntent = Intent(this, ExpenseActionReceiver::class.java).apply {
-            action = "com.splitease.APPROVE_EXPENSE"
+            action = "com.splitit.APPROVE_EXPENSE"
             putExtra("suggestionId", suggestionId)
             putExtra("groupId", config.optString("groupId"))
         }
@@ -111,7 +111,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
         )
 
         val rejectIntent = Intent(this, ExpenseActionReceiver::class.java).apply {
-            action = "com.splitease.REJECT_EXPENSE"
+            action = "com.splitit.REJECT_EXPENSE"
             putExtra("suggestionId", suggestionId)
         }
         val rejectPending = PendingIntent.getBroadcast(

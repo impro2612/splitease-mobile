@@ -328,12 +328,16 @@ export default function GroupDetail() {
     try {
       const granted = await checkNotificationAccess()
       if (!granted) {
-        Toast.show({
-          type: "info",
-          text1: "Notification access required",
-          text2: "Enable SplitEase in Settings → Notification Access, then try again.",
-          visibilityTime: 5000,
-          onPress: () => openNotificationAccessSettings(),
+        showConfirm({
+          title: "Notification Access Required",
+          message: 'To track expenses automatically, allow SplitIT under "Notification read, reply & control".',
+          confirmText: "Open Settings",
+          danger: false,
+          onConfirm: () => {
+            openNotificationAccessSettings().catch(() => {
+              Toast.show({ type: "error", text1: "Could not open settings" })
+            })
+          },
         })
         return
       }
@@ -1368,7 +1372,7 @@ export default function GroupDetail() {
                       <thead><tr><th>Date</th><th>Expense</th><th>Paid By</th><th style="text-align:right">Amount</th></tr></thead>
                       <tbody>${rows}</tbody>
                     </table>
-                    <div class="footer">SplitEase • All amounts in ${gc.code}</div>
+                    <div class="footer">SplitIT • All amounts in ${gc.code}</div>
                     </body></html>`
                   const { uri } = await Print.printToFileAsync({ html, base64: false })
                   await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: `${group?.name} Statement` })

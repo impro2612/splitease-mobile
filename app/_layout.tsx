@@ -16,6 +16,7 @@ import { useAuthStore } from "@/store/auth"
 import { pushApi } from "@/lib/api"
 import { getTrackConfig, clearTrackConfig } from "@/lib/trackExpense"
 import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
+import { LaunchIntro } from "@/components/LaunchIntro"
 
 // ── Custom Toast UI ───────────────────────────────────────────────────────────
 function ToastBase({
@@ -191,10 +192,54 @@ async function registerForPushNotifications() {
   }
 }
 
+function handleAppUrl(url?: string) {
+  if (!url?.startsWith("splitit://")) return
+
+  const parsed = new URL(url.replace("splitit://", "https://splitit.local/"))
+  const path = parsed.pathname.replace(/^\/+/, "")
+
+  if (path === "confirm-expense") {
+    const suggestionId = parsed.searchParams.get("suggestionId")
+    const groupId = parsed.searchParams.get("groupId")
+    if (suggestionId && groupId) {
+      router.push(`/confirm-expense?suggestionId=${suggestionId}&groupId=${groupId}` as any)
+    }
+    return
+  }
+
+  if (path.startsWith("group/")) {
+    const groupId = path.split("/")[1]
+    if (groupId) router.push(`/group/${groupId}` as any)
+    return
+  }
+
+  if (path === "groups") {
+    router.push("/(tabs)/groups" as any)
+    return
+  }
+
+  if (path === "friends") {
+    router.push("/(tabs)/friends" as any)
+    return
+  }
+
+  if (path.startsWith("chat/")) {
+    const friendId = path.split("/")[1]
+    const name = parsed.searchParams.get("name") ?? ""
+    if (friendId) {
+      router.push({
+        pathname: "/chat/[friendId]",
+        params: { friendId, name },
+      } as any)
+    }
+  }
+}
+
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   const scheme = useColorScheme()
   const [isOnline, setIsOnline] = useState(true)
+  const [showLaunchIntro, setShowLaunchIntro] = useState(true)
   const prevOnlineRef = useRef<boolean | null>(null)
 
   useEffect(() => {
@@ -234,21 +279,22 @@ export default function RootLayout() {
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const url = response.notification.request.content.data?.url as string | undefined
-      if (url?.startsWith("splitease://confirm-expense")) {
-        const params = new URL(url.replace("splitease://", "https://x.com/")).searchParams
-        const suggestionId = params.get("suggestionId")
-        const groupId = params.get("groupId")
-        if (suggestionId && groupId) {
-          router.push(`/confirm-expense?suggestionId=${suggestionId}&groupId=${groupId}` as any)
-        }
-      }
+      handleAppUrl(url)
     })
     return () => sub.remove()
   }, [])
 
   useEffect(() => {
     if (!loading) {
-      SplashScreen.hideAsync().catch(() => {})
+      requestAnimationFrame(() => {
+        SplashScreen.hideAsync().catch(() => {})
+      })
+
+      const timer = setTimeout(() => {
+        setShowLaunchIntro(false)
+      }, 4000)
+
+      return () => clearTimeout(timer)
     }
   }, [loading])
 
@@ -259,14 +305,20 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
           <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
-          {!isOnline && <OfflineBanner />}
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
-            <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
-          </Stack>
+          {showLaunchIntro ? (
+            <LaunchIntro />
+          ) : (
+            <>
+              {!isOnline && <OfflineBanner />}
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
+                <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
+              </Stack>
+            </>
+          )}
           <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
         </View>
       </GestureHandlerRootView>

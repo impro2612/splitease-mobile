@@ -27,7 +27,7 @@ Last updated: April 18, 2026
 We collect information you provide directly: name, email address, phone number, and profile photo. We also collect expense data, group memberships, and payment settlement records you create within the app.
 
 2. HOW WE USE YOUR INFORMATION
-Your information is used solely to operate the SplitEase service — to calculate balances, send notifications about shared expenses, and facilitate settlements between group members. We do not sell, rent, or share your personal data with third parties for marketing purposes.
+Your information is used solely to operate the SplitIT service — to calculate balances, send notifications about shared expenses, and facilitate settlements between group members. We do not sell, rent, or share your personal data with third parties for marketing purposes.
 
 3. DATA STORAGE & SECURITY
 All data is stored on secured servers. Passwords are hashed using bcrypt and never stored in plain text. Profile photos are stored as encrypted data within our database. We use industry-standard TLS encryption for all data in transit.
@@ -36,7 +36,7 @@ All data is stored on secured servers. Passwords are hashed using bcrypt and nev
 With your permission, we send push notifications for new expenses, payment requests, and settlement confirmations. You can disable notifications at any time from the Profile screen or your device settings.
 
 5. CHAT & MESSAGES
-All direct messages between users are end-to-end encrypted using AES-256 encryption. SplitEase cannot read the content of your private messages.
+All direct messages between users are end-to-end encrypted using AES-256 encryption. SplitIT cannot read the content of your private messages.
 
 6. DATA SHARING
 We share data only with:
@@ -51,13 +51,13 @@ Your data is retained as long as your account is active. You may request deletio
 You have the right to: access your personal data, correct inaccurate data, request deletion, and withdraw consent for notifications at any time.
 
 9. CHILDREN'S PRIVACY
-SplitEase is not directed to children under 13. We do not knowingly collect information from children under 13.
+SplitIT is not directed to children under 13. We do not knowingly collect information from children under 13.
 
 10. CHANGES TO THIS POLICY
 We will notify you of material changes to this policy via in-app notification. Continued use of the app after changes constitutes acceptance.
 
 11. CONTACT
-For privacy questions or data requests, contact us at: privacy@splitease.app`
+For privacy questions or data requests, contact us at: privacy@splitit.app`
 
 export default function Profile() {
   const { user, signOut, setUser, currency, setCurrency, theme, setTheme } = useAuthStore()
@@ -113,6 +113,12 @@ export default function Profile() {
   // Avatar upload
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
+  async function getCurrentPushToken() {
+    if (!Device.isDevice) return null
+    const token = await Notifications.getExpoPushTokenAsync().catch(() => null)
+    return token?.data ?? null
+  }
+
   async function handleNotificationsToggle(enabled: boolean) {
     setNotifications(enabled)
     await AsyncStorage.setItem(NOTIF_PREF_KEY, String(enabled))
@@ -123,10 +129,11 @@ export default function Profile() {
         ? { status: existing }
         : await Notifications.requestPermissionsAsync()
       if (status !== "granted") { setNotifications(false); return }
-      const token = await Notifications.getExpoPushTokenAsync().catch(() => null)
-      if (token?.data) await pushApi.saveToken(token.data).catch(() => {})
+      const pushToken = await getCurrentPushToken()
+      if (pushToken) await pushApi.saveToken(pushToken).catch(() => {})
     } else {
-      await pushApi.clearToken().catch(() => {})
+      const pushToken = await getCurrentPushToken()
+      if (pushToken) await pushApi.clearToken(pushToken).catch(() => {})
     }
   }
 
@@ -196,11 +203,17 @@ export default function Profile() {
 
   async function doSignOut() {
     setShowSignOutConfirm(false)
+    const pushToken = await getCurrentPushToken()
+    if (pushToken) await pushApi.clearToken(pushToken).catch(() => {})
     await signOut()
     queryClient.clear()
   }
 
   const themeLabel = theme === "light" ? "Light" : theme === "system" ? "System" : "Dark"
+  const pagePadding = {
+    paddingLeft: 20 + insets.left,
+    paddingRight: 20 + insets.right,
+  }
 
   // ─── Shared style helpers ────────────────────────────────────────────────────
   const cardStyle = { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: "hidden" as const }
@@ -208,15 +221,19 @@ export default function Profile() {
   const divider = { borderBottomWidth: 1, borderBottomColor: C.border }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top", "left", "right"]}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 8) }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+        <View style={{ ...pagePadding, paddingTop: 16, paddingBottom: 12 }}>
           <Text style={{ color: C.text, fontSize: 24, fontWeight: "700" }}>Profile</Text>
         </View>
 
         {/* Avatar + Info Card */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+        <View style={{ ...pagePadding, marginBottom: 16 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center" }}>
             <TouchableOpacity onPress={handlePickAvatar} disabled={uploadingAvatar} style={{ position: "relative", marginBottom: 14 }}>
               {user?.image ? (
@@ -232,7 +249,14 @@ export default function Profile() {
             </TouchableOpacity>
 
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700", marginBottom: 4 }}>{user?.name ?? "—"}</Text>
-            <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 16 }}>{user?.email}</Text>
+            <Text
+              style={{ color: C.textSub, fontSize: 13, marginBottom: 16, width: "100%", textAlign: "center", paddingHorizontal: 8 }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
+              {user?.email}
+            </Text>
 
             <TouchableOpacity
               onPress={openEdit}
@@ -245,7 +269,7 @@ export default function Profile() {
         </View>
 
         {/* Preferences */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+        <View style={{ ...pagePadding, marginBottom: 16 }}>
           <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginLeft: 4 }}>Preferences</Text>
           <View style={cardStyle}>
             <View style={{ ...rowStyle, ...divider }}>
@@ -260,9 +284,16 @@ export default function Profile() {
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="card" size={18} color="#4ade80" />
               </View>
-              <Text style={{ color: C.text, flex: 1 }}>Default Currency</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text style={{ color: C.textSub, fontSize: 13 }}>{currency}</Text>
+              <Text style={{ color: C.text, flex: 1, minWidth: 0 }}>Default Currency</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "32%", minWidth: 0, flexShrink: 1 }}>
+                <Text
+                  style={{ color: C.textSub, fontSize: 13, flexShrink: 1 }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                >
+                  {currency}
+                </Text>
                 <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
               </View>
             </TouchableOpacity>
@@ -271,9 +302,16 @@ export default function Profile() {
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(6,182,212,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="color-palette" size={18} color="#22d3ee" />
               </View>
-              <Text style={{ color: C.text, flex: 1 }}>Appearance</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text style={{ color: C.textSub, fontSize: 13 }}>{themeLabel}</Text>
+              <Text style={{ color: C.text, flex: 1, minWidth: 0 }}>Appearance</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "32%", minWidth: 0, flexShrink: 1 }}>
+                <Text
+                  style={{ color: C.textSub, fontSize: 13, flexShrink: 1 }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                >
+                  {themeLabel}
+                </Text>
                 <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
               </View>
             </TouchableOpacity>
@@ -281,7 +319,7 @@ export default function Profile() {
         </View>
 
         {/* About */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+        <View style={{ ...pagePadding, marginBottom: 16 }}>
           <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginLeft: 4 }}>About</Text>
           <View style={cardStyle}>
             <TouchableOpacity
@@ -291,7 +329,7 @@ export default function Profile() {
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(245,158,11,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="star" size={18} color="#fcd34d" />
               </View>
-              <Text style={{ color: C.text, flex: 1 }}>Rate SplitEase</Text>
+              <Text style={{ color: C.text, flex: 1 }}>Rate SplitIT</Text>
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
             </TouchableOpacity>
 
@@ -307,14 +345,21 @@ export default function Profile() {
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="information-circle" size={18} color={C.textSub} />
               </View>
-              <Text style={{ color: C.text, flex: 1 }}>Version</Text>
-              <Text style={{ color: C.textSub, fontSize: 13 }}>{Constants.expoConfig?.version ?? "—"}</Text>
+              <Text style={{ color: C.text, flex: 1, minWidth: 0 }}>Version</Text>
+              <Text
+                style={{ color: C.textSub, fontSize: 13, flexShrink: 1 }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
+                {Constants.expoConfig?.version ?? "—"}
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Sign Out + Delete Account */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 40, gap: 10 }}>
+        <View style={{ ...pagePadding, marginBottom: 16, gap: 10 }}>
           <TouchableOpacity
             onPress={() => setShowSignOutConfirm(true)}
             style={{ backgroundColor: "rgba(244,63,94,0.12)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(244,63,94,0.2)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16 }}
@@ -330,6 +375,11 @@ export default function Profile() {
             <Text style={{ color: C.textMuted, fontSize: 13 }}>Delete Account</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Footer */}
+        <Text style={{ color: C.textMuted, fontSize: 12, textAlign: "center", paddingHorizontal: 24, paddingTop: 16 }}>
+          © 2026 SplitIT. Made with ❤️ to track your expenses.
+        </Text>
       </ScrollView>
 
       {/* ── Edit Profile Modal ──────────────────────────────────────────────────── */}
@@ -424,7 +474,7 @@ export default function Profile() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 4 }}>Appearance</Text>
-            <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 20 }}>Choose how SplitEase looks</Text>
+            <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 20 }}>Choose how SplitIT looks</Text>
 
             {(["dark", "light", "system"] as ThemePref[]).map((opt) => {
               const labels: Record<ThemePref, string> = { dark: "Dark", light: "Light", system: "System default" }

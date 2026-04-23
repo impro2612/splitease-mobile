@@ -9,7 +9,7 @@ import * as SecureStore from "expo-secure-store"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { router, type Href } from "expo-router"
+import { router, type Href, useFocusEffect } from "expo-router"
 import { friendsApi, usersApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
@@ -53,7 +53,7 @@ export default function Friends() {
   const [contactsPermission, setContactsPermission] = useState<"undetermined" | "granted" | "denied">("undetermined")
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
-  // Map: normalizedPhone -> SplitEase user { id, name, email, image }
+  // Map: normalizedPhone -> SplitIT user { id, name, email, image }
   const [phoneUserMap, setPhoneUserMap] = useState<Record<string, any>>({})
 
   // Invite bottom sheet
@@ -75,6 +75,13 @@ export default function Friends() {
   const friends: any[] = friendsData?.friends ?? []
   const incoming: any[] = friendsData?.incoming ?? []
   const outgoing: any[] = friendsData?.outgoing ?? []
+  const unreadByFriend: Record<string, number> = friendsData?.unreadByFriend ?? {}
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch()
+    }, [refetch])
+  )
 
   const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
@@ -131,7 +138,7 @@ export default function Friends() {
       }
       setContacts(parsed)
 
-      // Lookup which contacts are on SplitEase
+      // Lookup which contacts are on SplitIT
       if (parsed.length > 0) {
         const normalized = parsed.map((c) => normalizePhone(c.phone))
         const res = await usersApi.lookupPhones(normalized).catch(() => null)
@@ -211,14 +218,14 @@ export default function Friends() {
     const normalized = normalizePhone(contact.phone)
     const splitEaseUser = phoneUserMap[normalized]
     if (splitEaseUser) {
-      // Already on SplitEase — send friend request directly
+      // Already on SplitIT — send friend request directly
       const alreadyFriend = friends.some((f: any) => f.requesterId === splitEaseUser.id || f.addresseeId === splitEaseUser.id)
       const sentRequest = outgoing.some((r: any) => r.addresseeId === splitEaseUser.id)
       if (alreadyFriend) { Toast.show({ type: "info", text1: `${contact.name} is already your friend` }); return }
       if (sentRequest) { Toast.show({ type: "info", text1: "Friend request already sent" }); return }
       sendMutation.mutate(splitEaseUser.id)
     } else {
-      // Not on SplitEase — show invite sheet
+      // Not on SplitIT — show invite sheet
       setInviteTarget(contact)
       setShowInvite(true)
     }
@@ -226,7 +233,7 @@ export default function Friends() {
 
   function buildMessage(name: string) {
     return encodeURIComponent(
-      `Hey ${name.split(" ")[0]}! 👋 I'm using SplitEase to split bills and track expenses with friends. Join me here:\n${SIGNUP_URL}`
+      `Hey ${name.split(" ")[0]}! 👋 I'm using SplitIT to split bills and track expenses with friends. Join me here:\n${SIGNUP_URL}`
     )
   }
 
@@ -331,6 +338,7 @@ export default function Friends() {
             <View style={{ gap: 8, paddingBottom: 32 }}>
               {friends.map((f: any) => {
                 const other = f.requesterId === user?.id ? f.addressee : f.requester
+                const hasUnread = !!(other?.id && unreadByFriend[other.id])
                 return (
                   <View key={f.id} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <Avatar name={other?.name} email={other?.email} image={other?.image} size={44} />
@@ -348,9 +356,29 @@ export default function Friends() {
                           params: { friendId: other.id, name: other.name ?? "" },
                         } as unknown as Href)
                       }}
-                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center" }}
+                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", position: "relative" }}
                     >
                       <Ionicons name="chatbubble-ellipses" size={17} color="#4ade80" />
+                      {hasUnread && (
+                        <View
+                          style={{
+                            position: "absolute",
+                            top: -4,
+                            right: -4,
+                            minWidth: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            backgroundColor: "#ef4444",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderWidth: 1.5,
+                            borderColor: C.card,
+                            paddingHorizontal: 3,
+                          }}
+                        >
+                          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", lineHeight: 10 }}>1</Text>
+                        </View>
+                      )}
                     </TouchableOpacity>
                     {/* Remove icon */}
                     <TouchableOpacity
@@ -462,7 +490,7 @@ export default function Friends() {
               </View>
               <Text style={{ color: C.text, fontSize: 20, fontWeight: "700", marginBottom: 10, textAlign: "center" }}>Sync Phone Contacts</Text>
               <Text style={{ color: C.textMuted, fontSize: 14, textAlign: "center", lineHeight: 21, marginBottom: 32 }}>
-                Find friends already on SplitEase or invite your contacts to join you.
+                Find friends already on SplitIT or invite your contacts to join you.
               </Text>
               <TouchableOpacity onPress={requestContactsPermission} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 32, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Ionicons name="sync" size={18} color="#fff" />
@@ -487,7 +515,7 @@ export default function Friends() {
             </View>
 
           ) : (
-            /* Unified list: SplitEase results (if searched) + phone contacts (filtered live) */
+            /* Unified list: SplitIT results (if searched) + phone contacts (filtered live) */
             <FlatList
               data={filteredContacts}
               keyExtractor={(item) => item.id}
@@ -496,10 +524,10 @@ export default function Friends() {
               keyboardShouldPersistTaps="handled"
               ListHeaderComponent={
                 <>
-                  {/* SplitEase search results section */}
+                  {/* SplitIT search results section */}
                   {searchResults.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
-                      <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>On SplitEase</Text>
+                      <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>On SplitIT</Text>
                       {searchResults.map((u: any) => {
                         const alreadyFriend = friends.some((f: any) => f.requesterId === u.id || f.addresseeId === u.id)
                         const sentRequest = outgoing.some((r: any) => r.addresseeId === u.id)

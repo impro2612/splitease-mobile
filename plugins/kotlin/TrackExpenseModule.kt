@@ -1,4 +1,4 @@
-package com.splitease.app
+package com.splitit.app
 
 import android.content.Context
 import android.provider.Settings

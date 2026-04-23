@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react"
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  KeyboardAvoidingView, ActivityIndicator,
+  View, Text, TextInput, TouchableOpacity, ScrollView, Image,
+  KeyboardAvoidingView, ActivityIndicator, Platform,
 } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { useAuthStore } from "@/store/auth"
 import { api } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
+
+const signInLogo = require("@/assets/Photoroom.png")
 
 export default function SignIn() {
   const { signIn } = useAuthStore()
@@ -41,16 +44,15 @@ export default function SignIn() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior="padding">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top", "bottom", "left", "right"]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 48 }}>
           {/* Logo */}
-          <View style={{ alignItems: "center", marginBottom: 40 }}>
-            <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-              <Text style={{ fontSize: 36 }}>💸</Text>
-            </View>
-            <Text style={{ color: C.text, fontSize: 28, fontWeight: "700" }}>Welcome back</Text>
-            <Text style={{ color: C.textSub, fontSize: 15, marginTop: 4 }}>Sign in to continue splitting</Text>
+          <View style={{ marginBottom: 40 }}>
+            <Image source={signInLogo} style={{ width: 80, height: 80, marginBottom: 16, alignSelf: "center" }} resizeMode="contain" />
+            <Text style={{ color: C.text, fontSize: 28, fontWeight: "700", textAlign: "center" }}>Welcome back</Text>
+            <Text style={{ color: C.textSub, fontSize: 15, marginTop: 4, textAlign: "center" }}>Sign in to continue splitting</Text>
           </View>
 
           {/* Email */}
@@ -86,8 +88,8 @@ export default function SignIn() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password" as any)} style={{ alignSelf: "flex-end", marginBottom: 20 }}>
-            <Text style={{ color: "#6366f1", fontSize: 13 }}>Forgot password?</Text>
+          <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password" as any)} style={{ marginBottom: 20 }}>
+            <Text style={{ color: "#6366f1", fontSize: 13, textAlign: "right" }}>Forgot password?</Text>
           </TouchableOpacity>
 
           {error ? (
@@ -111,7 +113,8 @@ export default function SignIn() {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
