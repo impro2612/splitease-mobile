@@ -113,6 +113,12 @@ export default function Friends() {
     channel.bind("new-message", () => {
       queryClient.invalidateQueries({ queryKey: ["friends"] })
     })
+    channel.bind("friend-request", () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+    })
+    channel.bind("friend-update", () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+    })
     return () => {
       channel.unbind_all()
       pusher.unsubscribe(`private-user-${myId}`)
