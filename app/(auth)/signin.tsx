@@ -10,6 +10,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin"
 import { useAuthStore } from "@/store/auth"
 import { api } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
+import { GoogleLogo } from "@/components/ui/GoogleLogo"
 
 const signInLogo = require("@/assets/Photoroom.png")
 
@@ -133,7 +134,7 @@ export default function SignIn() {
                 <ActivityIndicator color={C.text} />
               ) : (
                 <>
-                  <Text style={{ fontSize: 20 }}>G</Text>
+                  <GoogleLogo size={22} />
                   <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Continue with Google</Text>
                 </>
               )}

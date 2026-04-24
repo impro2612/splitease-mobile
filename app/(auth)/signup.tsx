@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { GoogleSignin } from "@react-native-google-signin/google-signin"
 import { useAuthStore } from "@/store/auth"
 import { useTheme } from "@/lib/theme"
+import { GoogleLogo } from "@/components/ui/GoogleLogo"
 
 const signInLogo = require("@/assets/Photoroom.png")
 
@@ -148,7 +149,7 @@ export default function SignUp() {
                 <ActivityIndicator color={C.text} />
               ) : (
                 <>
-                  <Text style={{ fontSize: 20 }}>G</Text>
+                  <GoogleLogo size={22} />
                   <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Continue with Google</Text>
                 </>
               )}
