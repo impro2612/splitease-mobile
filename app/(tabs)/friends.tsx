@@ -10,7 +10,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { router, type Href, useFocusEffect } from "expo-router"
-import { friendsApi, usersApi } from "@/lib/api"
+import Pusher from "pusher-js/react-native"
+import { friendsApi, usersApi, API_BASE_URL } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
@@ -82,6 +83,42 @@ export default function Friends() {
       refetch()
     }, [refetch])
   )
+
+  // Real-time unread badge updates via Pusher
+  useEffect(() => {
+    const myId = user?.id
+    if (!myId) return
+    const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
+    const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
+      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
+      channelAuthorization: {
+        customHandler: async ({ socketId, channelName }, callback) => {
+          try {
+            const token = await SecureStore.getItemAsync("session_token")
+            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
+            })
+            if (!res.ok) { callback(new Error("Pusher auth failed"), null); return }
+            callback(null, await res.json())
+          } catch (err) { callback(err as Error, null) }
+        },
+      },
+    })
+    const channel = pusher.subscribe(`private-user-${myId}`)
+    channel.bind("new-message", () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+    })
+    return () => {
+      channel.unbind_all()
+      pusher.unsubscribe(`private-user-${myId}`)
+      pusher.disconnect()
+    }
+  }, [user?.id, queryClient])
 
   const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
 

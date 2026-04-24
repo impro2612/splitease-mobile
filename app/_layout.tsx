@@ -178,7 +178,9 @@ async function registerForPushNotifications() {
     : await Notifications.requestPermissionsAsync()
   if (status !== "granted") return
 
-  const token = await Notifications.getExpoPushTokenAsync().catch(() => null)
+  const token = await Notifications.getExpoPushTokenAsync({
+    projectId: "24eaff5b-d54f-4cd4-a865-867a1cb0cfcb",
+  }).catch(() => null)
   if (token?.data) {
     await pushApi.saveToken(token.data).catch(() => {})
   }
