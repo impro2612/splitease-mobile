@@ -20,6 +20,7 @@ function uuidv4() {
   })
 }
 import { API_BASE_URL, messagesApi } from "@/lib/api"
+import Toast from "react-native-toast-message"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Message = {
@@ -247,27 +248,24 @@ export default function ChatScreen() {
     setInput("")
     setSending(true)
 
-    const clientId = uuidv4()
-    const encrypted = encrypt(text, key)
-    const optimistic: Message = {
-      clientId,
-      senderId: myId,
-      receiverId: friendId,
-      content: text,
-      createdAt: new Date().toISOString(),
-      pending: true,
-    }
-
-    setMessages((prev) => {
-      const merged = mergeMessages(prev, [optimistic])
-      return merged
-    })
-
     try {
+      const clientId = uuidv4()
+      const encrypted = encrypt(text, key)
+      const optimistic: Message = {
+        clientId,
+        senderId: myId,
+        receiverId: friendId,
+        content: text,
+        createdAt: new Date().toISOString(),
+        pending: true,
+      }
+
+      setMessages((prev) => mergeMessages(prev, [optimistic]))
+
       const res = await messagesApi.send({ receiverId: friendId, content: encrypted, clientId })
       const saved: Message = {
         ...res.data,
-        content: text, // keep decrypted
+        content: text,
         pending: false,
       }
       setMessages((prev) => {
@@ -276,8 +274,9 @@ export default function ChatScreen() {
         return merged
       })
       lastFetchRef.current = saved.createdAt
-    } catch {
-      // mark as failed (keep in list with pending=true for retry)
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? err?.message ?? "Failed to send"
+      Toast.show({ type: "error", text1: "Message not sent", text2: msg })
     } finally {
       setSending(false)
     }
