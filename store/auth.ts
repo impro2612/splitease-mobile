@@ -2,7 +2,7 @@ import { create } from "zustand"
 import * as SecureStore from "expo-secure-store"
 import { Appearance } from "react-native"
 import axios from "axios"
-import { API_BASE_URL } from "@/lib/api"
+import { API_BASE_URL, authApi } from "@/lib/api"
 
 export type ThemePref = "light" | "dark" | "system"
 
@@ -20,7 +20,8 @@ type AuthState = {
   currency: string
   theme: ThemePref
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (name: string, email: string, phone: string, password: string) => Promise<void>
+  signUp: (name: string, email: string, password: string) => Promise<void>
+  googleSignIn: (idToken: string) => Promise<void>
   signOut: () => Promise<void>
   loadSession: () => Promise<void>
   setUser: (user: User) => void
@@ -68,9 +69,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, token })
   },
 
-  signUp: async (name, email, phone, password) => {
-    await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, phone, password })
+  signUp: async (name, email, password) => {
+    await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, password })
     const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-signin`, { email, password })
+    const { token, user } = res.data
+    await SecureStore.setItemAsync("session_token", token)
+    await SecureStore.setItemAsync("user_data", JSON.stringify(user))
+    set({ user, token })
+  },
+
+  googleSignIn: async (idToken: string) => {
+    const res = await authApi.googleSignIn(idToken)
     const { token, user } = res.data
     await SecureStore.setItemAsync("session_token", token)
     await SecureStore.setItemAsync("user_data", JSON.stringify(user))

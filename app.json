@@ -51,7 +51,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "./plugins/notification-listener"
+      "./plugins/notification-listener",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true

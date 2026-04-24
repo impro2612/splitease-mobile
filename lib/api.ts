@@ -37,11 +37,14 @@ api.interceptors.response.use(
 
 // Auth endpoints
 export const authApi = {
-  register: (data: { name: string; email: string; phone: string; password: string }) =>
+  register: (data: { name: string; email: string; password: string; phone?: string }) =>
     api.post("/api/auth/register", data),
 
   signIn: (data: { email: string; password: string }) =>
     api.post("/api/auth/mobile-signin", data),
+
+  googleSignIn: (idToken: string) =>
+    api.post("/api/auth/google", { idToken }),
 
   me: () => api.get("/api/auth/me"),
 
