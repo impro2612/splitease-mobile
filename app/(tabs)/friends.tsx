@@ -8,7 +8,7 @@ import * as Contacts from "expo-contacts"
 import * as SecureStore from "expo-secure-store"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, type Href, useFocusEffect } from "expo-router"
 import Pusher from "pusher-js/react-native"
 import { friendsApi, usersApi, blocksApi, API_BASE_URL } from "@/lib/api"
@@ -41,6 +41,7 @@ type ConfirmDialog = { title: string; message: string; onConfirm: () => void }
 export default function Friends() {
   const { user } = useAuthStore()
   const C = useTheme()
+  const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>("friends")
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null)
@@ -684,7 +685,7 @@ export default function Friends() {
       {/* Friend action bottom sheet (3-dot) */}
       <Modal visible={!!actionFriend} transparent animationType="slide" onRequestClose={() => setActionFriend(null)}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} activeOpacity={1} onPress={() => setActionFriend(null)} />
-        <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, borderTopWidth: 1, borderColor: C.border }}>
+        <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Math.max(40, insets.bottom + 24), borderTopWidth: 1, borderColor: C.border }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.15)", alignSelf: "center", marginBottom: 20 }} />
           <Text style={{ color: C.text, fontWeight: "700", fontSize: 16, marginBottom: 16, textAlign: "center" }}>{actionFriend?.name}</Text>
           <TouchableOpacity
