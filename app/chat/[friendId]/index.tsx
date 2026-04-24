@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal,
 } from "react-native"
 import * as Clipboard from "expo-clipboard"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -91,6 +91,7 @@ export default function ChatScreen() {
   const [hasMore, setHasMore] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [actionMsg, setActionMsg] = useState<Message | null>(null)
   const isSelecting = selectedIds.size > 0
 
   const flatListRef = useRef<FlatList>(null)
@@ -299,10 +300,6 @@ export default function ChatScreen() {
     })
   }
 
-  function enterSelection(id: string) {
-    setSelectedIds(new Set([id]))
-  }
-
   function cancelSelection() {
     setSelectedIds(new Set())
   }
@@ -446,57 +443,56 @@ export default function ChatScreen() {
               return (
                 <Pressable
                   onLongPress={() => {
-                    if (msg.pending || !msg.id) return
+                    if (msg.pending) return
                     if (isSelecting) return
-                    if (isMine) {
-                      enterSelection(msgId)
-                    } else {
-                      // Copy only for received messages
-                      Clipboard.setStringAsync(msg.content).then(() =>
-                        Toast.show({ type: "success", text1: "Copied to clipboard" })
-                      )
-                    }
+                    setActionMsg(msg)
                   }}
                   onPress={() => {
-                    if (isSelecting && isMine && msg.id) toggleSelect(msgId)
+                    if (isSelecting && msg.id) toggleSelect(msgId)
                   }}
                   delayLongPress={350}
-                  style={{ flexDirection: "row", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 6, alignItems: "center", gap: 8 }}
+                  style={{ flexDirection: "row", alignItems: "center", marginBottom: 6, gap: 8 }}
                 >
-                  {isSelecting && isMine && (
+                  {/* Checkbox — always on far left in selection mode */}
+                  {isSelecting ? (
                     <View style={{
                       width: 22, height: 22, borderRadius: 11,
                       backgroundColor: isSelected ? "#6366f1" : "transparent",
                       borderWidth: 2, borderColor: isSelected ? "#6366f1" : C.textMuted,
                       alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
                     }}>
                       {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
                     </View>
-                  )}
-                  <View style={{
-                    maxWidth: "78%",
-                    backgroundColor: isSelected ? "rgba(99,102,241,0.35)" : isMine ? "#6366f1" : "#1a1a2e",
-                    borderRadius: 18,
-                    borderBottomRightRadius: isMine ? 4 : 18,
-                    borderBottomLeftRadius: isMine ? 18 : 4,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderWidth: isMine ? 0 : 1,
-                    borderColor: isSelected ? "#6366f1" : C.border,
-                    opacity: msg.pending ? 0.65 : 1,
-                  }}>
-                    <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3, justifyContent: "flex-end" }}>
-                      <Text style={{ color: isMine ? "rgba(255,255,255,0.55)" : C.textMuted, fontSize: 10 }}>
-                        {formatTime(msg.createdAt)}
-                      </Text>
-                      {isMine && (
-                        <Ionicons
-                          name={msg.pending ? "time-outline" : "checkmark-done"}
-                          size={11}
-                          color={msg.pending ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.55)"}
-                        />
-                      )}
+                  ) : null}
+
+                  {/* Bubble row — push mine to right */}
+                  <View style={{ flex: 1, flexDirection: "row", justifyContent: isMine ? "flex-end" : "flex-start" }}>
+                    <View style={{
+                      maxWidth: "78%",
+                      backgroundColor: isSelected ? "rgba(99,102,241,0.35)" : isMine ? "#6366f1" : "#1a1a2e",
+                      borderRadius: 18,
+                      borderBottomRightRadius: isMine ? 4 : 18,
+                      borderBottomLeftRadius: isMine ? 18 : 4,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderWidth: isMine ? 0 : 1,
+                      borderColor: isSelected ? "#6366f1" : C.border,
+                      opacity: msg.pending ? 0.65 : 1,
+                    }}>
+                      <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3, justifyContent: "flex-end" }}>
+                        <Text style={{ color: isMine ? "rgba(255,255,255,0.55)" : C.textMuted, fontSize: 10 }}>
+                          {formatTime(msg.createdAt)}
+                        </Text>
+                        {isMine && (
+                          <Ionicons
+                            name={msg.pending ? "time-outline" : "checkmark-done"}
+                            size={11}
+                            color={msg.pending ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.55)"}
+                          />
+                        )}
+                      </View>
                     </View>
                   </View>
                 </Pressable>
@@ -554,6 +550,57 @@ export default function ChatScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+      {/* Message action popup */}
+      <Modal
+        visible={!!actionMsg}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionMsg(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
+          onPress={() => setActionMsg(null)}
+        >
+          <Pressable onPress={() => {}}>
+            <View style={{ backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: insets.bottom + 8, paddingTop: 8 }}>
+              {/* Handle bar */}
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 16 }} />
+
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!actionMsg) return
+                  await Clipboard.setStringAsync(actionMsg.content)
+                  setActionMsg(null)
+                  Toast.show({ type: "success", text1: "Copied to clipboard" })
+                }}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 16, gap: 16 }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="copy-outline" size={20} color="#a5b4fc" />
+                </View>
+                <Text style={{ color: C.text, fontSize: 16, fontWeight: "500" }}>Copy Text</Text>
+              </TouchableOpacity>
+
+              <View style={{ height: 1, backgroundColor: C.border, marginHorizontal: 24 }} />
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (!actionMsg?.id) return
+                  const msgId = actionMsg.id
+                  setActionMsg(null)
+                  setSelectedIds(new Set([msgId]))
+                }}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 16, gap: 16 }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="trash-outline" size={20} color="#f87171" />
+                </View>
+                <Text style={{ color: "#f87171", fontSize: 16, fontWeight: "500" }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   )
 }
