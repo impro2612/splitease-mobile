@@ -39,12 +39,16 @@ const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 function sharedKey(idA: string, idB: string) {
   return [idA, idB].sort().join("-")
 }
-function encrypt(text: string, key: string) {
-  return CryptoJS.AES.encrypt(text, key).toString()
+function encrypt(text: string, sharedKey: string) {
+  const key = CryptoJS.SHA256(sharedKey)
+  const iv = CryptoJS.MD5(sharedKey)
+  return CryptoJS.AES.encrypt(text, key, { iv }).toString()
 }
-function decrypt(cipher: string, key: string) {
+function decrypt(cipher: string, sharedKey: string) {
   try {
-    return CryptoJS.AES.decrypt(cipher, key).toString(CryptoJS.enc.Utf8) || cipher
+    const key = CryptoJS.SHA256(sharedKey)
+    const iv = CryptoJS.MD5(sharedKey)
+    return CryptoJS.AES.decrypt(cipher, key, { iv }).toString(CryptoJS.enc.Utf8) || cipher
   } catch {
     return cipher
   }
