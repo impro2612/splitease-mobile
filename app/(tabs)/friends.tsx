@@ -61,6 +61,12 @@ export default function Friends() {
   const [inviteTarget, setInviteTarget] = useState<Contact | null>(null)
   const [showInvite, setShowInvite] = useState(false)
 
+  // Friend action menu (3-dot)
+  const [actionFriend, setActionFriend] = useState<{ friendshipId: string; userId: string; name: string } | null>(null)
+
+  // Search auto-focus
+  const searchInputRef = useRef<any>(null)
+
   // Track AppState for auto-sync
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
 
@@ -361,7 +367,10 @@ export default function Friends() {
         {tabs.map((t) => (
           <TouchableOpacity
             key={t.key}
-            onPress={() => setTab(t.key)}
+            onPress={() => {
+              setTab(t.key)
+              if (t.key === "search") setTimeout(() => searchInputRef.current?.focus(), 150)
+            }}
             style={{
               flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
               backgroundColor: tab === t.key ? "#6366f1" : "rgba(255,255,255,0.06)",
@@ -391,7 +400,7 @@ export default function Friends() {
               <Text style={{ fontSize: 48, marginBottom: 16 }}>🤝</Text>
               <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>No friends yet</Text>
               <Text style={{ color: C.textMuted, fontSize: 14, textAlign: "center", marginBottom: 24 }}>Search for people or invite from your contacts</Text>
-              <TouchableOpacity onPress={() => setTab("search")} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+              <TouchableOpacity onPress={() => { setTab("search"); setTimeout(() => searchInputRef.current?.focus(), 150) }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
                 <Text style={{ color: C.text, fontWeight: "600" }}>Find friends</Text>
               </TouchableOpacity>
             </View>
@@ -412,7 +421,6 @@ export default function Friends() {
                       onPress={() => {
                         if (!other?.id) return
                         router.push({
-                          // The generated Expo Router types in .expo currently omit this valid route.
                           pathname: "/chat/[friendId]",
                           params: { friendId: other.id, name: other.name ?? "" },
                         } as unknown as Href)
@@ -421,39 +429,17 @@ export default function Friends() {
                     >
                       <Ionicons name="chatbubble-ellipses" size={17} color="#4ade80" />
                       {hasUnread && (
-                        <View
-                          style={{
-                            position: "absolute",
-                            top: -4,
-                            right: -4,
-                            minWidth: 16,
-                            height: 16,
-                            borderRadius: 8,
-                            backgroundColor: "#ef4444",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            borderWidth: 1.5,
-                            borderColor: C.card,
-                            paddingHorizontal: 3,
-                          }}
-                        >
+                        <View style={{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: C.card, paddingHorizontal: 3 }}>
                           <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", lineHeight: 10 }}>1</Text>
                         </View>
                       )}
                     </TouchableOpacity>
-                    {/* Remove icon */}
+                    {/* 3-dot menu */}
                     <TouchableOpacity
-                      onPress={() => confirmRemove(f.id, other?.name ?? "this friend")}
-                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.12)", alignItems: "center", justifyContent: "center" }}
+                      onPress={() => setActionFriend({ friendshipId: f.id, userId: other?.id, name: other?.name ?? "this user" })}
+                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
                     >
-                      <Ionicons name="person-remove" size={16} color="#f87171" />
-                    </TouchableOpacity>
-                    {/* Block icon */}
-                    <TouchableOpacity
-                      onPress={() => confirmBlock(other?.id, other?.name ?? "this user")}
-                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.18)", alignItems: "center", justifyContent: "center" }}
-                    >
-                      <Ionicons name="ban" size={16} color="#ef4444" />
+                      <Ionicons name="ellipsis-vertical" size={18} color={C.textSub} />
                     </TouchableOpacity>
                   </View>
                 )
@@ -532,6 +518,7 @@ export default function Friends() {
             <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 50 }}>
               <Ionicons name="search" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
               <TextInput
+                ref={searchInputRef}
                 style={{ color: C.text, flex: 1, fontSize: 15 }}
                 placeholder="Search by name or email…"
                 placeholderTextColor={C.textMuted}
@@ -693,6 +680,39 @@ export default function Friends() {
           )}
         </View>
       )}
+
+      {/* Friend action bottom sheet (3-dot) */}
+      <Modal visible={!!actionFriend} transparent animationType="slide" onRequestClose={() => setActionFriend(null)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} activeOpacity={1} onPress={() => setActionFriend(null)} />
+        <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, borderTopWidth: 1, borderColor: C.border }}>
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.15)", alignSelf: "center", marginBottom: 20 }} />
+          <Text style={{ color: C.text, fontWeight: "700", fontSize: 16, marginBottom: 16, textAlign: "center" }}>{actionFriend?.name}</Text>
+          <TouchableOpacity
+            onPress={() => { setActionFriend(null); if (actionFriend) confirmRemove(actionFriend.friendshipId, actionFriend.name) }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, backgroundColor: "rgba(244,63,94,0.08)", borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: "rgba(244,63,94,0.15)" }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.12)", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="person-remove" size={18} color="#f87171" />
+            </View>
+            <View>
+              <Text style={{ color: "#f87171", fontWeight: "600", fontSize: 15 }}>Remove Friend</Text>
+              <Text style={{ color: C.textMuted, fontSize: 12 }}>Remove from your friends list</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { setActionFriend(null); if (actionFriend) confirmBlock(actionFriend.userId, actionFriend.name) }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, backgroundColor: "rgba(239,68,68,0.08)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(239,68,68,0.15)" }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.12)", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="ban" size={18} color="#ef4444" />
+            </View>
+            <View>
+              <Text style={{ color: "#ef4444", fontWeight: "600", fontSize: 15 }}>Block User</Text>
+              <Text style={{ color: C.textMuted, fontSize: 12 }}>Block and remove from friends</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Modal>
 
       {/* Remove Friend Confirm Dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
