@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Alert,
 } from "react-native"
 import * as Clipboard from "expo-clipboard"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -511,7 +511,17 @@ export default function ChatScreen() {
               <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={deleteSelected}
+              onPress={() => {
+                const count = selectedIds.size
+                Alert.alert(
+                  "Delete Messages",
+                  `Delete ${count} message${count > 1 ? "s" : ""}? This cannot be undone.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: deleteSelected },
+                  ]
+                )
+              }}
               disabled={deleting}
               style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
             >
