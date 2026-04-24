@@ -1,6 +1,6 @@
 import "../global.css"
 import { useEffect, useRef, useState } from "react"
-import { Platform, View, Text, useColorScheme } from "react-native"
+import { Platform, View, Text, useColorScheme, AppState, AppStateStatus } from "react-native"
 import NetInfo from "@react-native-community/netinfo"
 import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
@@ -171,26 +171,35 @@ const queryClient = new QueryClient({
 })
 
 async function registerForPushNotifications() {
-  if (!Device.isDevice) return // won't work on emulator, but won't crash
+  if (!Device.isDevice) return
+
   const { status: existing } = await Notifications.getPermissionsAsync()
   const { status } = existing === "granted"
     ? { status: existing }
     : await Notifications.requestPermissionsAsync()
   if (status !== "granted") return
 
-  const token = await Notifications.getExpoPushTokenAsync({
-    projectId: "24eaff5b-d54f-4cd4-a865-867a1cb0cfcb",
-  }).catch(() => null)
-  if (token?.data) {
-    await pushApi.saveToken(token.data).catch(() => {})
-  }
-
   if (Platform.OS === "android") {
-    Notifications.setNotificationChannelAsync("default", {
+    await Notifications.setNotificationChannelAsync("default", {
       name: "default",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
     })
+  }
+
+  const token = await Notifications.getExpoPushTokenAsync({
+    projectId: "24eaff5b-d54f-4cd4-a865-867a1cb0cfcb",
+  }).catch(() => null)
+  if (!token?.data) return
+
+  // Retry up to 3 times with 3s gaps — token save often fails on slow startup network
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await pushApi.saveToken(token.data)
+      return // success
+    } catch {
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 3000))
+    }
   }
 }
 
@@ -270,11 +279,15 @@ export default function RootLayout() {
     })
   }, [])
 
-  // Register push token once user is logged in
+  // Register push token on login and every time the app comes to foreground
   useEffect(() => {
-    if (user) {
-      registerForPushNotifications()
-    }
+    if (!user) return
+    registerForPushNotifications()
+
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (next === "active") registerForPushNotifications()
+    })
+    return () => sub.remove()
   }, [user?.id])
 
   // Handle notification tap — deep link to confirm-expense
