@@ -239,6 +239,7 @@ export default function Friends() {
   const blockMutation = useMutation({
     mutationFn: (blockedId: string) => blocksApi.block(blockedId),
     onSuccess: () => {
+      refetch()
       queryClient.invalidateQueries({ queryKey: ["friends"] })
       Toast.show({ type: "success", text1: "User blocked" })
     },
