@@ -333,6 +333,14 @@ export default function Profile() {
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
             </TouchableOpacity>
 
+            <TouchableOpacity onPress={() => router.push("/blocked-users" as any)} style={{ ...rowStyle, ...divider }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="ban" size={18} color="#f87171" />
+              </View>
+              <Text style={{ color: C.text, flex: 1 }}>Blocked Users</Text>
+              <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
+            </TouchableOpacity>
+
             <TouchableOpacity onPress={() => setShowPrivacy(true)} style={{ ...rowStyle, ...divider }}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(139,92,246,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="shield-checkmark" size={18} color="#c084fc" />
@@ -378,7 +386,7 @@ export default function Profile() {
 
         {/* Footer */}
         <Text style={{ color: C.textMuted, fontSize: 12, textAlign: "center", paddingHorizontal: 24, paddingTop: 16 }}>
-          © 2026 SplitIT. Made with ❤️ to track your expenses.
+          © 2026 SplitIT. Made with ❤️ to keep friendships easy.
         </Text>
       </ScrollView>
 

@@ -122,6 +122,13 @@ export const usersApi = {
   lookupPhones: (phones: string[]) => api.post("/api/users/lookup-phones", { phones }),
 }
 
+// Blocks
+export const blocksApi = {
+  list: () => api.get("/api/blocks"),
+  block: (blockedId: string) => api.post("/api/blocks", { blockedId }),
+  unblock: (userId: string) => api.delete(`/api/blocks/${userId}`),
+}
+
 // Dashboard summary
 export const dashboardApi = {
   summary: () => api.get("/api/balance-summary"),

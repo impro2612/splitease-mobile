@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { router, type Href, useFocusEffect } from "expo-router"
 import Pusher from "pusher-js/react-native"
-import { friendsApi, usersApi, API_BASE_URL } from "@/lib/api"
+import { friendsApi, usersApi, blocksApi, API_BASE_URL } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
@@ -236,11 +236,28 @@ export default function Friends() {
     onError: () => Toast.show({ type: "error", text1: "Failed to remove friend" }),
   })
 
+  const blockMutation = useMutation({
+    mutationFn: (blockedId: string) => blocksApi.block(blockedId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+      Toast.show({ type: "success", text1: "User blocked" })
+    },
+    onError: () => Toast.show({ type: "error", text1: "Failed to block user" }),
+  })
+
   function confirmRemove(friendId: string, name: string) {
     setConfirmDialog({
       title: "Remove Friend",
       message: `Remove ${name} from your friends? You can always add them back later.`,
       onConfirm: () => removeMutation.mutate(friendId),
+    })
+  }
+
+  function confirmBlock(userId: string, name: string) {
+    setConfirmDialog({
+      title: "Block User",
+      message: `Block ${name}? They won't be able to message or find you. Their group data remains unchanged.`,
+      onConfirm: () => blockMutation.mutate(userId),
     })
   }
 
@@ -430,6 +447,13 @@ export default function Friends() {
                     >
                       <Ionicons name="person-remove" size={16} color="#f87171" />
                     </TouchableOpacity>
+                    {/* Block icon */}
+                    <TouchableOpacity
+                      onPress={() => confirmBlock(other?.id, other?.name ?? "this user")}
+                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.18)", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <Ionicons name="ban" size={16} color="#ef4444" />
+                    </TouchableOpacity>
                   </View>
                 )
               })}
@@ -459,6 +483,9 @@ export default function Friends() {
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => respondMutation.mutate({ id: r.id, action: "reject" })} disabled={respondMutation.isPending} style={{ backgroundColor: "rgba(244,63,94,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}>
                           <Ionicons name="close" size={16} color="#f87171" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => confirmBlock(r.requester?.id, r.requester?.name ?? "this user")} style={{ backgroundColor: "rgba(239,68,68,0.18)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}>
+                          <Ionicons name="ban" size={16} color="#ef4444" />
                         </TouchableOpacity>
                       </View>
                     </View>
