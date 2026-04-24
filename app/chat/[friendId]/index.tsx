@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable,
 } from "react-native"
+import * as Clipboard from "expo-clipboard"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@/lib/theme"
 import { Ionicons } from "@expo/vector-icons"
@@ -88,6 +89,9 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [hasMore, setHasMore] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const isSelecting = selectedIds.size > 0
 
   const flatListRef = useRef<FlatList>(null)
   const lastFetchRef = useRef<string | null>(null)
@@ -286,6 +290,41 @@ export default function ChatScreen() {
     }
   }
 
+  // ── Selection helpers ─────────────────────────────────────────────────────────
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function enterSelection(id: string) {
+    setSelectedIds(new Set([id]))
+  }
+
+  function cancelSelection() {
+    setSelectedIds(new Set())
+  }
+
+  async function deleteSelected() {
+    const ids = Array.from(selectedIds)
+    setDeleting(true)
+    try {
+      await messagesApi.delete(ids)
+      setMessages((prev) => {
+        const updated = prev.filter((m) => !m.id || !ids.includes(m.id))
+        saveCache(ck, updated)
+        return updated
+      })
+      setSelectedIds(new Set())
+    } catch {
+      Toast.show({ type: "error", text1: "Delete failed", text2: "Could not delete messages" })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
   const friendName = decodeURIComponent(name ?? "Chat")
 
@@ -326,16 +365,29 @@ export default function ChatScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border, gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="arrow-back" size={18} color="#fff" />
+        <TouchableOpacity
+          onPress={() => isSelecting ? cancelSelection() : router.back()}
+          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
+        >
+          <Ionicons name={isSelecting ? "close" : "arrow-back"} size={18} color="#fff" />
         </TouchableOpacity>
-        <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{friendName.charAt(0).toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
-          <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "500" }}>End-to-end encrypted</Text>
-        </View>
+        {isSelecting ? (
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>
+              {selectedIds.size} selected
+            </Text>
+          </View>
+        ) : (
+          <>
+            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{friendName.charAt(0).toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
+              <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "500" }}>End-to-end encrypted</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <KeyboardAvoidingView
@@ -389,18 +441,48 @@ export default function ChatScreen() {
               }
               const msg = item as Message
               const isMine = msg.senderId === myId
+              const msgId = msg.id ?? msg.clientId
+              const isSelected = selectedIds.has(msgId)
               return (
-                <View style={{ flexDirection: "row", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 6 }}>
+                <Pressable
+                  onLongPress={() => {
+                    if (msg.pending || !msg.id) return
+                    if (isSelecting) return
+                    if (isMine) {
+                      enterSelection(msgId)
+                    } else {
+                      // Copy only for received messages
+                      Clipboard.setStringAsync(msg.content).then(() =>
+                        Toast.show({ type: "success", text1: "Copied to clipboard" })
+                      )
+                    }
+                  }}
+                  onPress={() => {
+                    if (isSelecting && isMine && msg.id) toggleSelect(msgId)
+                  }}
+                  delayLongPress={350}
+                  style={{ flexDirection: "row", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 6, alignItems: "center", gap: 8 }}
+                >
+                  {isSelecting && isMine && (
+                    <View style={{
+                      width: 22, height: 22, borderRadius: 11,
+                      backgroundColor: isSelected ? "#6366f1" : "transparent",
+                      borderWidth: 2, borderColor: isSelected ? "#6366f1" : C.textMuted,
+                      alignItems: "center", justifyContent: "center",
+                    }}>
+                      {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
+                    </View>
+                  )}
                   <View style={{
                     maxWidth: "78%",
-                    backgroundColor: isMine ? "#6366f1" : "#1a1a2e",
-                    borderRadius: isMine ? 18 : 18,
+                    backgroundColor: isSelected ? "rgba(99,102,241,0.35)" : isMine ? "#6366f1" : "#1a1a2e",
+                    borderRadius: 18,
                     borderBottomRightRadius: isMine ? 4 : 18,
                     borderBottomLeftRadius: isMine ? 18 : 4,
                     paddingHorizontal: 14,
                     paddingVertical: 10,
                     borderWidth: isMine ? 0 : 1,
-                    borderColor: C.border,
+                    borderColor: isSelected ? "#6366f1" : C.border,
                     opacity: msg.pending ? 0.65 : 1,
                   }}>
                     <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
@@ -417,39 +499,60 @@ export default function ChatScreen() {
                       )}
                     </View>
                   </View>
-                </View>
+                </Pressable>
               )
             }}
           />
         )}
 
-        {/* Input */}
-        <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10, borderTopWidth: 1, borderTopColor: C.border }}>
-          <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 24, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 16, paddingVertical: 10, minHeight: 46, maxHeight: 120, justifyContent: "center" }}>
-            <TextInput
-              style={{ color: C.text, fontSize: 15, lineHeight: 20 }}
-              placeholder="Message…"
-              placeholderTextColor={C.textMuted}
-              value={input}
-              onChangeText={setInput}
-              multiline
-              returnKeyType="default"
-            />
+        {/* Input / Selection action bar */}
+        {isSelecting ? (
+          <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 12, borderTopWidth: 1, borderTopColor: C.border }}>
+            <TouchableOpacity
+              onPress={cancelSelection}
+              style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={deleteSelected}
+              disabled={deleting}
+              style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
+            >
+              {deleting
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Delete ({selectedIds.size})</Text>
+              }
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={sendMessage}
-            disabled={!input.trim() || sending}
-            style={{
-              width: 46, height: 46, borderRadius: 23,
-              backgroundColor: input.trim() ? "#6366f1" : "rgba(99,102,241,0.2)",
-              alignItems: "center", justifyContent: "center",
-            }}
-          >
-            {sending
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Ionicons name="send" size={18} color={input.trim() ? "#fff" : C.textMuted} />}
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10, borderTopWidth: 1, borderTopColor: C.border }}>
+            <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 24, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 16, paddingVertical: 10, minHeight: 46, maxHeight: 120, justifyContent: "center" }}>
+              <TextInput
+                style={{ color: C.text, fontSize: 15, lineHeight: 20 }}
+                placeholder="Message…"
+                placeholderTextColor={C.textMuted}
+                value={input}
+                onChangeText={setInput}
+                multiline
+                returnKeyType="default"
+              />
+            </View>
+            <TouchableOpacity
+              onPress={sendMessage}
+              disabled={!input.trim() || sending}
+              style={{
+                width: 46, height: 46, borderRadius: 23,
+                backgroundColor: input.trim() ? "#6366f1" : "rgba(99,102,241,0.2)",
+                alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {sending
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Ionicons name="send" size={18} color={input.trim() ? "#fff" : C.textMuted} />}
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   )

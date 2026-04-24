@@ -112,6 +112,8 @@ export const messagesApi = {
     api.post("/api/messages", data),
   history: (friendId: string, params?: { after?: string; before?: string; limit?: number }) =>
     api.get(`/api/messages/${friendId}`, { params }),
+  delete: (ids: string[]) =>
+    api.delete("/api/messages", { data: { ids } }),
 }
 
 // User search
