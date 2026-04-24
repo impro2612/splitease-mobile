@@ -403,9 +403,9 @@ export default function Friends() {
                 return (
                   <View key={f.id} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <Avatar name={other?.name} email={other?.email} image={other?.image} size={44} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>{other?.name ?? "Unknown"}</Text>
-                      <Text style={{ color: C.textMuted, fontSize: 12 }}>{other?.email}</Text>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }} numberOfLines={1}>{other?.name ?? "Unknown"}</Text>
+                      <Text style={{ color: C.textMuted, fontSize: 12 }} numberOfLines={1}>{other?.email}</Text>
                     </View>
                     {/* Chat icon */}
                     <TouchableOpacity
@@ -474,9 +474,9 @@ export default function Friends() {
                   {incoming.map((r: any) => (
                     <View key={r.id} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.2)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <Avatar name={r.requester?.name} email={r.requester?.email} image={r.requester?.image} size={44} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: C.text, fontWeight: "600" }}>{r.requester?.name}</Text>
-                        <Text style={{ color: C.textMuted, fontSize: 12 }}>{r.requester?.email}</Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ color: C.text, fontWeight: "600" }} numberOfLines={1}>{r.requester?.name}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 12 }} numberOfLines={1}>{r.requester?.email}</Text>
                       </View>
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         <TouchableOpacity onPress={() => respondMutation.mutate({ id: r.id, action: "accept" })} disabled={respondMutation.isPending} style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}>
@@ -501,9 +501,9 @@ export default function Friends() {
                   {outgoing.map((r: any) => (
                     <View key={r.id} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <Avatar name={r.addressee?.name} email={r.addressee?.email} image={r.addressee?.image} size={44} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: C.text, fontWeight: "600" }}>{r.addressee?.name}</Text>
-                        <Text style={{ color: C.textMuted, fontSize: 12 }}>{r.addressee?.email}</Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ color: C.text, fontWeight: "600" }} numberOfLines={1}>{r.addressee?.name}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 12 }} numberOfLines={1}>{r.addressee?.email}</Text>
                       </View>
                       <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
                         <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Pending</Text>
@@ -606,9 +606,9 @@ export default function Friends() {
                         return (
                           <View key={u.id} style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
                             <Avatar name={u.name} email={u.email} image={u.image} size={44} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ color: C.text, fontWeight: "600" }}>{u.name}</Text>
-                              <Text style={{ color: C.textMuted, fontSize: 12 }}>{u.email}</Text>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={{ color: C.text, fontWeight: "600" }} numberOfLines={1}>{u.name}</Text>
+                              <Text style={{ color: C.textMuted, fontSize: 12 }} numberOfLines={1}>{u.email}</Text>
                             </View>
                             {isMe ? (
                               <Text style={{ color: C.textMuted, fontSize: 12 }}>You</Text>
