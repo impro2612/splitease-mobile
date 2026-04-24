@@ -11,6 +11,7 @@ import * as Device from "expo-device"
 import * as ImagePicker from "expo-image-picker"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Constants from "expo-constants"
+import { router } from "expo-router"
 import { useAuthStore, type ThemePref } from "@/store/auth"
 import { api, authApi, pushApi } from "@/lib/api"
 import { Avatar } from "@/components/ui/Avatar"
@@ -298,7 +299,7 @@ export default function Profile() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setShowAppearance(true)} style={rowStyle}>
+            <TouchableOpacity onPress={() => setShowAppearance(true)} style={{ ...rowStyle, ...divider }}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(6,182,212,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="color-palette" size={18} color="#22d3ee" />
               </View>
@@ -315,6 +316,14 @@ export default function Profile() {
                 <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => router.push("/blocked-users" as any)} style={rowStyle}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="ban" size={18} color="#f87171" />
+              </View>
+              <Text style={{ color: C.text, flex: 1 }}>Blocked Users</Text>
+              <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -330,14 +339,6 @@ export default function Profile() {
                 <Ionicons name="star" size={18} color="#fcd34d" />
               </View>
               <Text style={{ color: C.text, flex: 1 }}>Rate SplitIT</Text>
-              <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => router.push("/blocked-users" as any)} style={{ ...rowStyle, ...divider }}>
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                <Ionicons name="ban" size={18} color="#f87171" />
-              </View>
-              <Text style={{ color: C.text, flex: 1 }}>Blocked Users</Text>
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
             </TouchableOpacity>
 
