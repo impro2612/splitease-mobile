@@ -299,6 +299,10 @@ export default function GroupDetail() {
   const [pdfLoading, setPdfLoading] = useState(false)
   const [showTrackModal, setShowTrackModal] = useState(false)
 
+  // Smart Debts (Utility tab)
+  const [showSmartDebtsModal, setShowSmartDebtsModal] = useState(false)
+  const [smartDebtsLoading, setSmartDebtsLoading] = useState(false)
+
   // Track Expense
   type TrackConfig = { groupId: string; groupName: string; enabledAt: string; expiresAt: string | null }
   const TRACK_KEY = "trackExpense"
@@ -409,11 +413,13 @@ export default function GroupDetail() {
     enabled: !!id,
   })
 
-  const { data: balances = [] } = useQuery({
+  const { data: balancesData } = useQuery({
     queryKey: ["balances", id],
-    queryFn: () => balancesApi.get(id).then((r) => (Array.isArray(r.data) ? r.data : [])),
+    queryFn: () => balancesApi.get(id).then((r) => r.data),
     enabled: !!id,
   })
+  const balances = (balancesData?.balances ?? []) as any[]
+  const smartDebtsEnabled: boolean = balancesData?.smartDebtsEnabled ?? false
 
   // Fetch FX rates for non-default currencies when balances or analytics tab is open
   // NOTE: expensesRef is defined after `expenses` is declared below (line ~680)
@@ -902,6 +908,16 @@ export default function GroupDetail() {
 
           return (
             <View style={{ paddingTop: 12, gap: 24, paddingBottom: 8 }}>
+              {/* Smart Debts banner */}
+              {smartDebtsEnabled && (
+                <View style={{ backgroundColor: "rgba(99,102,241,0.12)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.35)", paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Text style={{ fontSize: 16 }}>⚡</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 13 }}>Smart Debts Enabled</Text>
+                    <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 1 }}>Showing minimum transactions to settle all debts</Text>
+                  </View>
+                </View>
+              )}
               {currencyGroups.map(({ currency, balances: currBalances }, groupIdx) => {
                 if (currBalances.length === 0) return null
                 const ci = CURRENCIES.find(c => c.code === currency) ?? gc
@@ -1443,6 +1459,62 @@ export default function GroupDetail() {
               <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>
 
+            {/* Smart Debts */}
+            <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: smartDebtsEnabled ? "rgba(99,102,241,0.4)" : C.border, padding: 18, gap: 14 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: smartDebtsEnabled ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 22 }}>⚡</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Smart Debts</Text>
+                    {smartDebtsEnabled && (
+                      <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
+                        <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "700" }}>ACTIVE</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>
+                    {smartDebtsEnabled ? "Minimising transactions in Balances tab" : "Reduce the number of payments needed"}
+                  </Text>
+                </View>
+              </View>
+              {smartDebtsEnabled ? (
+                <TouchableOpacity
+                  onPress={async () => {
+                    setSmartDebtsLoading(true)
+                    try {
+                      await balancesApi.toggleSmartDebts(id, false)
+                      queryClient.invalidateQueries({ queryKey: ["balances", id] })
+                      Toast.show({ type: "success", text1: "Smart Debts disabled" })
+                    } catch {
+                      Toast.show({ type: "error", text1: "Failed to disable Smart Debts" })
+                    } finally {
+                      setSmartDebtsLoading(false)
+                    }
+                  }}
+                  disabled={smartDebtsLoading}
+                  style={{ backgroundColor: "rgba(244,63,94,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(244,63,94,0.25)", paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                >
+                  {smartDebtsLoading ? <ActivityIndicator color="#f87171" size="small" /> : (
+                    <>
+                      <Ionicons name="flash-off-outline" size={18} color="#f87171" />
+                      <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 14 }}>Disable Smart Debts</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setShowSmartDebtsModal(true)}
+                  disabled={smartDebtsLoading}
+                  style={{ backgroundColor: "#6366f1", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                >
+                  <Ionicons name="flash-outline" size={18} color="#fff" />
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Enable Smart Debts</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             {/* Track Expense */}
             <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: isTracking ? "rgba(99,102,241,0.4)" : C.border, padding: 18, gap: 14, opacity: otherGroupTracking ? 0.6 : 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -1523,6 +1595,56 @@ export default function GroupDetail() {
                 style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: confirmDialog?.danger ? "#ef4444" : "#6366f1", alignItems: "center", justifyContent: "center" }}
               >
                 <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Smart Debts Confirmation Modal */}
+      <Modal visible={showSmartDebtsModal} transparent animationType="fade" onRequestClose={() => setShowSmartDebtsModal(false)}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Text style={{ fontSize: 28 }}>⚡</Text>
+            </View>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", textAlign: "center", marginBottom: 6 }}>Enable Smart Debts?</Text>
+            <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 16, lineHeight: 19 }}>
+              Minimises the number of payments needed to settle all debts in this group.
+            </Text>
+            {/* Example box */}
+            <View style={{ backgroundColor: C.iconBg, borderRadius: 14, padding: 14, marginBottom: 20, gap: 6 }}>
+              <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 4 }}>EXAMPLE</Text>
+              <View style={{ gap: 4 }}>
+                <Text style={{ color: "#f87171", fontSize: 12 }}>❌  A → B ₹100  &  B → C ₹100  (2 payments)</Text>
+                <View style={{ height: 1, backgroundColor: C.border, marginVertical: 4 }} />
+                <Text style={{ color: "#4ade80", fontSize: 12 }}>✅  A → C ₹100  (1 payment, B eliminated)</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setShowSmartDebtsModal(false)}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  setShowSmartDebtsModal(false)
+                  setSmartDebtsLoading(true)
+                  try {
+                    await balancesApi.toggleSmartDebts(id, true)
+                    queryClient.invalidateQueries({ queryKey: ["balances", id] })
+                    Toast.show({ type: "success", text1: "Smart Debts enabled ⚡" })
+                  } catch {
+                    Toast.show({ type: "error", text1: "Failed to enable Smart Debts" })
+                  } finally {
+                    setSmartDebtsLoading(false)
+                  }
+                }}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Enable</Text>
               </TouchableOpacity>
             </View>
           </View>

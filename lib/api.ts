@@ -97,6 +97,8 @@ export const balancesApi = {
   get: (groupId: string) => api.get(`/api/groups/${groupId}/balances`),
   settle: (groupId: string, data: { toUserId: string; amount: number; note?: string; currency?: string }) =>
     api.post(`/api/groups/${groupId}/settle`, data),
+  toggleSmartDebts: (groupId: string, enabled: boolean) =>
+    api.patch(`/api/groups/${groupId}/smart-debts`, { enabled }),
 }
 
 // Friends
