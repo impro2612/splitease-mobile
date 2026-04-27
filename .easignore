@@ -1,0 +1,49 @@
+# Same as .gitignore but allows google-services.json for local EAS builds
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+# .env is intentionally included so EXPO_PUBLIC_* vars get bundled
+
+# Firebase service account admin credentials (sensitive — never commit)
+*-firebase-adminsdk-*.json
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# Local EAS build artifacts
+*.apk
+*.aab
