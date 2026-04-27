@@ -141,6 +141,7 @@ export const blocksApi = {
 // Dashboard summary
 export const dashboardApi = {
   summary: () => api.get("/api/balance-summary"),
+  activity: () => api.get("/api/activity"),
 }
 
 // Push token registration
