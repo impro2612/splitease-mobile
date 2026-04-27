@@ -888,7 +888,7 @@ export default function GroupDetail() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: C.iconBg, borderRadius: 12 }} contentContainerStyle={{ padding: 3, gap: 4 }}>
-          {(["expenses", "balances", "analytics", "members", "utility"] as Tab[]).map((t) => (
+          {(["expenses", "balances", "analytics", "utility", "members"] as Tab[]).map((t) => (
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}

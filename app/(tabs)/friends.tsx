@@ -492,8 +492,21 @@ export default function Friends() {
                         <Text style={{ color: C.text, fontWeight: "600" }} numberOfLines={1}>{r.addressee?.name}</Text>
                         <Text style={{ color: C.textMuted, fontSize: 12 }} numberOfLines={1}>{r.addressee?.email}</Text>
                       </View>
-                      <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                        <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Pending</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+                          <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Pending</Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => setConfirmDialog({
+                            title: "Cancel Request",
+                            message: `Cancel your friend request to ${r.addressee?.name ?? "this person"}?`,
+                            onConfirm: () => removeMutation.mutate(r.id),
+                          })}
+                          disabled={removeMutation.isPending}
+                          style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(244,63,94,0.15)", alignItems: "center", justifyContent: "center" }}
+                        >
+                          <Ionicons name="close" size={16} color="#f87171" />
+                        </TouchableOpacity>
                       </View>
                     </View>
                   ))}
