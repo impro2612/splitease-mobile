@@ -87,6 +87,7 @@ export const expensesApi = {
   update: (groupId: string, expenseId: string, data: {
     description?: string; amount?: number; category?: string
     paidById?: string; date?: string; currency?: string
+    splitType?: string; splits?: { userId: string; amount: number }[]
   }) => api.patch(`/api/groups/${groupId}/expenses/${expenseId}`, data),
   delete: (groupId: string, expenseId: string) =>
     api.delete(`/api/groups/${groupId}/expenses/${expenseId}`),

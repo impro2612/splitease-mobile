@@ -516,14 +516,62 @@ export default function GroupDetail() {
   })
 
   const editExpenseMutation = useMutation({
-    mutationFn: () => expensesApi.update(id, editTarget.id, {
-      description: editDesc.trim(),
-      amount: parseFloat(editAmount),
-      category: editCategory,
-      paidById: editPaidBy,
-      date: editDate.toISOString(),
-      currency: editCurrency || gc.code,
-    }),
+    mutationFn: () => {
+      const numAmount = parseFloat(editAmount)
+      const memberIds = members.map((m: any) => m.userId)
+      const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
+      const activeCurrency = editCurrency || gc.code
+
+      let apiSplitType: string
+      let splits: { userId: string; amount: number }[]
+
+      if (splitType === "EQUAL") {
+        apiSplitType = "EXACT"
+        const n = included.length
+        const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrency)
+        if (isNoDec) {
+          const totalUnits = Math.round(numAmount)
+          const baseUnits = Math.floor(totalUnits / n)
+          const extra = totalUnits - baseUnits * n
+          splits = included.map((uid: string, i: number) => ({
+            userId: uid, amount: baseUnits + (i < extra ? 1 : 0),
+          }))
+        } else {
+          const totalCents = Math.round(numAmount * 100)
+          const baseCents = Math.floor(totalCents / n)
+          const extra = totalCents - baseCents * n
+          splits = included.map((uid: string, i: number) => ({
+            userId: uid, amount: (baseCents + (i < extra ? 1 : 0)) / 100,
+          }))
+        }
+      } else if (splitType === "PERCENTAGE") {
+        apiSplitType = "EXACT"
+        const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrency)
+        splits = memberIds
+          .filter((uid: string) => parseFloat(percentageSplits[uid] || "0") > 0)
+          .map((uid: string) => {
+            const pct = parseFloat(percentageSplits[uid] || "0")
+            const raw = numAmount * pct / 100
+            return { userId: uid, amount: isNoDec ? Math.round(raw) : Math.round(raw * 100) / 100 }
+          })
+      } else {
+        apiSplitType = "EXACT"
+        splits = memberIds
+          .filter((uid: string) => parseFloat(customSplits[uid] || "0") > 0)
+          .map((uid: string) => ({ userId: uid, amount: parseFloat(customSplits[uid] || "0") }))
+      }
+
+      return expensesApi.update(id, editTarget.id, {
+        description: editDesc.trim(),
+        amount: numAmount,
+        category: editCategory,
+        paidById: editPaidBy,
+        date: editDate.toISOString(),
+        currency: activeCurrency,
+        splitType: apiSplitType,
+        splits,
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
@@ -2150,7 +2198,7 @@ function ExpenseFormFields({
   const activeCurrencyInfo = CURRENCIES.find(c => c.code === activeCurrencyCode) ?? gc
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
       {/* Description */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
       <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>
