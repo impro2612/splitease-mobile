@@ -663,29 +663,40 @@ export default function GroupDetail() {
     setEditPaidBy(exp.paidById)
     setEditDate(new Date(exp.date ?? exp.createdAt))
 
-    const st: SplitType = (exp.splitType as SplitType) ?? "EQUAL"
-    setSplitType(st)
-    const splitUserIds: string[] = (exp.splits ?? []).map((s: any) => s.userId)
-    if (st === "EQUAL") {
-      setEquallyIncluded(splitUserIds)
-      setPercentageSplits({})
-      setCustomSplits({})
-    } else if (st === "PERCENTAGE") {
+    const splits: any[] = exp.splits ?? []
+    const splitUserIds: string[] = splits.map((s: any) => s.userId)
+
+    if (exp.splitType === "PERCENTAGE") {
+      // Restore percentage split — derive % from saved amounts
+      setSplitType("PERCENTAGE")
       setEquallyIncluded([])
       const pct: Record<string, string> = {}
-      for (const s of exp.splits ?? []) {
+      for (const s of splits) {
         pct[s.userId] = String(parseFloat((s.amount / exp.amount * 100).toFixed(4)))
       }
       setPercentageSplits(pct)
       setCustomSplits({})
     } else {
-      setEquallyIncluded([])
-      setPercentageSplits({})
-      const custom: Record<string, string> = {}
-      for (const s of exp.splits ?? []) {
-        custom[s.userId] = String(s.amount)
+      // "EXACT" covers both EQUAL and CUSTOM UI modes. Distinguish by whether
+      // all included members have (approximately) the same share.
+      const amounts = splits.map((s: any) => s.amount)
+      const isEqualSplit =
+        amounts.length <= 1 ||
+        Math.max(...amounts) - Math.min(...amounts) <= 0.01
+
+      if (isEqualSplit) {
+        setSplitType("EQUAL")
+        setEquallyIncluded(splitUserIds)
+        setPercentageSplits({})
+        setCustomSplits({})
+      } else {
+        setSplitType("CUSTOM")
+        setEquallyIncluded([])
+        setPercentageSplits({})
+        const custom: Record<string, string> = {}
+        for (const s of splits) custom[s.userId] = String(s.amount)
+        setCustomSplits(custom)
       }
-      setCustomSplits(custom)
     }
 
     setShowEditExpense(true)
