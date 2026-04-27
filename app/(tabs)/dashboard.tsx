@@ -106,15 +106,19 @@ function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: string; 
     case "settlement": {
       const curr = CURRENCIES.find(c => c.code === m.currency) ?? CURRENCIES[0]
       const toName = m.toUserName ?? item.targetUser?.name ?? "someone"
+      const isTarget = item.targetUserId === userId
+      const desc = isMe
+        ? `You settled with ${toName}`
+        : isTarget
+          ? `${actorName} settled with you`
+          : `${actorName} settled with ${toName}`
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(34,197,94,0.12)" }]}>
             <Ionicons name="checkmark-circle-outline" size={18} color="#4ade80" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} settled with {isMe ? toName : actorName}
-            </Text>
+            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>{desc}</Text>
             <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
               {item.group?.name ?? m.groupName} · {time}
             </Text>
