@@ -831,7 +831,7 @@ export default function GroupDetail() {
             )}
           </View>
           <TouchableOpacity
-            onPress={() => { setExpCurrency(gc.code); setShowAddExpense(true) }}
+            onPress={() => { resetAddForm(); setShowAddExpense(true) }}
             style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", gap: 4 }}
           >
             <Ionicons name="add" size={20} color="#fff" />
@@ -872,7 +872,7 @@ export default function GroupDetail() {
               <Text className="text-5xl mb-3">📝</Text>
               <Text style={{ color: C.text, fontWeight: "600", marginBottom: 4 }}>No expenses yet</Text>
               <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 20 }}>Add the first expense for this group</Text>
-              <TouchableOpacity onPress={() => { setExpCurrency(gc.code); setShowAddExpense(true) }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+              <TouchableOpacity onPress={() => { resetAddForm(); setShowAddExpense(true) }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
                 <Text style={{ color: C.text, fontWeight: "600" }}>Add expense</Text>
               </TouchableOpacity>
             </View>
