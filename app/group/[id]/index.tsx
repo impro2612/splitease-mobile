@@ -662,6 +662,32 @@ export default function GroupDetail() {
     setEditCategory(exp.category ?? "general")
     setEditPaidBy(exp.paidById)
     setEditDate(new Date(exp.date ?? exp.createdAt))
+
+    const st: SplitType = (exp.splitType as SplitType) ?? "EQUAL"
+    setSplitType(st)
+    const splitUserIds: string[] = (exp.splits ?? []).map((s: any) => s.userId)
+    if (st === "EQUAL") {
+      setEquallyIncluded(splitUserIds)
+      setPercentageSplits({})
+      setCustomSplits({})
+    } else if (st === "PERCENTAGE") {
+      setEquallyIncluded([])
+      const pct: Record<string, string> = {}
+      for (const s of exp.splits ?? []) {
+        pct[s.userId] = String(parseFloat((s.amount / exp.amount * 100).toFixed(4)))
+      }
+      setPercentageSplits(pct)
+      setCustomSplits({})
+    } else {
+      setEquallyIncluded([])
+      setPercentageSplits({})
+      const custom: Record<string, string> = {}
+      for (const s of exp.splits ?? []) {
+        custom[s.userId] = String(s.amount)
+      }
+      setCustomSplits(custom)
+    }
+
     setShowEditExpense(true)
   }
 
