@@ -167,10 +167,10 @@ const EXPENSE_EMOJI_MAP: Array<[string[], string]> = [
   [["car rental", "rental car", "hertz", "avis", "zoomcar", "self drive"], "🚗"],
   [["ride", "commute", "drop", "pickup"], "🚗"],
   // ── Accommodation ────────────────────────────────────────────────────────
-  [["hotel", "motel", "inn", "suites", "marriott", "hilton", "hyatt", "oyo", "treebo", "fabhotel"], "🏨"],
+  [["hotel", "motel", "inn", "suites", "marriott", "hilton", "hyatt", "oyo", "treebo", "fabhotel", "hotel stay", "night stay", "hotel booking"], "🏨"],
   [["airbnb", "vrbo", "homestay", "vacation rental"], "🏡"],
   [["hostel", "dorm", "bunk", "backpacker"], "🛏️"],
-  [["rent", "apartment", "flat", "lease", "pg", "paying guest", "coliving"], "🏠"],
+  [["rent", "apartment", "flat", "lease", "pg", "paying guest", "coliving", "lodge", "lodging", "accommodation", "stay", "room booking", "check in"], "🏠"],
   [["resort", "villa", "bungalow", "cottage", "chalet"], "🏝️"],
   // ── Entertainment ────────────────────────────────────────────────────────
   [["movie", "cinema", "film", "imax", "pvr", "inox", "amc", "multiplex", "4dx"], "🎬"],
