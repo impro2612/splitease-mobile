@@ -20,8 +20,8 @@ type AuthState = {
   currency: string
   theme: ThemePref
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (name: string, email: string, password: string) => Promise<void>
-  googleSignIn: (idToken: string) => Promise<void>
+  signUp: (name: string, email: string, password: string, phone: string) => Promise<void>
+  googleSignIn: (idToken: string, mode?: "signin" | "signup") => Promise<{ needsPhone: boolean }>
   signOut: () => Promise<void>
   loadSession: () => Promise<void>
   setUser: (user: User) => void
@@ -69,8 +69,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, token })
   },
 
-  signUp: async (name, email, password) => {
-    await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, password })
+  signUp: async (name, email, password, phone) => {
+    await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, password, phone })
     const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-signin`, { email, password })
     const { token, user } = res.data
     await SecureStore.setItemAsync("session_token", token)
@@ -78,12 +78,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, token })
   },
 
-  googleSignIn: async (idToken: string) => {
-    const res = await authApi.googleSignIn(idToken)
-    const { token, user } = res.data
+  googleSignIn: async (idToken: string, mode: "signin" | "signup" = "signup") => {
+    const res = await authApi.googleSignIn(idToken, mode)
+    const { token, user, needsPhone } = res.data
     await SecureStore.setItemAsync("session_token", token)
     await SecureStore.setItemAsync("user_data", JSON.stringify(user))
     set({ user, token })
+    return { needsPhone: !!needsPhone }
   },
 
   signOut: async () => {

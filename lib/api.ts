@@ -43,8 +43,11 @@ export const authApi = {
   signIn: (data: { email: string; password: string }) =>
     api.post("/api/auth/mobile-signin", data),
 
-  googleSignIn: (idToken: string) =>
-    api.post("/api/auth/google", { idToken }),
+  googleSignIn: (idToken: string, mode: "signin" | "signup" = "signup") =>
+    api.post("/api/auth/google", { idToken, mode }),
+
+  savePhone: (phone: string) =>
+    api.post("/api/auth/phone", { phone }),
 
   me: () => api.get("/api/auth/me"),
 

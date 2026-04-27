@@ -56,13 +56,17 @@ export default function SignIn() {
       const userInfo = await GoogleSignin.signIn()
       const idToken = userInfo.data?.idToken
       if (!idToken) throw new Error("No ID token returned")
-      await googleSignIn(idToken)
-      router.replace("/(tabs)/dashboard")
+      const { needsPhone } = await googleSignIn(idToken, "signin")
+      if (needsPhone) {
+        router.replace("/(auth)/complete-profile")
+      } else {
+        router.replace("/(tabs)/dashboard")
+      }
     } catch (e: any) {
       if (e.code === "SIGN_IN_CANCELLED") {
         // user cancelled — no error shown
       } else {
-        setError("Google sign-in failed. Please try again.")
+        setError(e.response?.data?.error ?? "Google sign-in failed. Please try again.")
       }
     } finally {
       setGoogleLoading(false)

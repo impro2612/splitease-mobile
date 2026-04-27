@@ -1,7 +1,8 @@
 import { useState } from "react"
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, KeyboardAvoidingView, ActivityIndicator, Image, Platform,
+  ScrollView, KeyboardAvoidingView, ActivityIndicator,
+  Image, Platform, Modal, FlatList,
 } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -12,6 +13,40 @@ import { useTheme } from "@/lib/theme"
 import { GoogleLogo } from "@/components/ui/GoogleLogo"
 
 const signInLogo = require("@/assets/Photoroom.png")
+
+const COUNTRY_CODES = [
+  { code: "+91", country: "India", flag: "🇮🇳" },
+  { code: "+1", country: "USA / Canada", flag: "🇺🇸" },
+  { code: "+44", country: "UK", flag: "🇬🇧" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+971", country: "UAE", flag: "🇦🇪" },
+  { code: "+65", country: "Singapore", flag: "🇸🇬" },
+  { code: "+60", country: "Malaysia", flag: "🇲🇾" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+39", country: "Italy", flag: "🇮🇹" },
+  { code: "+34", country: "Spain", flag: "🇪🇸" },
+  { code: "+81", country: "Japan", flag: "🇯🇵" },
+  { code: "+82", country: "South Korea", flag: "🇰🇷" },
+  { code: "+86", country: "China", flag: "🇨🇳" },
+  { code: "+55", country: "Brazil", flag: "🇧🇷" },
+  { code: "+27", country: "South Africa", flag: "🇿🇦" },
+  { code: "+52", country: "Mexico", flag: "🇲🇽" },
+  { code: "+62", country: "Indonesia", flag: "🇮🇩" },
+  { code: "+63", country: "Philippines", flag: "🇵🇭" },
+  { code: "+66", country: "Thailand", flag: "🇹🇭" },
+  { code: "+84", country: "Vietnam", flag: "🇻🇳" },
+  { code: "+92", country: "Pakistan", flag: "🇵🇰" },
+  { code: "+94", country: "Sri Lanka", flag: "🇱🇰" },
+  { code: "+977", country: "Nepal", flag: "🇳🇵" },
+  { code: "+880", country: "Bangladesh", flag: "🇧🇩" },
+  { code: "+31", country: "Netherlands", flag: "🇳🇱" },
+  { code: "+46", country: "Sweden", flag: "🇸🇪" },
+  { code: "+41", country: "Switzerland", flag: "🇨🇭" },
+  { code: "+64", country: "New Zealand", flag: "🇳🇿" },
+  { code: "+972", country: "Israel", flag: "🇮🇱" },
+  { code: "+7", country: "Russia", flag: "🇷🇺" },
+]
 
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
@@ -24,19 +59,25 @@ export default function SignUp() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPass, setShowPass] = useState(false)
+  const [countryCode, setCountryCode] = useState("+91")
+  const [phone, setPhone] = useState("")
+  const [showCountryPicker, setShowCountryPicker] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState("")
 
   const strength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3
   const strengthColors = ["transparent", "#f43f5e", "#f59e0b", "#22c55e"]
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) ?? COUNTRY_CODES[0]
 
   async function handleSignUp() {
     if (!name || !email || !password) { setError("All fields are required"); return }
+    const digits = phone.replace(/\D/g, "")
+    if (digits.length < 6) { setError("Please enter a valid phone number"); return }
     if (password.length < 6) { setError("Password must be at least 6 characters"); return }
     setLoading(true); setError("")
     try {
-      await signUp(name.trim(), email.trim().toLowerCase(), password)
+      await signUp(name.trim(), email.trim().toLowerCase(), password, `${countryCode}${digits}`)
       router.replace("/(tabs)/dashboard")
     } catch (e: any) {
       if (!e?.response) {
@@ -56,13 +97,17 @@ export default function SignUp() {
       const userInfo = await GoogleSignin.signIn()
       const idToken = userInfo.data?.idToken
       if (!idToken) throw new Error("No ID token returned")
-      await googleSignIn(idToken)
-      router.replace("/(tabs)/dashboard")
+      const { needsPhone } = await googleSignIn(idToken, "signup")
+      if (needsPhone) {
+        router.replace("/(auth)/complete-profile")
+      } else {
+        router.replace("/(tabs)/dashboard")
+      }
     } catch (e: any) {
       if (e.code === "SIGN_IN_CANCELLED") {
-        // user cancelled — no error shown
+        // user cancelled — no error
       } else {
-        setError("Google sign-in failed. Please try again.")
+        setError(e.response?.data?.error ?? "Google sign-in failed. Please try again.")
       }
     } finally {
       setGoogleLoading(false)
@@ -97,6 +142,28 @@ export default function SignUp() {
             <View style={inputStyle}>
               <Ionicons name="mail-outline" size={18} color={C.textSub} />
               <TextInput style={{ flex: 1, color: C.text, fontSize: 15, marginLeft: 12 }} placeholder="you@email.com" placeholderTextColor={C.textMuted} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            </View>
+
+            {/* Phone with country code */}
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+              <TouchableOpacity
+                onPress={() => setShowCountryPicker(true)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 12, height: 56 }}
+              >
+                <Text style={{ fontSize: 20 }}>{selectedCountry.flag}</Text>
+                <Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }}>{countryCode}</Text>
+                <Ionicons name="chevron-down" size={13} color={C.textMuted} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 16, height: 56, justifyContent: "center" }}>
+                <TextInput
+                  style={{ color: C.text, fontSize: 15 }}
+                  placeholder="Phone number"
+                  placeholderTextColor={C.textMuted}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
             </View>
 
             {/* Password */}
@@ -139,15 +206,13 @@ export default function SignUp() {
               <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
             </View>
 
-            {/* Google SSO button */}
+            {/* Google SSO */}
             <TouchableOpacity
               onPress={handleGoogleSignUp}
               disabled={loading || googleLoading}
               style={{ height: 56, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, opacity: googleLoading ? 0.7 : 1 }}
             >
-              {googleLoading ? (
-                <ActivityIndicator color={C.text} />
-              ) : (
+              {googleLoading ? <ActivityIndicator color={C.text} /> : (
                 <>
                   <GoogleLogo size={22} />
                   <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Continue with Google</Text>
@@ -164,6 +229,35 @@ export default function SignUp() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Country code picker modal */}
+      <Modal visible={showCountryPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCountryPicker(false)}>
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: 24 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "700" }}>Select Country Code</Text>
+            <TouchableOpacity onPress={() => setShowCountryPicker(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={COUNTRY_CODES}
+            keyExtractor={(item) => item.code}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => { setCountryCode(item.code); setShowCountryPicker(false) }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)", backgroundColor: item.code === countryCode ? "rgba(99,102,241,0.1)" : "transparent" }}
+              >
+                <Text style={{ fontSize: 26 }}>{item.flag}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>{item.country}</Text>
+                </View>
+                <Text style={{ color: "#6366f1", fontWeight: "700", fontSize: 15 }}>{item.code}</Text>
+                {item.code === countryCode && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
