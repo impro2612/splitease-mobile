@@ -23,6 +23,13 @@ export default function Dashboard() {
   // Shared module-level rate cache in lib/exchange.ts means the same cached rate
   // is used here, in the group balance page, and in the nextPayer banner — all in sync.
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
+  const [, setTick] = useState(0)
+
+  // Re-render every 30 s so relative timestamps ("just now", "2m ago") stay current
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
