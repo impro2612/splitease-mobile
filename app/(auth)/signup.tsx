@@ -94,6 +94,7 @@ export default function SignUp() {
     setGoogleLoading(true); setError("")
     try {
       await GoogleSignin.hasPlayServices()
+      await GoogleSignin.signOut()
       const userInfo = await GoogleSignin.signIn()
       const idToken = userInfo.data?.idToken
       if (!idToken) throw new Error("No ID token returned")
