@@ -59,11 +59,19 @@ function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: string; 
 
     case "expense_edited": {
       const curr = CURRENCIES.find(c => c.code === m.currency) ?? CURRENCIES[0]
-      const changed = m.oldDescription !== m.newDescription
+      const expenseName = m.newDescription ?? m.description
+      const fmtD = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+      const changed = m.oldDescription && m.newDescription
         ? `"${m.oldDescription}" → "${m.newDescription}"`
-        : m.oldAmount !== m.newAmount
+        : m.oldAmount != null && m.newAmount != null
           ? `${formatCurrency(m.oldAmount, curr.symbol, curr.code)} → ${formatCurrency(m.newAmount, curr.symbol, curr.code)}`
-          : `"${m.newDescription ?? m.description}"`
+          : m.oldPaidByName != null && m.newPaidByName != null
+            ? `${m.oldPaidByName} → ${m.newPaidByName}`
+            : m.oldDate && m.newDate
+              ? `${fmtD(m.oldDate)} → ${fmtD(m.newDate)}`
+              : m.oldCurrency && m.newCurrency
+                ? `${m.oldCurrency} → ${m.newCurrency}`
+                : `"${expenseName}"`
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(245,158,11,0.12)" }]}>
@@ -73,8 +81,8 @@ function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: string; 
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
               {actorName} edited {changed}
             </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-              {item.group?.name ?? m.groupName} · {time}
+            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+              "{m.newDescription ?? m.description}" · {item.group?.name ?? m.groupName} · {time}
             </Text>
           </View>
         </View>
@@ -302,7 +310,7 @@ export default function Dashboard() {
   const { data: activityItems = [] } = useQuery<ActivityItem[]>({
     queryKey: ["activity"],
     queryFn: () => dashboardApi.activity().then((r) => r.data),
-    staleTime: 30_000,
+    staleTime: 0,
   })
 
   useEffect(() => {

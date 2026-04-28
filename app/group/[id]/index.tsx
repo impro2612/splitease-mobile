@@ -282,6 +282,12 @@ export default function GroupDetail() {
   const [inlineSettleKey, setInlineSettleKey] = useState<string | null>(null)
   const [inlineSettleAmount, setInlineSettleAmount] = useState("")
 
+  // Balance Summary modal
+  const [summaryTarget, setSummaryTarget] = useState<{
+    fromName: string; toName: string; amount: number; currency: string; ci: any
+    items: Array<{ description: string; amount: number; date: string; isCredit: boolean }>
+  } | null>(null)
+
   // Currency conversion in Balances tab: { "USD": 84.52 } means 1 USD = 84.52 INR
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
   const [convertedSections, setConvertedSections] = useState<Record<string, boolean>>({})
@@ -508,6 +514,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowAddExpense(false)
       resetAddForm()
       Toast.show({ type: "success", text1: "Expense added!" })
@@ -577,6 +584,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowEditExpense(false)
       Toast.show({ type: "success", text1: "Expense updated!" })
     },
@@ -590,6 +598,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
       Toast.show({ type: "success", text1: "Expense deleted" })
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to delete expense" }),
@@ -639,6 +648,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowSettle(false)
       setSettleNote("")
       setSettleTarget(null)
@@ -658,6 +668,7 @@ export default function GroupDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowEditGroup(false)
       Toast.show({ type: "success", text1: "Group updated!" })
     },
@@ -669,6 +680,7 @@ export default function GroupDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowEditGroup(false)
       router.replace("/(tabs)/groups")
       Toast.show({ type: "success", text1: "Group deleted" })
@@ -1125,8 +1137,31 @@ export default function GroupDetail() {
                                     </View>
                                     {(isMe || isAdmin) && (
                                       <View style={{ flexDirection: "row", gap: 6 }}>
-                                        <TouchableOpacity style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
-                                          <Text style={{ color: "#fbbf24", fontWeight: "600", fontSize: 11 }}>Remind</Text>
+                                        <TouchableOpacity
+                                          onPress={() => {
+                                            const fromId = d.dir === "owes" ? m.userId : d.otherId
+                                            const toId = d.dir === "owes" ? d.otherId : m.userId
+                                            const fromName = d.dir === "owes" ? name : otherName
+                                            const toName = d.dir === "owes" ? otherName : name
+                                            const items = expenses
+                                              .filter((exp: any) => (exp.currency ?? gc.code) === currency)
+                                              .flatMap((exp: any) => {
+                                                const fromSplit = exp.splits?.find((s: any) => s.userId === fromId)
+                                                const toSplit = exp.splits?.find((s: any) => s.userId === toId)
+                                                if (exp.paidById === toId && fromSplit && fromSplit.amount > 0) {
+                                                  return [{ description: exp.description, amount: fromSplit.amount, date: exp.date ?? exp.createdAt, isCredit: false }]
+                                                }
+                                                if (exp.paidById === fromId && toSplit && toSplit.amount > 0) {
+                                                  return [{ description: exp.description, amount: toSplit.amount, date: exp.date ?? exp.createdAt, isCredit: true }]
+                                                }
+                                                return []
+                                              })
+                                              .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                            setSummaryTarget({ fromName, toName, amount: displayAmt, currency, ci: dispCi, items })
+                                          }}
+                                          style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                                        >
+                                          <Text style={{ color: "#a5b4fc", fontWeight: "600", fontSize: 11 }}>Summary</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                           onPress={() => {
@@ -1167,6 +1202,7 @@ export default function GroupDetail() {
                                                 queryClient.invalidateQueries({ queryKey: ["balances", id] })
                                                 queryClient.invalidateQueries({ queryKey: ["groups"] })
                                                 queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+                                                queryClient.invalidateQueries({ queryKey: ["activity"] })
                                                 setInlineSettleKey(null)
                                                 setInlineSettleAmount("")
                                                 Toast.show({ type: "success", text1: amt >= d.amount ? "Fully settled! 🎉" : "Partial settlement recorded!" })
@@ -1571,6 +1607,7 @@ export default function GroupDetail() {
                     try {
                       await balancesApi.toggleSmartDebts(id, false)
                       queryClient.invalidateQueries({ queryKey: ["balances", id] })
+                      queryClient.invalidateQueries({ queryKey: ["activity"] })
                       Toast.show({ type: "success", text1: "Smart Debts disabled" })
                     } catch {
                       Toast.show({ type: "error", text1: "Failed to disable Smart Debts" })
@@ -1720,6 +1757,7 @@ export default function GroupDetail() {
                   try {
                     await balancesApi.toggleSmartDebts(id, true)
                     queryClient.invalidateQueries({ queryKey: ["balances", id] })
+                    queryClient.invalidateQueries({ queryKey: ["activity"] })
                     Toast.show({ type: "success", text1: "Smart Debts enabled ⚡" })
                   } catch {
                     Toast.show({ type: "error", text1: "Failed to enable Smart Debts" })
@@ -2171,6 +2209,76 @@ export default function GroupDetail() {
         </View>
       </Modal>
 
+      {/* Balance Summary Modal */}
+      <Modal
+        visible={!!summaryTarget}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSummaryTarget(null)}
+      >
+        {summaryTarget && (
+          <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
+            {/* Header */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={{ color: C.text, fontSize: 22, fontWeight: "800" }}>Summary</Text>
+              <TouchableOpacity onPress={() => setSummaryTarget(null)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
+                <Ionicons name="close" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Total banner */}
+            <View style={{ marginHorizontal: 20, marginBottom: 20, backgroundColor: "rgba(99,102,241,0.12)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 18, alignItems: "center" }}>
+              <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 6 }}>
+                {summaryTarget.fromName} owes {summaryTarget.toName}
+              </Text>
+              <Text style={{ color: "#a5b4fc", fontWeight: "800", fontSize: 28 }}>
+                {formatCurrency(summaryTarget.amount, summaryTarget.ci.symbol, summaryTarget.ci.code)}
+              </Text>
+            </View>
+
+            {/* Expense list */}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
+              {summaryTarget.items.length === 0 ? (
+                <View style={{ alignItems: "center", paddingVertical: 32 }}>
+                  <Text style={{ color: C.textMuted, fontSize: 14 }}>No expense breakdown available</Text>
+                </View>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  {summaryTarget.items.map((item, idx) => (
+                    <View
+                      key={idx}
+                      style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: item.isCredit ? "rgba(74,222,128,0.15)" : C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
+                    >
+                      <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: item.isCredit ? "rgba(74,222,128,0.15)" : "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ color: item.isCredit ? "#4ade80" : "#a5b4fc", fontWeight: "700", fontSize: 12 }}>{idx + 1}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }}>{item.description}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{formatDate(item.date)}</Text>
+                        {item.isCredit && (
+                          <Text style={{ color: "#4ade80", fontSize: 10, fontWeight: "600", marginTop: 1 }}>Paid by {summaryTarget.fromName} · reduces debt</Text>
+                        )}
+                      </View>
+                      <Text style={{ color: item.isCredit ? "#4ade80" : C.text, fontWeight: "700", fontSize: 15 }}>
+                        {item.isCredit ? "-" : ""}{formatCurrency(item.amount, summaryTarget.ci.symbol, summaryTarget.ci.code)}
+                      </Text>
+                    </View>
+                  ))}
+
+                  {/* Net balance row — inside ScrollView so it scrolls with content */}
+                  <View style={{ marginTop: 8, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 13 }}>Net balance</Text>
+                    <Text style={{ color: "#a5b4fc", fontWeight: "800", fontSize: 16 }}>
+                      {formatCurrency(summaryTarget.amount, summaryTarget.ci.symbol, summaryTarget.ci.code)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
+      </Modal>
+
       <BottomTabBar activeTab="Groups" />
     </SafeAreaView>
   )
@@ -2198,7 +2306,7 @@ function ExpenseFormFields({
   const activeCurrencyInfo = CURRENCIES.find(c => c.code === activeCurrencyCode) ?? gc
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" nestedScrollEnabled={true}>
       {/* Description */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
       <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>

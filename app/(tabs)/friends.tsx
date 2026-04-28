@@ -219,6 +219,7 @@ export default function Friends() {
     mutationFn: (addresseeId: string) => friendsApi.send(addresseeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["friends"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
       Toast.show({ type: "success", text1: "Friend request sent!" })
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to send request" }),
@@ -229,6 +230,7 @@ export default function Friends() {
       friendsApi.respond(id, action),
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["friends"] })
+      if (vars.action === "accept") queryClient.invalidateQueries({ queryKey: ["activity"] })
       Toast.show({ type: "success", text1: vars.action === "accept" ? "Friend added!" : "Request rejected" })
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to respond" }),
@@ -370,7 +372,6 @@ export default function Friends() {
             key={t.key}
             onPress={() => {
               setTab(t.key)
-              if (t.key === "search") setTimeout(() => searchInputRef.current?.focus(), 150)
             }}
             style={{
               flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
@@ -401,7 +402,7 @@ export default function Friends() {
               <Text style={{ fontSize: 48, marginBottom: 16 }}>🤝</Text>
               <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>No friends yet</Text>
               <Text style={{ color: C.textMuted, fontSize: 14, textAlign: "center", marginBottom: 24 }}>Search for people or invite from your contacts</Text>
-              <TouchableOpacity onPress={() => { setTab("search"); setTimeout(() => searchInputRef.current?.focus(), 150) }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+              <TouchableOpacity onPress={() => setTab("search")} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
                 <Text style={{ color: C.text, fontWeight: "600" }}>Find friends</Text>
               </TouchableOpacity>
             </View>

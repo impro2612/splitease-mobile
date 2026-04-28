@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, ActivityIndicator, Alert, FlatList,
-  useWindowDimensions,
+  useWindowDimensions, Keyboard, TouchableWithoutFeedback,
 } from "react-native"
 import { router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -68,13 +68,20 @@ export default function Groups() {
     })
   }, [groups])
 
+  function closeCreate() {
+    Keyboard.dismiss()
+    setShowCreate(false)
+    setName(""); setDescription(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
+    setCurrencySearch("")
+  }
+
   const createMutation = useMutation({
     mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
-      setShowCreate(false)
-      setName(""); setDescription(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
+      closeCreate()
       Toast.show({ type: "success", text1: "Group created! 🎉" })
       router.push(`/group/${res.data.id}`)
     },
@@ -217,12 +224,13 @@ export default function Groups() {
       </ScrollView>
 
       {/* Create Group Modal */}
-      <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
+      <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeCreate}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ paddingHorizontal: 20 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Create Group</Text>
-              <TouchableOpacity onPress={() => setShowCreate(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
+              <TouchableOpacity onPress={closeCreate} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
                 <Ionicons name="close" size={18} color={C.text} />
               </TouchableOpacity>
             </View>
@@ -276,6 +284,7 @@ export default function Groups() {
             </TouchableOpacity>
           </View>
         </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Currency Picker Modal */}
