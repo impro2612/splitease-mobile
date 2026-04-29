@@ -149,3 +149,35 @@ export const pushApi = {
   saveToken: (pushToken: string) => api.post("/api/auth/push-token", { pushToken }),
   clearToken: (pushToken: string) => api.delete("/api/auth/push-token", { data: { pushToken } }),
 }
+
+// Personal Finance — Gmail + Transactions + Budgets
+export const gmailApi = {
+  status:     () => api.get("/api/gmail/status"),
+  disconnect: () => api.delete("/api/gmail/disconnect"),
+  authUrl:    () => `${API_BASE_URL}/api/gmail/auth`,
+}
+
+export const transactionsApi = {
+  list:    (params?: { month?: string; category?: string; type?: string; page?: number }) =>
+    api.get("/api/transactions", { params }),
+  summary: (month?: string) =>
+    api.get("/api/transactions/summary", { params: month ? { month } : {} }),
+  insights: (month?: string) =>
+    api.get("/api/transactions/insights", { params: month ? { month } : {} }),
+  importCSV: (file: { uri: string; name: string; mimeType?: string }) => {
+    const form = new FormData()
+    form.append("file", { uri: file.uri, name: file.name, type: file.mimeType ?? "text/csv" } as unknown as Blob)
+    return api.post("/api/transactions/import", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  },
+  updateCategory: (id: string, category: string) =>
+    api.patch(`/api/transactions/${id}`, { category }),
+  delete: (id: string) => api.delete(`/api/transactions/${id}`),
+}
+
+export const budgetsApi = {
+  list:   () => api.get("/api/budgets"),
+  set:    (category: string, amount: number) => api.post("/api/budgets", { category, amount }),
+  delete: (category: string) => api.delete("/api/budgets", { data: { category } }),
+}
