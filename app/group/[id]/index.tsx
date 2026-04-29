@@ -682,7 +682,7 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
       queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowEditGroup(false)
-      router.replace("/(tabs)/groups")
+      router.replace("/groups")
       Toast.show({ type: "success", text1: "Group deleted" })
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to delete group" }),

@@ -390,7 +390,7 @@ export default function Dashboard() {
       <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Your Groups</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/groups")}>
+          <TouchableOpacity onPress={() => router.push("/groups")}>
             <Text style={{ color: "#6366f1", fontSize: 13 }}>View all / Create</Text>
           </TouchableOpacity>
         </View>
@@ -398,7 +398,7 @@ export default function Dashboard() {
           <ActivityIndicator color="#6366f1" />
         ) : groups.length === 0 ? (
           <TouchableOpacity
-            onPress={() => router.push("/(tabs)/groups")}
+            onPress={() => router.push("/groups")}
             style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 24, alignItems: "center" }}
           >
             <Text style={{ fontSize: 36, marginBottom: 8 }}>👥</Text>

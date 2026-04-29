@@ -225,7 +225,7 @@ function handleAppUrl(url?: string) {
   }
 
   if (path === "groups") {
-    router.push("/(tabs)/groups" as any)
+    router.push("/groups" as any)
     return
   }
 

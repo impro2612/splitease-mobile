@@ -4,7 +4,6 @@ import { View, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@/lib/theme"
-import { BottomTabBar } from "@react-navigation/bottom-tabs"
 
 export default function TabsLayout() {
   const { user, loading } = useAuthStore()
@@ -18,18 +17,6 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => {
-        // Strip the hidden "groups" route so it never occupies flex space
-        const visibleRoutes = props.state.routes.filter((r) => r.name !== "groups")
-        const currentRoute = props.state.routes[props.state.index]
-        const visibleIndex = visibleRoutes.findIndex((r) => r.key === currentRoute?.key)
-        const filteredState = {
-          ...props.state,
-          routes: visibleRoutes,
-          index: visibleIndex >= 0 ? visibleIndex : 0,
-        }
-        return <BottomTabBar {...props} state={filteredState} />
-      }}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -57,13 +44,6 @@ export default function TabsLayout() {
         options={{
           title: "Expenses",
           tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="groups"
-        options={{
-          title: "Groups",
-          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
