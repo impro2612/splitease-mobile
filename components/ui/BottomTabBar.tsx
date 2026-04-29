@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme"
 
 const TABS = [
   { name: "Dashboard", route: "/(tabs)/dashboard", icon: "home" as const },
-  { name: "Groups", route: "/(tabs)/groups", icon: "people" as const },
+  { name: "Expenses", route: "/(tabs)/expenses", icon: "receipt-outline" as const },
   { name: "Friends", route: "/(tabs)/friends", icon: "person-add" as const },
   { name: "Profile", route: "/(tabs)/profile", icon: "person-circle" as const },
 ]

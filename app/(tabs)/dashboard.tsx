@@ -391,7 +391,7 @@ export default function Dashboard() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Your Groups</Text>
           <TouchableOpacity onPress={() => router.push("/(tabs)/groups")}>
-            <Text style={{ color: "#6366f1", fontSize: 13 }}>View all</Text>
+            <Text style={{ color: "#6366f1", fontSize: 13 }}>View all / Create</Text>
           </TouchableOpacity>
         </View>
         {isLoading ? (
