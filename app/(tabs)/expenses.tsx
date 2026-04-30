@@ -156,6 +156,18 @@ export default function Expenses() {
     },
   })
 
+  const syncNowMutation = useMutation({
+    mutationFn: () => gmailApi.syncNow(),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["gmail-status"] })
+      const { imported } = res.data
+      Toast.show({ type: "success", text1: imported > 0 ? `Synced ${imported} transactions` : "No new transactions found" })
+    },
+    onError: () => Toast.show({ type: "error", text1: "Sync failed. Please try again." }),
+  })
+
   // Month navigation
   function changeMonth(delta: number) {
     const [y, m] = selectedMonth.split("-").map(Number)
@@ -258,7 +270,14 @@ export default function Expenses() {
         {summaryLoading ? (
           <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
         ) : !summary || summary.transactionCount === 0 ? (
-          <EmptyState onConnectGmail={connectGmail} onImport={() => importMutation.mutate()} C={C} />
+          <EmptyState
+            onConnectGmail={connectGmail}
+            onImport={() => importMutation.mutate()}
+            onSyncNow={() => syncNowMutation.mutate()}
+            syncing={syncNowMutation.isPending}
+            gmailConnected={!!gmailStatus?.connected}
+            C={C}
+          />
         ) : (
           <>
             {activeTab === "overview" && (
@@ -350,7 +369,36 @@ export default function Expenses() {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function EmptyState({ onConnectGmail, onImport, C }: { onConnectGmail: () => void; onImport: () => void; C: ReturnType<typeof useTheme> }) {
+function EmptyState({ onConnectGmail, onImport, onSyncNow, syncing, gmailConnected, C }: {
+  onConnectGmail: () => void; onImport: () => void; onSyncNow: () => void
+  syncing: boolean; gmailConnected: boolean; C: ReturnType<typeof useTheme>
+}) {
+  if (gmailConnected) {
+    return (
+      <View style={{ alignItems: "center", padding: 40 }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(34,197,94,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <Ionicons name="mail" size={36} color="#4ade80" />
+        </View>
+        <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>Gmail Connected</Text>
+        <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 32 }}>
+          No transactions found for this month. Tap sync to fetch your bank emails now, or upload a CSV statement.
+        </Text>
+        <TouchableOpacity
+          onPress={onSyncNow}
+          disabled={syncing}
+          style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, width: "100%", opacity: syncing ? 0.7 : 1 }}
+        >
+          {syncing ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="sync" size={18} color="#fff" />}
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{syncing ? "Syncing..." : "Sync Gmail Now"}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onImport} style={{ backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: C.border, width: "100%" }}>
+          <Ionicons name="cloud-upload-outline" size={18} color={C.text} />
+          <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Upload CSV / Excel</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   return (
     <View style={{ alignItems: "center", padding: 40 }}>
       <Text style={{ fontSize: 60, marginBottom: 16 }}>📊</Text>

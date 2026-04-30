@@ -155,6 +155,7 @@ export const gmailApi = {
   status:     () => api.get("/api/gmail/status"),
   disconnect: () => api.delete("/api/gmail/disconnect"),
   authUrl:    () => `${API_BASE_URL}/api/gmail/auth`,
+  syncNow:    () => api.post("/api/gmail/sync-now"),
 }
 
 export const transactionsApi = {
