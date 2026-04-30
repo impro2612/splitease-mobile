@@ -7,7 +7,7 @@ import { router } from "expo-router"
 // For production: use your deployed URL
 // Replace with your ngrok URL when testing on a physical device
 // e.g. export const API_BASE_URL = "https://abc123.ngrok-free.app"
-export const API_BASE_URL = "https://splitwise-clone-umber.vercel.app"
+export const API_BASE_URL = "https://splitwithease.vercel.app"
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

@@ -17,7 +17,7 @@ import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { useTheme } from "@/lib/theme"
 
-const SIGNUP_URL = "https://splitwise-clone-umber.vercel.app/register"
+const SIGNUP_URL = "https://splitwithease.vercel.app/register"
 
 type Tab = "friends" | "requests" | "search"
 
