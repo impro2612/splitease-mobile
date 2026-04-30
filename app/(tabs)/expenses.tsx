@@ -207,7 +207,12 @@ export default function Expenses() {
       {/* Header + Month Selector */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <Text style={{ color: C.text, fontSize: 22, fontWeight: "700" }}>Expenses</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={{ color: C.text, fontSize: 22, fontWeight: "700" }}>Expenses</Text>
+            {gmailStatus?.connected && (
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4ade80" }} />
+            )}
+          </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             {!gmailStatus?.connected && (
               <TouchableOpacity onPress={connectGmail} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 5 }}>
@@ -238,14 +243,6 @@ export default function Expenses() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Gmail connected badge */}
-      {gmailStatus?.connected && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, marginBottom: 6 }}>
-          <Ionicons name="checkmark-circle" size={13} color="#4ade80" />
-          <Text style={{ color: "#4ade80", fontSize: 11 }}>Gmail syncing · {gmailStatus.email}</Text>
-        </View>
-      )}
 
       {/* Tab bar */}
       <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 4, marginBottom: 8 }}>
