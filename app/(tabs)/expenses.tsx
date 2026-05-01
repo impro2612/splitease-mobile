@@ -403,7 +403,7 @@ export default function Expenses() {
                 {pdfPasswordLoading ? (
                   <View style={{ alignItems: "center", gap: 2 }}>
                     <ActivityIndicator color="#fff" size="small" />
-                    <Text style={{ color: "#fff", fontSize: 9, opacity: 0.8 }}>May take ~60s on first use</Text>
+                    <Text style={{ color: "#fff", fontSize: 9, opacity: 0.8 }}>First import may take ~90s</Text>
                   </View>
                 ) : (
                   <Text style={{ color: "#fff", fontWeight: "700" }}>Unlock & Import</Text>
