@@ -8,10 +8,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
-import * as Linking from "expo-linking"
 import { useTheme } from "@/lib/theme"
-import { gmailApi, transactionsApi, budgetsApi, API_BASE_URL } from "@/lib/api"
-import * as SecureStore from "expo-secure-store"
+import { transactionsApi, budgetsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { CATEGORIES } from "@/lib/categorize-client"
 
@@ -69,12 +67,14 @@ export default function Expenses() {
   const [budgetAmount, setBudgetAmount] = useState("")
   const [refreshing, setRefreshing] = useState(false)
 
-  // Queries
-  const { data: gmailStatus } = useQuery({
-    queryKey: ["gmail-status"],
-    queryFn: () => gmailApi.status().then((r) => r.data),
-  })
+  // PDF password modal
+  const [pendingPdfFile, setPendingPdfFile] = useState<{ uri: string; name: string } | null>(null)
+  const [pdfPasswordVisible, setPdfPasswordVisible] = useState(false)
+  const [pdfPassword, setPdfPassword] = useState("")
+  const [pdfPasswordError, setPdfPasswordError] = useState("")
+  const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
 
+  // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["tx-summary", selectedMonth],
     queryFn: () => transactionsApi.summary(selectedMonth).then((r) => r.data),
@@ -106,37 +106,58 @@ export default function Expenses() {
     setRefreshing(false)
   }, [queryClient])
 
-  // Gmail connect
-  async function connectGmail() {
-    const token = await SecureStore.getItemAsync("session_token")
-    const url = `${API_BASE_URL}/api/gmail/auth?token=${token}`
-    await Linking.openURL(url)
+  // PDF bank statement import
+  async function uploadPdf(file: { uri: string; name: string }, password?: string) {
+    try {
+      const res = await transactionsApi.importPDF(file, password)
+      const data = res.data
+      queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      setPdfPasswordVisible(false)
+      setPendingPdfFile(null)
+      setPdfPassword("")
+      setPdfPasswordError("")
+      Toast.show({
+        type: data.imported > 0 ? "success" : "info",
+        text1: data.imported > 0 ? `Imported ${data.imported} transactions` : "No new transactions found",
+        text2: data.imported > 0 ? `from ${data.total} found in PDF` : "They may already be imported",
+      })
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { needsPassword?: boolean; error?: string } } }
+      if (axiosErr.response?.status === 422 && axiosErr.response?.data?.needsPassword) {
+        setPendingPdfFile(file)
+        setPdfPassword("")
+        setPdfPasswordError("")
+        setPdfPasswordVisible(true)
+      } else {
+        const msg = axiosErr.response?.data?.error ?? "Import failed. Try a different PDF."
+        if (password) {
+          setPdfPasswordError(msg)
+        } else {
+          Toast.show({ type: "error", text1: msg })
+        }
+      }
+    }
   }
 
-  // CSV import
   const importMutation = useMutation({
     mutationFn: async () => {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ["text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-               "application/vnd.ms-excel", "text/comma-separated-values"],
+        type: "application/pdf",
         copyToCacheDirectory: true,
       })
-      if (result.canceled || !result.assets?.[0]) return null
+      if (result.canceled || !result.assets?.[0]) return
       const file = result.assets[0]
-      return transactionsApi.importCSV({ uri: file.uri, name: file.name, mimeType: file.mimeType ?? "text/csv" })
-        .then((r) => r.data)
-    },
-    onSuccess: (data) => {
-      if (!data) return
-      queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      Toast.show({ type: "success", text1: `Imported ${data.imported} transactions`, text2: data.bank ? `from ${data.bank}` : undefined })
-    },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Import failed"
-      Toast.show({ type: "error", text1: msg })
+      await uploadPdf({ uri: file.uri, name: file.name })
     },
   })
+
+  async function handlePasswordSubmit() {
+    if (!pendingPdfFile || !pdfPassword) return
+    setPdfPasswordLoading(true)
+    await uploadPdf(pendingPdfFile, pdfPassword)
+    setPdfPasswordLoading(false)
+  }
 
   const setBudgetMutation = useMutation({
     mutationFn: () => budgetsApi.set(budgetCategory, parseFloat(budgetAmount)),
@@ -154,18 +175,6 @@ export default function Expenses() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] })
       queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
     },
-  })
-
-  const syncNowMutation = useMutation({
-    mutationFn: () => gmailApi.syncNow(),
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["gmail-status"] })
-      const { imported } = res.data
-      Toast.show({ type: "success", text1: imported > 0 ? `Synced ${imported} transactions` : "No new transactions found" })
-    },
-    onError: () => Toast.show({ type: "error", text1: "Sync failed. Please try again." }),
   })
 
   // Month navigation
@@ -207,26 +216,13 @@ export default function Expenses() {
       {/* Header + Month Selector */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text style={{ color: C.text, fontSize: 22, fontWeight: "700" }}>Expenses</Text>
-            {gmailStatus?.connected && (
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4ade80" }} />
-            )}
-          </View>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {!gmailStatus?.connected && (
-              <TouchableOpacity onPress={connectGmail} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 5 }}>
-                <Ionicons name="mail" size={14} color="#6366f1" />
-                <Text style={{ color: "#6366f1", fontSize: 12, fontWeight: "600" }}>Connect Gmail</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity onPress={() => importMutation.mutate()} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 5 }}>
-              {importMutation.isPending
-                ? <ActivityIndicator size="small" color="#6366f1" />
-                : <Ionicons name="cloud-upload-outline" size={14} color="#6366f1" />}
-              <Text style={{ color: "#6366f1", fontSize: 12, fontWeight: "600" }}>Import</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={{ color: C.text, fontSize: 22, fontWeight: "700" }}>Expenses</Text>
+          <TouchableOpacity onPress={() => importMutation.mutate()} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
+            {importMutation.isPending
+              ? <ActivityIndicator size="small" color="#6366f1" />
+              : <Ionicons name="document-text-outline" size={14} color="#6366f1" />}
+            <Text style={{ color: "#6366f1", fontSize: 12, fontWeight: "600" }}>Import PDF</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Month nav */}
@@ -268,11 +264,7 @@ export default function Expenses() {
           <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
         ) : !summary || summary.transactionCount === 0 ? (
           <EmptyState
-            onConnectGmail={connectGmail}
             onImport={() => importMutation.mutate()}
-            onSyncNow={() => syncNowMutation.mutate()}
-            syncing={syncNowMutation.isPending}
-            gmailConnected={!!gmailStatus?.connected}
             C={C}
           />
         ) : (
@@ -360,54 +352,79 @@ export default function Expenses() {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      {/* PDF Password Modal */}
+      <Modal visible={pdfPasswordVisible} animationType="fade" transparent onRequestClose={() => setPdfPasswordVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <Text style={{ fontSize: 22 }}>🔒</Text>
+              <Text style={{ color: C.text, fontSize: 17, fontWeight: "700" }}>PDF Password Required</Text>
+            </View>
+            <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20, marginBottom: 20 }}>
+              This bank statement is password-protected. Enter the password (usually your DOB in DDMMYYYY or account number).
+            </Text>
+            <View style={{
+              backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1,
+              borderColor: pdfPasswordError ? "#f87171" : C.border,
+              paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 6,
+            }}>
+              <TextInput
+                style={{ color: C.text, fontSize: 16 }}
+                placeholder="Enter PDF password"
+                placeholderTextColor={C.textMuted}
+                secureTextEntry
+                value={pdfPassword}
+                onChangeText={(t) => { setPdfPassword(t); setPdfPasswordError("") }}
+                onSubmitEditing={handlePasswordSubmit}
+                autoFocus
+                returnKeyType="done"
+              />
+            </View>
+            {pdfPasswordError ? (
+              <Text style={{ color: "#f87171", fontSize: 12, marginBottom: 16 }}>{pdfPasswordError}</Text>
+            ) : (
+              <View style={{ height: 16 }} />
+            )}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setPdfPasswordVisible(false); setPdfPassword(""); setPdfPasswordError(""); setPendingPdfFile(null) }}
+                style={{ flex: 1, backgroundColor: C.inputBg, borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border }}
+              >
+                <Text style={{ color: C.text, fontWeight: "600" }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handlePasswordSubmit}
+                disabled={!pdfPassword || pdfPasswordLoading}
+                style={{ flex: 1, backgroundColor: !pdfPassword ? "#374151" : "#6366f1", borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center" }}
+              >
+                {pdfPasswordLoading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={{ color: "#fff", fontWeight: "700" }}>Unlock & Import</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function EmptyState({ onConnectGmail, onImport, onSyncNow, syncing, gmailConnected, C }: {
-  onConnectGmail: () => void; onImport: () => void; onSyncNow: () => void
-  syncing: boolean; gmailConnected: boolean; C: ReturnType<typeof useTheme>
+function EmptyState({ onImport, C }: {
+  onImport: () => void; C: ReturnType<typeof useTheme>
 }) {
-  if (gmailConnected) {
-    return (
-      <View style={{ alignItems: "center", padding: 40 }}>
-        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(34,197,94,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-          <Ionicons name="mail" size={36} color="#4ade80" />
-        </View>
-        <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>Gmail Connected</Text>
-        <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 32 }}>
-          No transactions found for this month. Tap sync to fetch your bank emails now, or upload a CSV statement.
-        </Text>
-        <TouchableOpacity
-          onPress={onSyncNow}
-          disabled={syncing}
-          style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, width: "100%", opacity: syncing ? 0.7 : 1 }}
-        >
-          {syncing ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="sync" size={18} color="#fff" />}
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{syncing ? "Syncing..." : "Sync Gmail Now"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onImport} style={{ backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: C.border, width: "100%" }}>
-          <Ionicons name="cloud-upload-outline" size={18} color={C.text} />
-          <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Upload CSV / Excel</Text>
-        </TouchableOpacity>
-      </View>
-    )
-  }
-
   return (
     <View style={{ alignItems: "center", padding: 40 }}>
       <Text style={{ fontSize: 60, marginBottom: 16 }}>📊</Text>
       <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>Track your spending</Text>
-      <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 32 }}>Connect Gmail for automatic transaction import, or upload a bank statement CSV.</Text>
-      <TouchableOpacity onPress={onConnectGmail} style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, width: "100%" }}>
-        <Ionicons name="mail" size={18} color="#fff" />
-        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Connect Gmail (Automatic)</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={onImport} style={{ backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: C.border, width: "100%" }}>
-        <Ionicons name="cloud-upload-outline" size={18} color={C.text} />
-        <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Upload CSV / Excel</Text>
+      <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 32 }}>
+        Upload a PDF bank statement to automatically import and categorize your transactions.
+      </Text>
+      <TouchableOpacity onPress={onImport} style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, width: "100%" }}>
+        <Ionicons name="document-text-outline" size={18} color="#fff" />
+        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Import Bank Statement (PDF)</Text>
       </TouchableOpacity>
     </View>
   )

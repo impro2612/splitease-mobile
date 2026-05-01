@@ -150,14 +150,6 @@ export const pushApi = {
   clearToken: (pushToken: string) => api.delete("/api/auth/push-token", { data: { pushToken } }),
 }
 
-// Personal Finance — Gmail + Transactions + Budgets
-export const gmailApi = {
-  status:     () => api.get("/api/gmail/status"),
-  disconnect: () => api.delete("/api/gmail/disconnect"),
-  authUrl:    () => `${API_BASE_URL}/api/gmail/auth`,
-  syncNow:    () => api.post("/api/gmail/sync-now"),
-}
-
 export const transactionsApi = {
   list:    (params?: { month?: string; category?: string; type?: string; page?: number }) =>
     api.get("/api/transactions", { params }),
@@ -170,6 +162,15 @@ export const transactionsApi = {
     form.append("file", { uri: file.uri, name: file.name, type: file.mimeType ?? "text/csv" } as unknown as Blob)
     return api.post("/api/transactions/import", form, {
       headers: { "Content-Type": "multipart/form-data" },
+    })
+  },
+  importPDF: (file: { uri: string; name: string }, password?: string) => {
+    const form = new FormData()
+    form.append("file", { uri: file.uri, name: file.name, type: "application/pdf" } as unknown as Blob)
+    if (password) form.append("password", password)
+    return api.post("/api/transactions/import-pdf", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 90000,
     })
   },
   updateCategory: (id: string, category: string) =>
