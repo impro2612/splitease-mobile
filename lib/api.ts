@@ -170,7 +170,7 @@ export const transactionsApi = {
     if (password) form.append("password", password)
     return api.post("/api/transactions/import-pdf", form, {
       headers: { "Content-Type": "multipart/form-data" },
-      timeout: 90000,
+      timeout: 120000,
     })
   },
   updateCategory: (id: string, category: string) =>

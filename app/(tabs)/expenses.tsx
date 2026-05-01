@@ -217,11 +217,13 @@ export default function Expenses() {
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <Text style={{ color: C.text, fontSize: 22, fontWeight: "700" }}>Expenses</Text>
-          <TouchableOpacity onPress={() => importMutation.mutate()} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <TouchableOpacity onPress={() => importMutation.mutate()} disabled={importMutation.isPending} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
             {importMutation.isPending
               ? <ActivityIndicator size="small" color="#6366f1" />
               : <Ionicons name="document-text-outline" size={14} color="#6366f1" />}
-            <Text style={{ color: "#6366f1", fontSize: 12, fontWeight: "600" }}>Import PDF</Text>
+            <Text style={{ color: "#6366f1", fontSize: 12, fontWeight: "600" }}>
+              {importMutation.isPending ? "Importing..." : "Import PDF"}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -398,9 +400,14 @@ export default function Expenses() {
                 disabled={!pdfPassword || pdfPasswordLoading}
                 style={{ flex: 1, backgroundColor: !pdfPassword ? "#374151" : "#6366f1", borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center" }}
               >
-                {pdfPasswordLoading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={{ color: "#fff", fontWeight: "700" }}>Unlock & Import</Text>}
+                {pdfPasswordLoading ? (
+                  <View style={{ alignItems: "center", gap: 2 }}>
+                    <ActivityIndicator color="#fff" size="small" />
+                    <Text style={{ color: "#fff", fontSize: 9, opacity: 0.8 }}>May take ~60s on first use</Text>
+                  </View>
+                ) : (
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>Unlock & Import</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
