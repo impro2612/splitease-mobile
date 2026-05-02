@@ -23,6 +23,9 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Transfers":        "↔️",
   "Bills / Utilities":"💡",
   "EMI / Loans":      "🏦",
+  "Credit Card Payments":"💳",
+  "Medical / Pharmacy":"💊",
+  "Bank Charges":     "🧾",
   "Miscellaneous":    "📦",
 }
 
@@ -34,6 +37,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Subscriptions":    "#ec4899",
   "Rent / Housing":   "#10b981",
   "EMI / Loans":      "#ef4444",
+  "Credit Card Payments":"#0ea5e9",
+  "Medical / Pharmacy":"#14b8a6",
+  "Bank Charges":     "#f43f5e",
   "Transfers":        "#6b7280",
   "Salary / Income":  "#22c55e",
   "Miscellaneous":    "#94a3b8",
@@ -63,7 +69,7 @@ export default function Expenses() {
   const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "insights" | "budgets">("overview")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showBudgetModal, setShowBudgetModal] = useState(false)
-  const [budgetCategory, setBudgetCategory] = useState(CATEGORIES[1])
+  const [budgetCategory, setBudgetCategory] = useState<(typeof CATEGORIES)[number]>(CATEGORIES[1])
   const [budgetAmount, setBudgetAmount] = useState("")
   const [refreshing, setRefreshing] = useState(false)
 
@@ -316,7 +322,7 @@ export default function Expenses() {
 
           <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 8 }}>Category</Text>
           <FlatList
-            data={CATEGORIES.filter((c) => c !== "Salary / Income" && c !== "Transfers")}
+            data={CATEGORIES.filter((c) => c !== "Salary / Income")}
             numColumns={2}
             style={{ maxHeight: 200, marginBottom: 16 }}
             keyExtractor={(item) => item}
@@ -512,7 +518,6 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
             isAnimated
             animationDuration={600}
             width={width - 100}
-            yAxisLabelFormatter={(v: number) => formatINR(v)}
           />
         </View>
       )}

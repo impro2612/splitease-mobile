@@ -9,6 +9,9 @@ export const CATEGORIES = [
   "Transfers",
   "Bills / Utilities",
   "EMI / Loans",
+  "Credit Card Payments",
+  "Medical / Pharmacy",
+  "Bank Charges",
   "Miscellaneous",
 ] as const
 
