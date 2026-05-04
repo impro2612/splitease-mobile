@@ -4,6 +4,7 @@ export const CATEGORIES = [
   "Food / Dining",
   "Rent / Housing",
   "Transport",
+  "Travel",
   "Shopping",
   "Subscriptions",
   "UPI Payments",
