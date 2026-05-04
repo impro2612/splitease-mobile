@@ -6,6 +6,7 @@ export const CATEGORIES = [
   "Transport",
   "Shopping",
   "Subscriptions",
+  "UPI Payments",
   "Transfers",
   "Bills / Utilities",
   "EMI / Loans",
