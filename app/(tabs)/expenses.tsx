@@ -588,7 +588,7 @@ function EmptyState({ onImport, C }: {
 }
 
 function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedCategory, width, C, selectedTrendIndex }: {
-  summary: { totalIncome: number; totalExpense: number; netSavings: number; categoryBreakdown: { category: string; amount: number }[] };
+  summary: { month?: string; totalIncome: number; totalExpense: number; netSavings: number; categoryBreakdown: { category: string; amount: number }[] };
   pieData: { value: number; color: string; label: string; category: string; focused: boolean }[];
   barData: { value: number; label: string; frontColor: string; onPress?: () => void }[];
   selectedCategory: string | null;
@@ -602,6 +602,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   const barWidth = 28
   const spacing = 12
   const yAxisLabelWidth = 44
+  const trendChartKey = `${summary.month ?? "unknown"}:${barData.map((d) => `${d.label}-${d.value}-${d.frontColor}`).join("|")}`
   const selectedTrend = selectedTrendIndex !== null ? barData[selectedTrendIndex] : null
   const maxTrendValue = Math.max(...barData.map((d: { value: number }) => d.value), 0)
   const chartMaxValue = maxTrendValue > 0 ? maxTrendValue * 1.2 : 1
@@ -676,6 +677,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 16 }}>6-Month Trend</Text>
           <View style={{ position: "relative" }}>
             <BarChart
+              key={trendChartKey}
               data={barData}
               barWidth={barWidth}
               spacing={spacing}
