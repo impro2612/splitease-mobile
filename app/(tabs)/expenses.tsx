@@ -77,7 +77,7 @@ function monthLabel(m: string) {
 export default function Expenses() {
   const C = useTheme()
   const insets = useSafeAreaInsets()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const queryClient = useQueryClient()
 
   const now = new Date()
@@ -99,6 +99,7 @@ export default function Expenses() {
   const [pdfPasswordError, setPdfPasswordError] = useState("")
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
   const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
+  const [pdfModalCardHeight, setPdfModalCardHeight] = useState(0)
   const quoteOpacity = useRef(new Animated.Value(1)).current
   const pdfModalTranslateY = useRef(new Animated.Value(0)).current
 
@@ -136,7 +137,12 @@ export default function Expenses() {
     }
 
     const showEvent = Keyboard.addListener("keyboardDidShow", (event) => {
-      const lift = Math.min(240, Math.max(90, event.endCoordinates.height * 0.42))
+      const keyboardTop = height - event.endCoordinates.height
+      const cardHeight = pdfModalCardHeight || 340
+      const centeredTop = (height - cardHeight) / 2
+      const overlap = centeredTop + cardHeight + 24 - keyboardTop
+      const maxLift = Math.max(0, centeredTop - 24)
+      const lift = overlap > 0 ? Math.min(overlap, maxLift) : 0
       Animated.timing(pdfModalTranslateY, {
         toValue: -lift,
         duration: 200,
@@ -157,7 +163,7 @@ export default function Expenses() {
       hideEvent.remove()
       pdfModalTranslateY.setValue(0)
     }
-  }, [pdfPasswordLoading, pdfPasswordVisible, pdfModalTranslateY])
+  }, [height, pdfModalCardHeight, pdfPasswordLoading, pdfPasswordVisible, pdfModalTranslateY])
 
   // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -466,7 +472,10 @@ export default function Expenses() {
               padding: 24,
             }}
           >
-            <Animated.View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, transform: [{ translateY: pdfModalTranslateY }] }}>
+            <Animated.View
+              onLayout={(event) => setPdfModalCardHeight(event.nativeEvent.layout.height)}
+              style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, transform: [{ translateY: pdfModalTranslateY }] }}
+            >
               {pdfPasswordLoading ? (
                 <View style={{ alignItems: "center" }}>
                   <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
