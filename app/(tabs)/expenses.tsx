@@ -605,10 +605,11 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   selectedTrendIndex: number | null;
 }) {
   const chartHeight = 220
-  const chartWidth = width - 128
   const barWidth = 28
   const spacing = 12
   const yAxisLabelWidth = 44
+  const chartContainerWidth = width - 80
+  const chartWidth = Math.max(180, chartContainerWidth - yAxisLabelWidth - 28)
   const trendChartKey = `${summary.month ?? "unknown"}:${barData.map((d) => `${d.label}-${d.value}-${d.frontColor}`).join("|")}`
   const selectedTrend = selectedTrendIndex !== null ? barData[selectedTrendIndex] : null
   const maxTrendValue = Math.max(...barData.map((d: { value: number }) => d.value), 0)
@@ -682,7 +683,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
       {barData.length > 0 && (
         <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 16 }}>Last 6-Months Trend</Text>
-          <View style={{ position: "relative" }}>
+          <View style={{ position: "relative", overflow: "hidden" }}>
             <BarChart
               key={trendChartKey}
               data={barData}
@@ -759,44 +760,75 @@ function TransactionsTab({ grouped, txLoading, categories, selectedCategory, set
   onDelete: (id: string) => void;
   C: ReturnType<typeof useTheme>;
 }) {
+  const filterPills: Array<{
+    key: string;
+    label: string;
+    icon?: string;
+    selected: boolean;
+    onPress: () => void;
+  }> = [
+    {
+      key: "all",
+      label: "All",
+      selected: !selectedCategory && selectedDirection === "all",
+      onPress: () => {
+        setSelectedCategory(null)
+        setSelectedDirection("all")
+      },
+    },
+    {
+      key: "incoming",
+      label: "Incoming",
+      selected: selectedDirection === "incoming",
+      onPress: () => {
+        setSelectedCategory(null)
+        setSelectedDirection("incoming")
+      },
+    },
+    {
+      key: "outgoing",
+      label: "Outgoing",
+      selected: selectedDirection === "outgoing",
+      onPress: () => {
+        setSelectedCategory(null)
+        setSelectedDirection("outgoing")
+      },
+    },
+    ...categories.map((cat) => ({
+      key: cat,
+      label: cat.split(" / ")[0],
+      icon: CATEGORY_ICONS[cat],
+      selected: selectedCategory === cat,
+      onPress: () => {
+        setSelectedDirection("all")
+        setSelectedCategory(selectedCategory === cat ? null : cat)
+      },
+    })),
+  ]
+
   return (
     <View style={{ paddingHorizontal: 20 }}>
-      {/* Direction filter */}
-      <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-        {[
-          { key: "all", label: "All" },
-          { key: "incoming", label: "Incoming" },
-          { key: "outgoing", label: "Outgoing" },
-        ].map((item) => (
+      {/* Unified filter pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+        {filterPills.map((pill) => (
           <TouchableOpacity
-            key={item.key}
-            onPress={() => setSelectedDirection(item.key as "all" | "incoming" | "outgoing")}
+            key={pill.key}
+            onPress={pill.onPress}
             style={{
-              flex: 1,
-              backgroundColor: selectedDirection === item.key ? "#6366f1" : C.card,
-              borderRadius: 14,
-              paddingVertical: 9,
-              alignItems: "center",
+              backgroundColor: pill.selected ? "#6366f1" : C.card,
+              borderRadius: 20,
+              paddingHorizontal: pill.icon ? 12 : 14,
+              paddingVertical: 7,
+              marginRight: 6,
               borderWidth: 1,
-              borderColor: selectedDirection === item.key ? "#6366f1" : C.border,
+              borderColor: pill.selected ? "#6366f1" : C.border,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: pill.icon ? 4 : 0,
             }}
           >
-            <Text style={{ color: selectedDirection === item.key ? "#fff" : C.textSub, fontSize: 12, fontWeight: "700" }}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Category filter pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-        <TouchableOpacity onPress={() => setSelectedCategory(null)} style={{ backgroundColor: !selectedCategory ? "#6366f1" : C.card, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginRight: 6, borderWidth: 1, borderColor: !selectedCategory ? "#6366f1" : C.border }}>
-          <Text style={{ color: !selectedCategory ? "#fff" : C.textSub, fontSize: 12, fontWeight: "600" }}>All</Text>
-        </TouchableOpacity>
-        {categories.map((cat) => (
-          <TouchableOpacity key={cat} onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)} style={{ backgroundColor: selectedCategory === cat ? "#6366f1" : C.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, marginRight: 6, borderWidth: 1, borderColor: selectedCategory === cat ? "#6366f1" : C.border, flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Text style={{ fontSize: 12 }}>{CATEGORY_ICONS[cat]}</Text>
-            <Text style={{ color: selectedCategory === cat ? "#fff" : C.textSub, fontSize: 11, fontWeight: "600" }}>{cat.split(" / ")[0]}</Text>
+            {pill.icon ? <Text style={{ fontSize: 12 }}>{pill.icon}</Text> : null}
+            <Text style={{ color: pill.selected ? "#fff" : C.textSub, fontSize: pill.icon ? 11 : 12, fontWeight: "600" }}>{pill.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
