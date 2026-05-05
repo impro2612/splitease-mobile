@@ -624,9 +624,9 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
       {/* Summary cards */}
       <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
         {[
-          { label: "Income", amount: summary.totalIncome, color: "#4ade80" },
+          { label: "Income", amount: summary.totalIncome, color: "#6366f1" },
           { label: "Spent",  amount: summary.totalExpense, color: "#f87171" },
-          { label: "Saved",  amount: summary.netSavings,   color: summary.netSavings >= 0 ? "#6366f1" : "#f87171" },
+          { label: "Saved",  amount: summary.netSavings,   color: summary.netSavings >= 0 ? "#4ade80" : "#f87171" },
         ].map((s) => (
           <View key={s.label} style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: C.border }}>
             <Text style={{ color: C.textSub, fontSize: 11, marginBottom: 4 }}>{s.label}</Text>
