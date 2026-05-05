@@ -535,9 +535,14 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   const chartHeight = 220
   const barWidth = 28
   const spacing = 12
+  const initialSpacing = 4
+  const endSpacing = 4
   const yAxisLabelWidth = 44
   const chartContainerWidth = width - 80
-  const chartWidth = Math.max(180, chartContainerWidth - yAxisLabelWidth - 28)
+  const n = barData.length || 1
+  const barAreaNeeded = initialSpacing + n * barWidth + Math.max(0, n - 1) * spacing + endSpacing
+  const availableForChart = chartContainerWidth - yAxisLabelWidth
+  const chartWidth = Math.max(barAreaNeeded, availableForChart)
   const trendChartKey = `${summary.month ?? "unknown"}:${barData.map((d) => `${d.label}-${d.value}-${d.frontColor}`).join("|")}`
   const selectedTrend = selectedTrendIndex !== null ? barData[selectedTrendIndex] : null
   const maxTrendValue = Math.max(...barData.map((d: { value: number }) => d.value), 0)
@@ -547,7 +552,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
         yAxisLabelWidth - 8,
         Math.min(
           chartWidth - 84,
-          yAxisLabelWidth + selectedTrendIndex * (barWidth + spacing) + barWidth / 2 - 42,
+          yAxisLabelWidth + initialSpacing + selectedTrendIndex * (barWidth + spacing) + barWidth / 2 - 42,
         ),
       )
     : 0
@@ -617,6 +622,8 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
               data={barData}
               barWidth={barWidth}
               spacing={spacing}
+              initialSpacing={initialSpacing}
+              endSpacing={endSpacing}
               roundedTop
               xAxisThickness={0}
               yAxisThickness={0}
