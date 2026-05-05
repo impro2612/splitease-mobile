@@ -90,6 +90,7 @@ export default function Expenses() {
   const [budgetCategory, setBudgetCategory] = useState<(typeof CATEGORIES)[number]>(CATEGORIES[1])
   const [budgetAmount, setBudgetAmount] = useState("")
   const [refreshing, setRefreshing] = useState(false)
+  const [selectedTrendIndex, setSelectedTrendIndex] = useState<number | null>(null)
 
   // PDF password modal
   const [pendingPdfFile, setPendingPdfFile] = useState<{ uri: string; name: string } | null>(null)
@@ -236,6 +237,7 @@ export default function Expenses() {
     const d = new Date(y, m - 1 + delta, 1)
     setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
     setSelectedCategory(null)
+    setSelectedTrendIndex(null)
   }
 
   // Pie chart data
@@ -246,14 +248,22 @@ export default function Expenses() {
       value: c.amount,
       color: CATEGORY_COLORS[c.category] ?? "#94a3b8",
       label: c.category.split(" / ")[0],
+      category: c.category,
       focused: selectedCategory === c.category,
     }))
 
   // Bar chart data
-  const barData = (summary?.monthlyTrend ?? []).map((t: { month: string; expense: number }) => ({
+  const barData = (summary?.monthlyTrend ?? []).map((t: { month: string; expense: number }, index: number) => ({
     value: t.expense,
     label: monthLabel(t.month),
     frontColor: t.month === selectedMonth ? "#6366f1" : "#374151",
+    onPress: () => setSelectedTrendIndex((prev) => (prev === index ? null : index)),
+    topLabelComponent: () =>
+      selectedTrendIndex === index ? (
+        <View style={{ marginBottom: 6, backgroundColor: "#111827", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: C.border }}>
+          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{formatINR(t.expense)}</Text>
+        </View>
+      ) : null,
   }))
 
   const transactions = txData?.transactions ?? []
@@ -425,9 +435,22 @@ export default function Expenses() {
                   <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 20 }}>
                     Hang tight while we read your statement and sort the transactions.
                   </Text>
-                  <View style={{ width: "100%", backgroundColor: C.inputBg, borderRadius: 18, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, paddingVertical: 18 }}>
-                    <Animated.Text style={{ color: "#c4b5fd", fontSize: 15, lineHeight: 22, textAlign: "center", opacity: quoteOpacity }}>
-                      {PDF_IMPORT_QUOTES[pdfQuoteIndex]}
+                  <View style={{ width: "100%", backgroundColor: C.inputBg, borderRadius: 18, borderWidth: 1, borderColor: C.border, paddingHorizontal: 18, paddingVertical: 18 }}>
+                    <Text style={{ color: "#8b85b3", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", marginBottom: 8 }}>
+                      Quote While We Wait
+                    </Text>
+                    <Animated.Text
+                      style={{
+                        color: "#ddd6fe",
+                        fontSize: 18,
+                        lineHeight: 28,
+                        textAlign: "center",
+                        opacity: quoteOpacity,
+                        fontStyle: "italic",
+                        fontFamily: Platform.select({ ios: "Georgia", android: "serif", default: undefined }),
+                      }}
+                    >
+                      {`"${PDF_IMPORT_QUOTES[pdfQuoteIndex]}"`}
                     </Animated.Text>
                   </View>
                 </View>
@@ -509,8 +532,8 @@ function EmptyState({ onImport, C }: {
 
 function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedCategory, width, C }: {
   summary: { totalIncome: number; totalExpense: number; netSavings: number; categoryBreakdown: { category: string; amount: number }[] };
-  pieData: { value: number; color: string; label: string; focused: boolean }[];
-  barData: { value: number; label: string; frontColor: string }[];
+  pieData: { value: number; color: string; label: string; category: string; focused: boolean }[];
+  barData: { value: number; label: string; frontColor: string; onPress?: () => void; topLabelComponent?: () => React.JSX.Element | null }[];
   selectedCategory: string | null;
   setSelectedCategory: (c: string | null) => void;
   width: number;
@@ -549,13 +572,17 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
                   <Text style={{ color: C.textSub, fontSize: 10 }}>total</Text>
                 </View>
               )}
-              onPress={(item: { label: string }) => setSelectedCategory(selectedCategory === item.label?.split("/")[0]?.trim() ? null : item.label)}
+              selectedIndex={pieData.findIndex((item) => item.category === selectedCategory)}
+              onPress={(item: { category?: string }) => {
+                if (!item.category) return
+                setSelectedCategory(selectedCategory === item.category ? null : item.category)
+              }}
               focusOnPress
             />
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
             {pieData.map((d) => (
-              <TouchableOpacity key={d.label} onPress={() => setSelectedCategory(selectedCategory === d.label ? null : d.label)} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <TouchableOpacity key={d.category} onPress={() => setSelectedCategory(selectedCategory === d.category ? null : d.category)} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: d.color }} />
                 <Text style={{ color: C.textSub, fontSize: 11 }}>{d.label}</Text>
               </TouchableOpacity>
