@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   Modal, TextInput, Alert, FlatList, useWindowDimensions, RefreshControl,
-  KeyboardAvoidingView, Platform, Animated, Keyboard,
+  KeyboardAvoidingView, Platform, Animated,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -77,7 +77,7 @@ function monthLabel(m: string) {
 export default function Expenses() {
   const C = useTheme()
   const insets = useSafeAreaInsets()
-  const { width, height } = useWindowDimensions()
+  const { width } = useWindowDimensions()
   const queryClient = useQueryClient()
 
   const now = new Date()
@@ -99,9 +99,7 @@ export default function Expenses() {
   const [pdfPasswordError, setPdfPasswordError] = useState("")
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
   const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
-  const [pdfModalCardHeight, setPdfModalCardHeight] = useState(0)
   const quoteOpacity = useRef(new Animated.Value(1)).current
-  const pdfModalTranslateY = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (!pdfPasswordVisible || !pdfPasswordLoading) {
@@ -128,42 +126,6 @@ export default function Expenses() {
 
     return () => clearInterval(id)
   }, [pdfPasswordLoading, pdfPasswordVisible, quoteOpacity])
-
-  useEffect(() => {
-    if (Platform.OS !== "android") return
-    if (!pdfPasswordVisible || pdfPasswordLoading) {
-      pdfModalTranslateY.setValue(0)
-      return
-    }
-
-    const showEvent = Keyboard.addListener("keyboardDidShow", (event) => {
-      const keyboardTop = height - event.endCoordinates.height
-      const cardHeight = pdfModalCardHeight || 340
-      const centeredTop = (height - cardHeight) / 2
-      const overlap = centeredTop + cardHeight + 24 - keyboardTop
-      const maxLift = Math.max(0, centeredTop - 24)
-      const lift = overlap > 0 ? Math.min(overlap, maxLift) : 0
-      Animated.timing(pdfModalTranslateY, {
-        toValue: -lift,
-        duration: 200,
-        useNativeDriver: true,
-      }).start()
-    })
-
-    const hideEvent = Keyboard.addListener("keyboardDidHide", () => {
-      Animated.timing(pdfModalTranslateY, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }).start()
-    })
-
-    return () => {
-      showEvent.remove()
-      hideEvent.remove()
-      pdfModalTranslateY.setValue(0)
-    }
-  }, [height, pdfModalCardHeight, pdfPasswordLoading, pdfPasswordVisible, pdfModalTranslateY])
 
   // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -472,10 +434,7 @@ export default function Expenses() {
               padding: 24,
             }}
           >
-            <Animated.View
-              onLayout={(event) => setPdfModalCardHeight(event.nativeEvent.layout.height)}
-              style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, transform: [{ translateY: pdfModalTranslateY }] }}
-            >
+            <Animated.View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
               {pdfPasswordLoading ? (
                 <View style={{ alignItems: "center" }}>
                   <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
