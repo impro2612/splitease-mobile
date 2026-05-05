@@ -283,9 +283,9 @@ export default function Expenses() {
 
   // Bar chart data
   const barData = (summary?.monthlyTrend ?? []).map((t: { month: string; income: number; expense: number }, index: number) => {
-    const activity = t.income + t.expense
+    const expense = t.expense
     return {
-      value: activity,
+      value: expense,
       label: monthLabel(t.month),
       frontColor: t.month === selectedMonth ? "#6366f1" : "#374151",
       onPress: () => setSelectedTrendIndex((prev) => (prev === index ? null : index)),
@@ -674,7 +674,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
       {/* Bar chart */}
       {barData.length > 0 && (
         <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
-          <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 16 }}>6-Month Trend</Text>
+          <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 16 }}>Last 6-Months Trend</Text>
           <View style={{ position: "relative" }}>
             <BarChart
               key={trendChartKey}
