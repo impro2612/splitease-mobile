@@ -164,9 +164,10 @@ export const transactionsApi = {
       headers: { "Content-Type": "multipart/form-data" },
     })
   },
-  importPDF: (file: { uri: string; name: string }, password?: string) => {
+  importPDF: (file: { uri: string; name: string }, expectedMonth: string, password?: string) => {
     const form = new FormData()
     form.append("file", { uri: file.uri, name: file.name, type: "application/pdf" } as unknown as Blob)
+    form.append("expectedMonth", expectedMonth)
     if (password) form.append("password", password)
     return api.post("/api/transactions/import-pdf", form, {
       headers: { "Content-Type": "multipart/form-data" },

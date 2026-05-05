@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   Modal, TextInput, Alert, FlatList, useWindowDimensions, RefreshControl,
+  KeyboardAvoidingView, Platform, Animated,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -49,6 +50,19 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Miscellaneous":    "#94a3b8",
 }
 
+const PDF_IMPORT_QUOTES = [
+  "The safest way to double your money is to fold it & forget it.😂",
+  "I’m stuck between 'I need to save money' and 'you only live once.'😩",
+  "My wallet is like an onion: opening it makes me cry.🥹",
+  "I tried to follow a budget, but it unfollowed me back.🙃",
+  "I am just one step away from being rich. All I need now is money.🤣",
+  "Money talks, but mine just says goodbye.😒",
+  "My money leaves faster than my motivation on Monday.😛",
+  "I opened my bank app for motivation… got depression instead.😇",
+  "I love saving money… I just love spending it more.🤪",
+  "Salary credited: 😎 Bills deducted: 🤡",
+] as const
+
 function formatINR(amount: number) {
   if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`
   if (amount >= 1000)   return `₹${(amount / 1000).toFixed(1)}K`
@@ -83,6 +97,34 @@ export default function Expenses() {
   const [pdfPassword, setPdfPassword] = useState("")
   const [pdfPasswordError, setPdfPasswordError] = useState("")
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
+  const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
+  const quoteOpacity = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    if (!pdfPasswordVisible || !pdfPasswordLoading) {
+      setPdfQuoteIndex(0)
+      quoteOpacity.setValue(1)
+      return
+    }
+
+    const id = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(quoteOpacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(quoteOpacity, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+      ]).start()
+      setPdfQuoteIndex((prev) => (prev + 1) % PDF_IMPORT_QUOTES.length)
+    }, 5000)
+
+    return () => clearInterval(id)
+  }, [pdfPasswordLoading, pdfPasswordVisible, quoteOpacity])
 
   // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -119,7 +161,7 @@ export default function Expenses() {
   // PDF bank statement import
   async function uploadPdf(file: { uri: string; name: string }, password?: string) {
     try {
-      const res = await transactionsApi.importPDF(file, password)
+      const res = await transactionsApi.importPDF(file, selectedMonth, password)
       const data = res.data
       queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
       queryClient.invalidateQueries({ queryKey: ["transactions"] })
@@ -164,6 +206,7 @@ export default function Expenses() {
 
   async function handlePasswordSubmit() {
     if (!pendingPdfFile || !pdfPassword) return
+    setPdfQuoteIndex(0)
     setPdfPasswordLoading(true)
     await uploadPdf(pendingPdfFile, pdfPassword)
     setPdfPasswordLoading(false)
@@ -367,61 +410,78 @@ export default function Expenses() {
 
       {/* PDF Password Modal */}
       <Modal visible={pdfPasswordVisible} animationType="fade" transparent onRequestClose={() => setPdfPasswordVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 }}>
-          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <Text style={{ fontSize: 22 }}>🔒</Text>
-              <Text style={{ color: C.text, fontSize: 17, fontWeight: "700" }}>PDF Password Required</Text>
-            </View>
-            <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20, marginBottom: 20 }}>
-              This bank statement is password-protected. Enter the password (usually your DOB in DDMMYYYY or account number).
-            </Text>
-            <View style={{
-              backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1,
-              borderColor: pdfPasswordError ? "#f87171" : C.border,
-              paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 6,
-            }}>
-              <TextInput
-                style={{ color: C.text, fontSize: 16 }}
-                placeholder="Enter PDF password"
-                placeholderTextColor={C.textMuted}
-                secureTextEntry
-                value={pdfPassword}
-                onChangeText={(t) => { setPdfPassword(t); setPdfPasswordError("") }}
-                onSubmitEditing={handlePasswordSubmit}
-                autoFocus
-                returnKeyType="done"
-              />
-            </View>
-            {pdfPasswordError ? (
-              <Text style={{ color: "#f87171", fontSize: 12, marginBottom: 16 }}>{pdfPasswordError}</Text>
-            ) : (
-              <View style={{ height: 16 }} />
-            )}
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
-                onPress={() => { setPdfPasswordVisible(false); setPdfPassword(""); setPdfPasswordError(""); setPendingPdfFile(null) }}
-                style={{ flex: 1, backgroundColor: C.inputBg, borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border }}
-              >
-                <Text style={{ color: C.text, fontWeight: "600" }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handlePasswordSubmit}
-                disabled={!pdfPassword || pdfPasswordLoading}
-                style={{ flex: 1, backgroundColor: !pdfPassword ? "#374151" : "#6366f1", borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center" }}
-              >
-                {pdfPasswordLoading ? (
-                  <View style={{ alignItems: "center", gap: 2 }}>
-                    <ActivityIndicator color="#fff" size="small" />
-                    <Text style={{ color: "#fff", fontSize: 9, opacity: 0.8 }}>First import may take ~90s</Text>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+            <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+              {pdfPasswordLoading ? (
+                <View style={{ alignItems: "center" }}>
+                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <ActivityIndicator color="#6366f1" size="large" />
                   </View>
-                ) : (
-                  <Text style={{ color: "#fff", fontWeight: "700" }}>Unlock & Import</Text>
-                )}
-              </TouchableOpacity>
+                  <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>Fetching data from the PDF</Text>
+                  <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 20 }}>
+                    Hang tight while we read your statement and sort the transactions.
+                  </Text>
+                  <View style={{ width: "100%", backgroundColor: C.inputBg, borderRadius: 18, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, paddingVertical: 18 }}>
+                    <Animated.Text style={{ color: "#c4b5fd", fontSize: 15, lineHeight: 22, textAlign: "center", opacity: quoteOpacity }}>
+                      {PDF_IMPORT_QUOTES[pdfQuoteIndex]}
+                    </Animated.Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 22 }}>🔒</Text>
+                    <Text style={{ color: C.text, fontSize: 17, fontWeight: "700" }}>PDF Password Required</Text>
+                  </View>
+                  <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20, marginBottom: 20 }}>
+                    This bank statement is password-protected. Enter the password (usually your DOB in DDMMYYYY or account number).
+                  </Text>
+                  <View style={{
+                    backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1,
+                    borderColor: pdfPasswordError ? "#f87171" : C.border,
+                    paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 6,
+                  }}>
+                    <TextInput
+                      style={{ color: C.text, fontSize: 16 }}
+                      placeholder="Enter PDF password"
+                      placeholderTextColor={C.textMuted}
+                      secureTextEntry
+                      value={pdfPassword}
+                      onChangeText={(t) => { setPdfPassword(t); setPdfPasswordError("") }}
+                      onSubmitEditing={handlePasswordSubmit}
+                      autoFocus
+                      returnKeyType="done"
+                    />
+                  </View>
+                  {pdfPasswordError ? (
+                    <Text style={{ color: "#f87171", fontSize: 12, marginBottom: 16 }}>{pdfPasswordError}</Text>
+                  ) : (
+                    <View style={{ height: 16 }} />
+                  )}
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={() => { setPdfPasswordVisible(false); setPdfPassword(""); setPdfPasswordError(""); setPendingPdfFile(null) }}
+                      style={{ flex: 1, backgroundColor: C.inputBg, borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border }}
+                    >
+                      <Text style={{ color: C.text, fontWeight: "600" }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handlePasswordSubmit}
+                      disabled={!pdfPassword}
+                      style={{ flex: 1, backgroundColor: !pdfPassword ? "#374151" : "#6366f1", borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center" }}
+                    >
+                      <Text style={{ color: "#fff", fontWeight: "700" }}>Unlock & Import</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   )
