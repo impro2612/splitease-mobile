@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   Modal, TextInput, Alert, FlatList, useWindowDimensions, RefreshControl,
-  KeyboardAvoidingView, Platform, Animated,
+  KeyboardAvoidingView, Platform, Animated, Keyboard,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -100,6 +100,7 @@ export default function Expenses() {
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
   const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
   const quoteOpacity = useRef(new Animated.Value(1)).current
+  const pdfModalTranslateY = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (!pdfPasswordVisible || !pdfPasswordLoading) {
@@ -126,6 +127,37 @@ export default function Expenses() {
 
     return () => clearInterval(id)
   }, [pdfPasswordLoading, pdfPasswordVisible, quoteOpacity])
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    if (!pdfPasswordVisible || pdfPasswordLoading) {
+      pdfModalTranslateY.setValue(0)
+      return
+    }
+
+    const showEvent = Keyboard.addListener("keyboardDidShow", (event) => {
+      const lift = Math.min(180, Math.max(70, event.endCoordinates.height * 0.32))
+      Animated.timing(pdfModalTranslateY, {
+        toValue: -lift,
+        duration: 220,
+        useNativeDriver: true,
+      }).start()
+    })
+
+    const hideEvent = Keyboard.addListener("keyboardDidHide", () => {
+      Animated.timing(pdfModalTranslateY, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start()
+    })
+
+    return () => {
+      showEvent.remove()
+      hideEvent.remove()
+      pdfModalTranslateY.setValue(0)
+    }
+  }, [pdfPasswordLoading, pdfPasswordVisible, pdfModalTranslateY])
 
   // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -422,10 +454,11 @@ export default function Expenses() {
       <Modal visible={pdfPasswordVisible} animationType="fade" transparent onRequestClose={() => setPdfPasswordVisible(false)}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 16 : 0}
         >
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 }}>
-            <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <Animated.View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, transform: [{ translateY: pdfModalTranslateY }] }}>
               {pdfPasswordLoading ? (
                 <View style={{ alignItems: "center" }}>
                   <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
@@ -502,7 +535,7 @@ export default function Expenses() {
                   </View>
                 </>
               )}
-            </View>
+            </Animated.View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
