@@ -10,7 +10,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
 import { useTheme } from "@/lib/theme"
-import { transactionsApi, budgetsApi } from "@/lib/api"
+import { transactionsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { CATEGORIES } from "@/lib/categorize-client"
 
@@ -82,12 +82,9 @@ export default function Expenses() {
   const [selectedMonth, setSelectedMonth] = useState(
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   )
-  const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "insights" | "budgets">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "insights" | "suggestions">("overview")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedDirection, setSelectedDirection] = useState<"all" | "incoming" | "outgoing">("all")
-  const [showBudgetModal, setShowBudgetModal] = useState(false)
-  const [budgetCategory, setBudgetCategory] = useState<(typeof CATEGORIES)[number]>(CATEGORIES[1])
-  const [budgetAmount, setBudgetAmount] = useState("")
   const [refreshing, setRefreshing] = useState(false)
   const [selectedTrendIndex, setSelectedTrendIndex] = useState<number | null>(null)
 
@@ -181,11 +178,6 @@ export default function Expenses() {
     enabled: activeTab === "insights",
   })
 
-  const { data: budgets = [] } = useQuery({
-    queryKey: ["budgets"],
-    queryFn: () => budgetsApi.list().then((r) => r.data),
-  })
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     await queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
@@ -246,16 +238,6 @@ export default function Expenses() {
     await uploadPdf(pendingPdfFile, pdfPassword)
     setPdfPasswordLoading(false)
   }
-
-  const setBudgetMutation = useMutation({
-    mutationFn: () => budgetsApi.set(budgetCategory, parseFloat(budgetAmount)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["budgets"] })
-      setShowBudgetModal(false)
-      setBudgetAmount("")
-      Toast.show({ type: "success", text1: "Budget saved" })
-    },
-  })
 
   const deleteCategoryMutation = useMutation({
     mutationFn: (id: string) => transactionsApi.delete(id),
@@ -349,7 +331,7 @@ export default function Expenses() {
 
       {/* Tab bar */}
       <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 4, marginBottom: 8 }}>
-        {(["overview", "transactions", "insights", "budgets"] as const).map((tab) => (
+        {(["overview", "transactions", "insights", "suggestions"] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             onPress={() => setActiveTab(tab)}
@@ -400,67 +382,13 @@ export default function Expenses() {
             {activeTab === "insights" && (
               <InsightsTab insights={insights} C={C} />
             )}
-            {activeTab === "budgets" && (
-              <BudgetsTab
-                budgets={budgets} summary={summary}
-                onAdd={() => setShowBudgetModal(true)} C={C}
-              />
+            {activeTab === "suggestions" && (
+              <SuggestionsTab C={C} />
             )}
           </>
         )}
         <View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
-
-      {/* Budget modal */}
-      <Modal visible={showBudgetModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowBudgetModal(false)}>
-        <View style={{ flex: 1, backgroundColor: C.bg, padding: 24, paddingTop: insets.top + 20 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <Text style={{ color: C.text, fontSize: 18, fontWeight: "700" }}>Set Budget</Text>
-            <TouchableOpacity onPress={() => setShowBudgetModal(false)}>
-              <Ionicons name="close" size={22} color={C.text} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 8 }}>Category</Text>
-          <FlatList
-            data={CATEGORIES.filter((c) => c !== "Salary / Income")}
-            numColumns={2}
-            style={{ maxHeight: 200, marginBottom: 16 }}
-            keyExtractor={(item) => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => setBudgetCategory(item)}
-                style={{ flex: 1, margin: 4, padding: 10, borderRadius: 12, backgroundColor: budgetCategory === item ? "#6366f1" : C.card, borderWidth: 1, borderColor: budgetCategory === item ? "#6366f1" : C.border, flexDirection: "row", alignItems: "center", gap: 6 }}
-              >
-                <Text style={{ fontSize: 14 }}>{CATEGORY_ICONS[item]}</Text>
-                <Text style={{ color: budgetCategory === item ? "#fff" : C.text, fontSize: 11, fontWeight: "600", flex: 1 }} numberOfLines={1}>{item}</Text>
-              </TouchableOpacity>
-            )}
-          />
-
-          <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 8 }}>Monthly Limit (₹)</Text>
-          <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 24 }}>
-            <TextInput
-              style={{ color: C.text, fontSize: 18, fontWeight: "600" }}
-              placeholder="e.g. 8000"
-              placeholderTextColor={C.textMuted}
-              keyboardType="numeric"
-              value={budgetAmount}
-              onChangeText={setBudgetAmount}
-            />
-          </View>
-
-          <TouchableOpacity
-            onPress={() => setBudgetMutation.mutate()}
-            disabled={!budgetAmount || setBudgetMutation.isPending}
-            style={{ backgroundColor: !budgetAmount ? "#374151" : "#6366f1", borderRadius: 14, height: 52, alignItems: "center", justifyContent: "center" }}
-          >
-            {setBudgetMutation.isPending
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Save Budget</Text>}
-          </TouchableOpacity>
-        </View>
-      </Modal>
 
       {/* PDF Password Modal */}
       <Modal visible={pdfPasswordVisible} animationType="fade" transparent onRequestClose={() => setPdfPasswordVisible(false)}>
@@ -961,46 +889,20 @@ function InsightsTab({ insights, C }: {
   )
 }
 
-function BudgetsTab({ budgets, summary, onAdd, C }: {
-  budgets: { category: string; amount: number }[];
-  summary: { categoryBreakdown: { category: string; amount: number }[] };
-  onAdd: () => void;
+function SuggestionsTab({ C }: {
   C: ReturnType<typeof useTheme>;
 }) {
-  const spentMap: Record<string, number> = {}
-  for (const c of summary.categoryBreakdown) spentMap[c.category] = c.amount
-
   return (
     <View style={{ paddingHorizontal: 20 }}>
-      <TouchableOpacity onPress={onAdd} style={{ backgroundColor: "#6366f1", borderRadius: 14, padding: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}>
-        <Ionicons name="add" size={18} color="#fff" />
-        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Set Monthly Budget</Text>
-      </TouchableOpacity>
-
-      {budgets.length === 0 ? (
-        <Text style={{ color: C.textSub, textAlign: "center", marginTop: 20 }}>No budgets set yet. Add limits for each spending category.</Text>
-      ) : (
-        budgets.map((b) => {
-          const spent = spentMap[b.category] ?? 0
-          const pct   = Math.min((spent / b.amount) * 100, 100)
-          const over  = spent > b.amount
-          return (
-            <View key={b.category} style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: over ? "rgba(248,113,113,0.4)" : C.border }}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-                <Text style={{ fontSize: 20, marginRight: 8 }}>{CATEGORY_ICONS[b.category]}</Text>
-                <Text style={{ color: C.text, fontWeight: "600", flex: 1 }}>{b.category}</Text>
-                <Text style={{ color: over ? "#f87171" : C.text, fontWeight: "700" }}>
-                  ₹{spent.toFixed(0)} / ₹{b.amount.toFixed(0)}
-                </Text>
-              </View>
-              <View style={{ height: 6, backgroundColor: C.border, borderRadius: 3 }}>
-                <View style={{ height: 6, borderRadius: 3, backgroundColor: over ? "#f87171" : "#6366f1", width: `${pct}%` }} />
-              </View>
-              {over && <Text style={{ color: "#f87171", fontSize: 11, marginTop: 6 }}>⚠️ Over by ₹{(spent - b.amount).toFixed(0)}</Text>}
-            </View>
-          )
-        })
-      )}
+      <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.border }}>
+        <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <Ionicons name="bulb-outline" size={28} color="#6366f1" />
+        </View>
+        <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 8 }}>Suggestions</Text>
+        <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22 }}>
+          This page is ready. Tell me what exactly you want to add here and I’ll wire it in.
+        </Text>
+      </View>
     </View>
   )
 }
