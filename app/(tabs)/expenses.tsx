@@ -612,6 +612,26 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
         </View>
       )}
 
+      {/* Category list */}
+      <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 16 }}>
+        <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 12 }}>By Category</Text>
+        {summary.categoryBreakdown.filter((c: { amount: number }) => c.amount > 0).map((c: { category: string; amount: number }) => {
+          const pct = summary.totalExpense > 0 ? (c.amount / summary.totalExpense) * 100 : 0
+          return (
+            <TouchableOpacity key={c.category} onPress={() => setSelectedCategory(selectedCategory === c.category ? null : c.category)} style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
+                <Text style={{ fontSize: 16, marginRight: 8 }}>{CATEGORY_ICONS[c.category]}</Text>
+                <Text style={{ color: C.text, flex: 1, fontSize: 13 }}>{c.category}</Text>
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{formatINR(c.amount)}</Text>
+              </View>
+              <View style={{ height: 4, backgroundColor: C.border, borderRadius: 2 }}>
+                <View style={{ height: 4, borderRadius: 2, backgroundColor: CATEGORY_COLORS[c.category] ?? "#6366f1", width: `${pct}%` }} />
+              </View>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+
       {/* Bar chart */}
       {barData.length > 0 && (
         <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
@@ -660,26 +680,6 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
           </View>
         </View>
       )}
-
-      {/* Category list */}
-      <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 16 }}>
-        <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 12 }}>By Category</Text>
-        {summary.categoryBreakdown.filter((c: { amount: number }) => c.amount > 0).map((c: { category: string; amount: number }) => {
-          const pct = summary.totalExpense > 0 ? (c.amount / summary.totalExpense) * 100 : 0
-          return (
-            <TouchableOpacity key={c.category} onPress={() => setSelectedCategory(selectedCategory === c.category ? null : c.category)} style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                <Text style={{ fontSize: 16, marginRight: 8 }}>{CATEGORY_ICONS[c.category]}</Text>
-                <Text style={{ color: C.text, flex: 1, fontSize: 13 }}>{c.category}</Text>
-                <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{formatINR(c.amount)}</Text>
-              </View>
-              <View style={{ height: 4, backgroundColor: C.border, borderRadius: 2 }}>
-                <View style={{ height: 4, borderRadius: 2, backgroundColor: CATEGORY_COLORS[c.category] ?? "#6366f1", width: `${pct}%` }} />
-              </View>
-            </TouchableOpacity>
-          )
-        })}
-      </View>
     </View>
   )
 }
