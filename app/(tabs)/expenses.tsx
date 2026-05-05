@@ -282,18 +282,15 @@ export default function Expenses() {
     }))
 
   // Bar chart data
-  const barData = (summary?.monthlyTrend ?? []).map((t: { month: string; expense: number }, index: number) => ({
-    value: t.expense,
-    label: monthLabel(t.month),
-    frontColor: t.month === selectedMonth ? "#6366f1" : "#374151",
-    onPress: () => setSelectedTrendIndex((prev) => (prev === index ? null : index)),
-    topLabelComponent: () =>
-      selectedTrendIndex === index ? (
-        <View style={{ marginBottom: 6, backgroundColor: "#111827", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: C.border }}>
-          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{formatINR(t.expense)}</Text>
-        </View>
-      ) : null,
-  }))
+  const barData = (summary?.monthlyTrend ?? []).map((t: { month: string; income: number; expense: number }, index: number) => {
+    const activity = t.income + t.expense
+    return {
+      value: activity,
+      label: monthLabel(t.month),
+      frontColor: t.month === selectedMonth ? "#6366f1" : "#374151",
+      onPress: () => setSelectedTrendIndex((prev) => (prev === index ? null : index)),
+    }
+  })
 
   const transactions = txData?.transactions ?? []
   const grouped = transactions.reduce((acc: Record<string, typeof transactions>, t: { date: string; [key: string]: unknown }) => {
@@ -378,7 +375,7 @@ export default function Expenses() {
               <OverviewTab
                 summary={summary} pieData={pieData} barData={barData}
                 selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-                width={width} C={C}
+                width={width} C={C} selectedTrendIndex={selectedTrendIndex}
               />
             )}
             {activeTab === "transactions" && (
@@ -590,15 +587,37 @@ function EmptyState({ onImport, C }: {
   )
 }
 
-function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedCategory, width, C }: {
+function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedCategory, width, C, selectedTrendIndex }: {
   summary: { totalIncome: number; totalExpense: number; netSavings: number; categoryBreakdown: { category: string; amount: number }[] };
   pieData: { value: number; color: string; label: string; category: string; focused: boolean }[];
-  barData: { value: number; label: string; frontColor: string; onPress?: () => void; topLabelComponent?: () => React.JSX.Element | null }[];
+  barData: { value: number; label: string; frontColor: string; onPress?: () => void }[];
   selectedCategory: string | null;
   setSelectedCategory: (c: string | null) => void;
   width: number;
   C: ReturnType<typeof useTheme>;
+  selectedTrendIndex: number | null;
 }) {
+  const chartHeight = 220
+  const chartWidth = width - 100
+  const barWidth = 28
+  const spacing = 12
+  const yAxisLabelWidth = 44
+  const selectedTrend = selectedTrendIndex !== null ? barData[selectedTrendIndex] : null
+  const maxTrendValue = Math.max(...barData.map((d: { value: number }) => d.value), 0)
+  const chartMaxValue = maxTrendValue > 0 ? maxTrendValue * 1.2 : 1
+  const selectedBubbleLeft = selectedTrendIndex !== null
+    ? Math.max(
+        yAxisLabelWidth - 8,
+        Math.min(
+          chartWidth - 84,
+          yAxisLabelWidth + selectedTrendIndex * (barWidth + spacing) + barWidth / 2 - 42,
+        ),
+      )
+    : 0
+  const selectedBubbleBottom = selectedTrend
+    ? Math.max(26, Math.min(chartHeight - 8, (selectedTrend.value / chartMaxValue) * chartHeight + 18))
+    : 0
+
   return (
     <View style={{ paddingHorizontal: 20 }}>
       {/* Summary cards */}
@@ -655,21 +674,45 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
       {barData.length > 0 && (
         <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 16 }}>6-Month Trend</Text>
-          <BarChart
-            data={barData}
-            barWidth={28}
-            spacing={12}
-            roundedTop
-            xAxisThickness={0}
-            yAxisThickness={0}
-            yAxisTextStyle={{ color: C.textMuted, fontSize: 10 }}
-            xAxisLabelTextStyle={{ color: C.textMuted, fontSize: 9 }}
-            noOfSections={3}
-            maxValue={Math.max(...barData.map((d: { value: number }) => d.value)) * 1.2}
-            isAnimated
-            animationDuration={600}
-            width={width - 100}
-          />
+          <View style={{ position: "relative" }}>
+            <BarChart
+              data={barData}
+              barWidth={barWidth}
+              spacing={spacing}
+              roundedTop
+              xAxisThickness={0}
+              yAxisThickness={0}
+              yAxisTextStyle={{ color: C.textMuted, fontSize: 10 }}
+              xAxisLabelTextStyle={{ color: C.textMuted, fontSize: 9 }}
+              yAxisLabelWidth={yAxisLabelWidth}
+              noOfSections={3}
+              maxValue={chartMaxValue}
+              isAnimated
+              animationDuration={600}
+              width={chartWidth}
+              height={chartHeight}
+            />
+            {selectedTrend && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: selectedBubbleLeft,
+                  bottom: selectedBubbleBottom,
+                  minWidth: 84,
+                  backgroundColor: "#111827",
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{formatINR(selectedTrend.value)}</Text>
+              </View>
+            )}
+          </View>
         </View>
       )}
 
