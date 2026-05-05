@@ -598,7 +598,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   selectedTrendIndex: number | null;
 }) {
   const chartHeight = 220
-  const chartWidth = width - 100
+  const chartWidth = width - 128
   const barWidth = 28
   const spacing = 12
   const yAxisLabelWidth = 44
