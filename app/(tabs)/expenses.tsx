@@ -17,7 +17,6 @@ import { CATEGORIES } from "@/lib/categorize-client"
 const CATEGORY_ICONS: Record<string, string> = {
   "Salary / Income":  "💰",
   "Food / Dining":    "🍕",
-  "Rent / Housing":   "🏠",
   "Transport":        "🚕",
   "Travel":           "✈️",
   "Shopping":         "🛒",
@@ -40,7 +39,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Bills / Utilities":"#f59e0b",
   "Subscriptions":    "#ec4899",
   "UPI Payments":     "#10b981",
-  "Rent / Housing":   "#10b981",
   "EMI / Loans":      "#ef4444",
   "Credit Card Payments":"#0ea5e9",
   "Medical / Pharmacy":"#14b8a6",
@@ -86,6 +84,7 @@ export default function Expenses() {
   )
   const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "insights" | "budgets">("overview")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedDirection, setSelectedDirection] = useState<"all" | "incoming" | "outgoing">("all")
   const [showBudgetModal, setShowBudgetModal] = useState(false)
   const [budgetCategory, setBudgetCategory] = useState<(typeof CATEGORIES)[number]>(CATEGORIES[1])
   const [budgetAmount, setBudgetAmount] = useState("")
@@ -163,10 +162,16 @@ export default function Expenses() {
   })
 
   const { data: txData, isLoading: txLoading } = useQuery({
-    queryKey: ["transactions", selectedMonth, selectedCategory],
+    queryKey: ["transactions", selectedMonth, selectedCategory, selectedDirection],
     queryFn: () => transactionsApi.list({
       month: selectedMonth,
       category: selectedCategory ?? undefined,
+      type:
+        selectedDirection === "incoming"
+          ? "credit"
+          : selectedDirection === "outgoing"
+            ? "debit"
+            : undefined,
     }).then((r) => r.data),
   })
 
@@ -383,6 +388,8 @@ export default function Expenses() {
                 grouped={grouped} txLoading={txLoading}
                 categories={CATEGORIES} selectedCategory={selectedCategory}
                 setSelectedCategory={setSelectedCategory}
+                selectedDirection={selectedDirection}
+                setSelectedDirection={setSelectedDirection}
                 onDelete={(id: string) => Alert.alert("Delete", "Remove this transaction?", [
                   { text: "Cancel", style: "cancel" },
                   { text: "Delete", style: "destructive", onPress: () => deleteCategoryMutation.mutate(id) },
@@ -741,17 +748,46 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   )
 }
 
-function TransactionsTab({ grouped, txLoading, categories, selectedCategory, setSelectedCategory, onDelete, C }: {
+function TransactionsTab({ grouped, txLoading, categories, selectedCategory, setSelectedCategory, selectedDirection, setSelectedDirection, onDelete, C }: {
   grouped: Record<string, { id: string; date: string; description: string; amount: number; type: string; category: string; bank?: string }[]>;
   txLoading: boolean;
   categories: readonly string[];
   selectedCategory: string | null;
   setSelectedCategory: (c: string | null) => void;
+  selectedDirection: "all" | "incoming" | "outgoing";
+  setSelectedDirection: (direction: "all" | "incoming" | "outgoing") => void;
   onDelete: (id: string) => void;
   C: ReturnType<typeof useTheme>;
 }) {
   return (
     <View style={{ paddingHorizontal: 20 }}>
+      {/* Direction filter */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+        {[
+          { key: "all", label: "All" },
+          { key: "incoming", label: "Incoming" },
+          { key: "outgoing", label: "Outgoing" },
+        ].map((item) => (
+          <TouchableOpacity
+            key={item.key}
+            onPress={() => setSelectedDirection(item.key as "all" | "incoming" | "outgoing")}
+            style={{
+              flex: 1,
+              backgroundColor: selectedDirection === item.key ? "#6366f1" : C.card,
+              borderRadius: 14,
+              paddingVertical: 9,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: selectedDirection === item.key ? "#6366f1" : C.border,
+            }}
+          >
+            <Text style={{ color: selectedDirection === item.key ? "#fff" : C.textSub, fontSize: 12, fontWeight: "700" }}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* Category filter pills */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <TouchableOpacity onPress={() => setSelectedCategory(null)} style={{ backgroundColor: !selectedCategory ? "#6366f1" : C.card, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginRight: 6, borderWidth: 1, borderColor: !selectedCategory ? "#6366f1" : C.border }}>

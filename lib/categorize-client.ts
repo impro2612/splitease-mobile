@@ -2,7 +2,6 @@
 export const CATEGORIES = [
   "Salary / Income",
   "Food / Dining",
-  "Rent / Housing",
   "Transport",
   "Travel",
   "Shopping",
