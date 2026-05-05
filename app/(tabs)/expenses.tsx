@@ -305,11 +305,12 @@ export default function Expenses() {
 
   const androidVisibleHeight = pdfKeyboardVisible ? Math.max(0, height - pdfKeyboardHeight) : height
   const androidCenteredTop = Math.max(insets.top + 16, (androidVisibleHeight - pdfModalHeight) / 2)
-  const androidOverlayStyle = Platform.OS === "android"
+  const androidCardStyle = Platform.OS === "android" && pdfModalHeight > 0
     ? {
-        justifyContent: pdfKeyboardVisible ? "flex-start" as const : "center" as const,
-        paddingTop: pdfKeyboardVisible ? androidCenteredTop : 24,
-        paddingBottom: pdfKeyboardVisible ? 16 : 24,
+        position: "absolute" as const,
+        left: 24,
+        right: 24,
+        top: androidCenteredTop,
       }
     : null
 
@@ -471,12 +472,19 @@ export default function Expenses() {
               justifyContent: "center",
               alignItems: "center",
               padding: 24,
-              ...(androidOverlayStyle ?? {}),
             }}
           >
             <Animated.View
               onLayout={(event) => setPdfModalHeight(event.nativeEvent.layout.height)}
-              style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}
+              style={{
+                backgroundColor: C.card,
+                borderRadius: 24,
+                padding: 24,
+                width: "100%",
+                borderWidth: 1,
+                borderColor: C.border,
+                ...(androidCardStyle ?? {}),
+              }}
             >
               {pdfPasswordLoading ? (
                 <View style={{ alignItems: "center" }}>

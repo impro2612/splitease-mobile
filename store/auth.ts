@@ -94,18 +94,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   setUser: (user: User) => {
-    SecureStore.setItemAsync("user_data", JSON.stringify(user))
     set({ user })
+    SecureStore.setItemAsync("user_data", JSON.stringify(user)).catch(() => {})
   },
 
   setCurrency: (currency: string) => {
-    SecureStore.setItemAsync("currency", currency)
     set({ currency })
+    SecureStore.setItemAsync("currency", currency).catch(() => {})
   },
 
   setTheme: (theme: ThemePref) => {
-    SecureStore.setItemAsync("theme", theme)
     applyAppearance(theme)
     set({ theme })
+    SecureStore.setItemAsync("theme", theme).catch(() => {})
   },
 }))
