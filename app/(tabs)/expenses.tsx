@@ -99,7 +99,6 @@ export default function Expenses() {
   const [pdfPasswordError, setPdfPasswordError] = useState("")
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
   const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
-  const [pdfKeyboardVisible, setPdfKeyboardVisible] = useState(false)
   const quoteOpacity = useRef(new Animated.Value(1)).current
   const pdfModalTranslateY = useRef(new Animated.Value(0)).current
 
@@ -133,22 +132,19 @@ export default function Expenses() {
     if (Platform.OS !== "android") return
     if (!pdfPasswordVisible || pdfPasswordLoading) {
       pdfModalTranslateY.setValue(0)
-      setPdfKeyboardVisible(false)
       return
     }
 
     const showEvent = Keyboard.addListener("keyboardDidShow", (event) => {
-      setPdfKeyboardVisible(true)
-      const lift = Math.min(180, Math.max(70, event.endCoordinates.height * 0.32))
+      const lift = Math.min(240, Math.max(90, event.endCoordinates.height * 0.42))
       Animated.timing(pdfModalTranslateY, {
         toValue: -lift,
-        duration: 220,
+        duration: 200,
         useNativeDriver: true,
       }).start()
     })
 
     const hideEvent = Keyboard.addListener("keyboardDidHide", () => {
-      setPdfKeyboardVisible(false)
       Animated.timing(pdfModalTranslateY, {
         toValue: 0,
         duration: 180,
@@ -159,7 +155,6 @@ export default function Expenses() {
     return () => {
       showEvent.remove()
       hideEvent.remove()
-      setPdfKeyboardVisible(false)
       pdfModalTranslateY.setValue(0)
     }
   }, [pdfPasswordLoading, pdfPasswordVisible, pdfModalTranslateY])
@@ -466,11 +461,9 @@ export default function Expenses() {
             style={{
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.75)",
-              justifyContent: Platform.OS === "ios" ? "center" : "flex-start",
+              justifyContent: "center",
               alignItems: "center",
-              paddingHorizontal: 24,
-              paddingBottom: 24,
-              paddingTop: Platform.OS === "ios" ? 24 : (pdfKeyboardVisible ? insets.top + 24 : 110),
+              padding: 24,
             }}
           >
             <Animated.View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, transform: [{ translateY: pdfModalTranslateY }] }}>
