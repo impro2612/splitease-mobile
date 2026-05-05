@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   Modal, TextInput, Alert, FlatList, useWindowDimensions, RefreshControl,
-  KeyboardAvoidingView, Platform, Animated,
+  KeyboardAvoidingView, Platform, Animated, Keyboard,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -77,7 +77,7 @@ function monthLabel(m: string) {
 export default function Expenses() {
   const C = useTheme()
   const insets = useSafeAreaInsets()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const queryClient = useQueryClient()
 
   const now = new Date()
@@ -99,6 +99,9 @@ export default function Expenses() {
   const [pdfPasswordError, setPdfPasswordError] = useState("")
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
   const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
+  const [pdfKeyboardHeight, setPdfKeyboardHeight] = useState(0)
+  const [pdfKeyboardVisible, setPdfKeyboardVisible] = useState(false)
+  const [pdfModalHeight, setPdfModalHeight] = useState(0)
   const quoteOpacity = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
@@ -122,10 +125,36 @@ export default function Expenses() {
         }),
       ]).start()
       setPdfQuoteIndex((prev) => (prev + 1) % PDF_IMPORT_QUOTES.length)
-    }, 5000)
+    }, 10000)
 
     return () => clearInterval(id)
   }, [pdfPasswordLoading, pdfPasswordVisible, quoteOpacity])
+
+  useEffect(() => {
+    if (Platform.OS !== "android" || !pdfPasswordVisible) return
+
+    const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
+      setPdfKeyboardHeight(event.endCoordinates.height)
+      setPdfKeyboardVisible(true)
+    })
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setPdfKeyboardVisible(false)
+      setPdfKeyboardHeight(0)
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [pdfPasswordVisible])
+
+  useEffect(() => {
+    if (!pdfPasswordVisible) {
+      setPdfKeyboardVisible(false)
+      setPdfKeyboardHeight(0)
+      setPdfModalHeight(0)
+    }
+  }, [pdfPasswordVisible])
 
   // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -273,6 +302,16 @@ export default function Expenses() {
     acc[day].push(t)
     return acc
   }, {})
+
+  const androidVisibleHeight = pdfKeyboardVisible ? Math.max(0, height - pdfKeyboardHeight) : height
+  const androidCenteredTop = Math.max(insets.top + 16, (androidVisibleHeight - pdfModalHeight) / 2)
+  const androidOverlayStyle = Platform.OS === "android"
+    ? {
+        justifyContent: pdfKeyboardVisible ? "flex-start" as const : "center" as const,
+        paddingTop: pdfKeyboardVisible ? androidCenteredTop : 24,
+        paddingBottom: pdfKeyboardVisible ? 16 : 24,
+      }
+    : null
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
@@ -432,9 +471,13 @@ export default function Expenses() {
               justifyContent: "center",
               alignItems: "center",
               padding: 24,
+              ...(androidOverlayStyle ?? {}),
             }}
           >
-            <Animated.View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <Animated.View
+              onLayout={(event) => setPdfModalHeight(event.nativeEvent.layout.height)}
+              style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}
+            >
               {pdfPasswordLoading ? (
                 <View style={{ alignItems: "center" }}>
                   <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
