@@ -99,6 +99,7 @@ export default function Expenses() {
   const [pdfPasswordError, setPdfPasswordError] = useState("")
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
   const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
+  const [pdfKeyboardVisible, setPdfKeyboardVisible] = useState(false)
   const quoteOpacity = useRef(new Animated.Value(1)).current
   const pdfModalTranslateY = useRef(new Animated.Value(0)).current
 
@@ -132,10 +133,12 @@ export default function Expenses() {
     if (Platform.OS !== "android") return
     if (!pdfPasswordVisible || pdfPasswordLoading) {
       pdfModalTranslateY.setValue(0)
+      setPdfKeyboardVisible(false)
       return
     }
 
     const showEvent = Keyboard.addListener("keyboardDidShow", (event) => {
+      setPdfKeyboardVisible(true)
       const lift = Math.min(180, Math.max(70, event.endCoordinates.height * 0.32))
       Animated.timing(pdfModalTranslateY, {
         toValue: -lift,
@@ -145,6 +148,7 @@ export default function Expenses() {
     })
 
     const hideEvent = Keyboard.addListener("keyboardDidHide", () => {
+      setPdfKeyboardVisible(false)
       Animated.timing(pdfModalTranslateY, {
         toValue: 0,
         duration: 180,
@@ -155,6 +159,7 @@ export default function Expenses() {
     return () => {
       showEvent.remove()
       hideEvent.remove()
+      setPdfKeyboardVisible(false)
       pdfModalTranslateY.setValue(0)
     }
   }, [pdfPasswordLoading, pdfPasswordVisible, pdfModalTranslateY])
@@ -457,7 +462,17 @@ export default function Expenses() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 16 : 0}
         >
-          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.75)",
+              justifyContent: Platform.OS === "ios" ? "center" : "flex-start",
+              alignItems: "center",
+              paddingHorizontal: 24,
+              paddingBottom: 24,
+              paddingTop: Platform.OS === "ios" ? 24 : (pdfKeyboardVisible ? insets.top + 24 : 110),
+            }}
+          >
             <Animated.View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, transform: [{ translateY: pdfModalTranslateY }] }}>
               {pdfPasswordLoading ? (
                 <View style={{ alignItems: "center" }}>
@@ -509,7 +524,7 @@ export default function Expenses() {
                       value={pdfPassword}
                       onChangeText={(t) => { setPdfPassword(t); setPdfPasswordError("") }}
                       onSubmitEditing={handlePasswordSubmit}
-                      autoFocus
+                      autoFocus={Platform.OS === "ios"}
                       returnKeyType="done"
                     />
                   </View>
