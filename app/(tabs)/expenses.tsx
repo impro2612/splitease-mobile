@@ -179,8 +179,8 @@ export default function Expenses() {
   })
 
   const { data: suggestions, isLoading: suggestionsLoading } = useQuery({
-    queryKey: ["tx-suggestions"],
-    queryFn: () => transactionsApi.suggestions().then((r) => r.data.suggestion as {
+    queryKey: ["tx-suggestions", selectedMonth],
+    queryFn: () => transactionsApi.suggestions(selectedMonth).then((r) => r.data.suggestion as {
       analyzedMonth: string
       title: string
       summary: string
@@ -933,7 +933,7 @@ function SuggestionsTab({ C, suggestion, loading }: {
           </View>
           <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 8 }}>Suggestions</Text>
           <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22 }}>
-            Upload the latest monthly PDF statement to generate advisor-style suggestions for that month. These suggestions stay here until a newer month is imported.
+            Upload or re-import the PDF statement for this selected month to generate advisor-style suggestions for this month. Each month keeps its own findings.
           </Text>
         </View>
       </View>
