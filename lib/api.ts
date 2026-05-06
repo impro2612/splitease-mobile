@@ -157,6 +157,8 @@ export const transactionsApi = {
     api.get("/api/transactions/summary", { params: month ? { month } : {} }),
   insights: (month?: string) =>
     api.get("/api/transactions/insights", { params: month ? { month } : {} }),
+  suggestions: () =>
+    api.get("/api/transactions/suggestions"),
   importCSV: (file: { uri: string; name: string; mimeType?: string }) => {
     const form = new FormData()
     form.append("file", { uri: file.uri, name: file.name, type: file.mimeType ?? "text/csv" } as unknown as Blob)

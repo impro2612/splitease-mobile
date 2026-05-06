@@ -178,6 +178,18 @@ export default function Expenses() {
     enabled: activeTab === "insights",
   })
 
+  const { data: suggestions, isLoading: suggestionsLoading } = useQuery({
+    queryKey: ["tx-suggestions"],
+    queryFn: () => transactionsApi.suggestions().then((r) => r.data.suggestion as {
+      analyzedMonth: string
+      title: string
+      summary: string
+      recommendations: string[]
+      updatedAt: string
+    } | null),
+    enabled: activeTab === "suggestions",
+  })
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     await queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
@@ -192,6 +204,7 @@ export default function Expenses() {
       const data = res.data
       queryClient.invalidateQueries({ queryKey: ["tx-summary"] })
       queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["tx-suggestions"] })
       setPdfPasswordVisible(false)
       setPendingPdfFile(null)
       setPdfPassword("")
@@ -349,9 +362,9 @@ export default function Expenses() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" />}
       >
-        {summaryLoading ? (
+        {summaryLoading && activeTab !== "suggestions" ? (
           <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
-        ) : !summary || summary.transactionCount === 0 ? (
+        ) : (!summary || summary.transactionCount === 0) && activeTab !== "suggestions" ? (
           <EmptyState
             onImport={() => importMutation.mutate()}
             C={C}
@@ -383,7 +396,7 @@ export default function Expenses() {
               <InsightsTab insights={insights} C={C} />
             )}
             {activeTab === "suggestions" && (
-              <SuggestionsTab C={C} />
+              <SuggestionsTab C={C} suggestion={suggestions} loading={suggestionsLoading} />
             )}
           </>
         )}
@@ -896,20 +909,60 @@ function InsightsTab({ insights, C }: {
   )
 }
 
-function SuggestionsTab({ C }: {
+function SuggestionsTab({ C, suggestion, loading }: {
   C: ReturnType<typeof useTheme>;
+  suggestion: {
+    analyzedMonth: string
+    title: string
+    summary: string
+    recommendations: string[]
+    updatedAt: string
+  } | null | undefined
+  loading: boolean
 }) {
+  if (loading) {
+    return <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+  }
+
+  if (!suggestion) {
+    return (
+      <View style={{ paddingHorizontal: 20 }}>
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.border }}>
+          <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+            <Ionicons name="bulb-outline" size={28} color="#6366f1" />
+          </View>
+          <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 8 }}>Suggestions</Text>
+          <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22 }}>
+            Upload the latest monthly PDF statement to generate advisor-style suggestions for that month. These suggestions stay here until a newer month is imported.
+          </Text>
+        </View>
+      </View>
+    )
+  }
+
   return (
-    <View style={{ paddingHorizontal: 20 }}>
+    <View style={{ paddingHorizontal: 20, gap: 16 }}>
       <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.border }}>
         <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
           <Ionicons name="bulb-outline" size={28} color="#6366f1" />
         </View>
-        <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 8 }}>Suggestions</Text>
+        <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 4 }}>Suggestions for {suggestion.title}</Text>
+        <Text style={{ color: C.textMuted, fontSize: 11, marginBottom: 12 }}>
+          Last updated {new Date(suggestion.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+        </Text>
         <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22 }}>
-          This page is ready. Tell me what exactly you want to add here and I’ll wire it in.
+          {suggestion.summary}
         </Text>
       </View>
+
+      {suggestion.recommendations.map((item, index) => (
+        <View key={`${suggestion.analyzedMonth}-${index}`} style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: C.border, flexDirection: "row", gap: 12 }}>
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.16)", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+            <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 12 }}>{index + 1}</Text>
+          </View>
+          <Text style={{ flex: 1, color: C.text, fontSize: 14, lineHeight: 22 }}>{item}</Text>
+        </View>
+      ))}
     </View>
   )
 }
