@@ -589,12 +589,26 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
               radius={90}
               innerRadius={55}
               innerCircleColor={C.card}
-              centerLabelComponent={() => (
-                <View style={{ alignItems: "center" }}>
-                  <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{formatINR(summary.totalExpense)}</Text>
-                  <Text style={{ color: C.textSub, fontSize: 10 }}>total</Text>
-                </View>
-              )}
+              centerLabelComponent={() => {
+                const selected = selectedCategory ? pieData.find((d) => d.category === selectedCategory) : null
+                const pieTotal = pieData.reduce((s, d) => s + d.value, 0)
+                if (selected) {
+                  const pct = pieTotal > 0 ? (selected.value / pieTotal) * 100 : 0
+                  return (
+                    <View style={{ alignItems: "center", paddingHorizontal: 4 }}>
+                      <Text style={{ color: selected.color, fontWeight: "800", fontSize: 20 }}>{pct.toFixed(1)}%</Text>
+                      <Text style={{ color: C.text, fontSize: 10, fontWeight: "600" }} numberOfLines={1}>{selected.label}</Text>
+                      <Text style={{ color: C.textSub, fontSize: 10 }}>{formatINR(selected.value)}</Text>
+                    </View>
+                  )
+                }
+                return (
+                  <View style={{ alignItems: "center" }}>
+                    <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{formatINR(summary.totalExpense)}</Text>
+                    <Text style={{ color: C.textSub, fontSize: 10 }}>total</Text>
+                  </View>
+                )
+              }}
               selectedIndex={pieData.findIndex((item) => item.category === selectedCategory)}
               onPress={(item: { category?: string }) => {
                 if (!item.category) return
