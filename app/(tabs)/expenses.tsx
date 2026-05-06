@@ -7,7 +7,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
-import { PieChart } from "react-native-gifted-charts"
+import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
 import { useTheme } from "@/lib/theme"
 import { transactionsApi } from "@/lib/api"
@@ -547,20 +547,31 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   selectedTrendIndex: number | null;
 }) {
   const chartHeight = 220
-  const yAxisLabelWidth = 52
+  const barWidth = 28
+  const spacing = 12
+  const initialSpacing = 4
+  const endSpacing = 4
+  const yAxisLabelWidth = 44
   const chartContainerWidth = width - 80
-  const chartWidth = Math.max(220, chartContainerWidth - yAxisLabelWidth)
-  const chartRightInset = 12
+  const n = barData.length || 1
+  const barAreaNeeded = initialSpacing + n * barWidth + Math.max(0, n - 1) * spacing + endSpacing
+  const availableForChart = chartContainerWidth - yAxisLabelWidth
+  const chartWidth = Math.max(barAreaNeeded, availableForChart)
+  const trendChartKey = `${summary.month ?? "unknown"}:${barData.map((d) => `${d.label}-${d.value}-${d.frontColor}`).join("|")}`
   const selectedTrend = selectedTrendIndex !== null ? barData[selectedTrendIndex] : null
   const maxTrendValue = Math.max(...barData.map((d: { value: number }) => d.value), 0)
-  const chartMaxValue = maxTrendValue > 0 ? maxTrendValue * 1.15 : 1
-  const sectionCount = 3
-  const yAxisSteps = Array.from({ length: sectionCount }, (_, index) => {
-    const remaining = sectionCount - index
-    return Math.round((chartMaxValue / sectionCount) * remaining)
-  })
+  const chartMaxValue = maxTrendValue > 0 ? maxTrendValue * 1.2 : 1
+  const selectedBubbleLeft = selectedTrendIndex !== null
+    ? Math.max(
+        yAxisLabelWidth - 8,
+        Math.min(
+          chartWidth - 84,
+          yAxisLabelWidth + initialSpacing + selectedTrendIndex * (barWidth + spacing) + barWidth / 2 - 42,
+        ),
+      )
+    : 0
   const selectedBubbleBottom = selectedTrend
-    ? Math.max(20, Math.min(chartHeight - 8, (selectedTrend.value / chartMaxValue) * chartHeight + 14))
+    ? Math.max(26, Math.min(chartHeight - 8, (selectedTrend.value / chartMaxValue) * chartHeight + 18))
     : 0
 
   return (
@@ -653,83 +664,47 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
       {barData.length > 0 && (
         <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 16 }}>Last 6-Months Trend</Text>
-          <View style={{ position: "relative", overflow: "hidden", flexDirection: "row" }}>
-            <View style={{ width: yAxisLabelWidth, height: chartHeight, justifyContent: "space-between", paddingBottom: 28 }}>
-              <Text style={{ color: C.textMuted, fontSize: 10, textAlign: "right" }}>{yAxisSteps[0]}</Text>
-              <Text style={{ color: C.textMuted, fontSize: 10, textAlign: "right" }}>{yAxisSteps[1]}</Text>
-              <Text style={{ color: C.textMuted, fontSize: 10, textAlign: "right" }}>{yAxisSteps[2]}</Text>
-              <Text style={{ color: C.textMuted, fontSize: 10, textAlign: "right" }}>0</Text>
-            </View>
-            <View style={{ width: chartWidth, height: chartHeight, position: "relative", paddingBottom: 28, paddingRight: chartRightInset }}>
-              {yAxisSteps.map((step, index) => {
-                const bottom = ((step / chartMaxValue) * (chartHeight - 28))
-                return (
-                  <View
-                    key={`${step}-${index}`}
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: chartRightInset,
-                      bottom,
-                      borderTopWidth: 1,
-                      borderColor: "#d1d5db",
-                      borderStyle: "dashed",
-                      opacity: 0.7,
-                    }}
-                  />
-                )
-              })}
-              <View style={{ flex: 1, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
-                {barData.map((bar, index) => {
-                  const barHeight = maxTrendValue > 0 ? Math.max(2, (bar.value / chartMaxValue) * (chartHeight - 28)) : 2
-                  return (
-                    <View key={`${summary.month ?? "month"}-${bar.label}-${index}`} style={{ flex: 1, alignItems: "center", justifyContent: "flex-end", position: "relative" }}>
-                      {selectedTrendIndex === index && (
-                        <View
-                          pointerEvents="none"
-                          style={{
-                            position: "absolute",
-                            bottom: selectedBubbleBottom,
-                            minWidth: 84,
-                            backgroundColor: "#111827",
-                            borderRadius: 8,
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                            borderWidth: 1,
-                            borderColor: C.border,
-                            alignItems: "center",
-                            zIndex: 2,
-                          }}
-                        >
-                          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{formatINR(bar.value)}</Text>
-                        </View>
-                      )}
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={bar.onPress}
-                        style={{
-                          width: "100%",
-                          height: chartHeight - 28,
-                          alignItems: "center",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <Animated.View
-                          style={{
-                            width: 28,
-                            height: barHeight,
-                            backgroundColor: bar.frontColor,
-                            borderTopLeftRadius: 14,
-                            borderTopRightRadius: 14,
-                          }}
-                        />
-                      </TouchableOpacity>
-                      <Text style={{ color: C.textMuted, fontSize: 9, marginTop: 10 }}>{bar.label}</Text>
-                    </View>
-                  )
-                })}
+          <View style={{ position: "relative", overflow: "hidden" }}>
+            <BarChart
+              key={trendChartKey}
+              data={barData}
+              barWidth={barWidth}
+              spacing={spacing}
+              initialSpacing={initialSpacing}
+              endSpacing={endSpacing}
+              roundedTop
+              xAxisThickness={0}
+              yAxisThickness={0}
+              yAxisTextStyle={{ color: C.textMuted, fontSize: 10 }}
+              xAxisLabelTextStyle={{ color: C.textMuted, fontSize: 9 }}
+              yAxisLabelWidth={yAxisLabelWidth}
+              noOfSections={3}
+              maxValue={chartMaxValue}
+              isAnimated
+              animationDuration={600}
+              width={chartWidth}
+              height={chartHeight}
+            />
+            {selectedTrend && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: selectedBubbleLeft,
+                  bottom: selectedBubbleBottom,
+                  minWidth: 84,
+                  backgroundColor: "#111827",
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{formatINR(selectedTrend.value)}</Text>
               </View>
-            </View>
+            )}
           </View>
         </View>
       )}
