@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator,
   Modal, TextInput, Alert, FlatList, useWindowDimensions, RefreshControl,
   KeyboardAvoidingView, Platform, Animated, Keyboard,
 } from "react-native"
@@ -580,7 +580,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
 
       {/* Pie chart */}
       {pieData.length > 0 && (
-        <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
+        <Pressable onPress={() => setSelectedCategory(null)} style={{ backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 14, marginBottom: 16 }}>Spending Breakdown</Text>
           <View style={{ alignItems: "center" }}>
             <PieChart
@@ -625,7 +625,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </Pressable>
       )}
 
       {/* Category list */}
