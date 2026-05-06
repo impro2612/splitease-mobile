@@ -184,6 +184,7 @@ export default function Expenses() {
       analyzedMonth: string
       title: string
       summary: string
+      source?: "gemini" | "built" | null
       recommendations: string[]
       updatedAt: string
     } | null),
@@ -939,6 +940,7 @@ function SuggestionsTab({ C, suggestion, loading }: {
     analyzedMonth: string
     title: string
     summary: string
+    source?: "gemini" | "built" | null
     recommendations: string[]
     updatedAt: string
   } | null | undefined
@@ -971,9 +973,27 @@ function SuggestionsTab({ C, suggestion, loading }: {
           <Ionicons name="bulb-outline" size={28} color="#6366f1" />
         </View>
         <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 4 }}>Suggestions for {suggestion.title}</Text>
-        <Text style={{ color: C.textMuted, fontSize: 11, marginBottom: 12 }}>
-          Last updated {new Date(suggestion.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          <Text style={{ color: C.textMuted, fontSize: 11 }}>
+            Last updated {new Date(suggestion.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+          </Text>
+          {suggestion.source ? (
+            <View
+              style={{
+                backgroundColor: suggestion.source === "gemini" ? "rgba(99,102,241,0.14)" : C.inputBg,
+                borderRadius: 999,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderWidth: 1,
+                borderColor: suggestion.source === "gemini" ? "rgba(99,102,241,0.35)" : C.border,
+              }}
+            >
+              <Text style={{ color: suggestion.source === "gemini" ? "#a5b4fc" : C.textSub, fontSize: 10, fontWeight: "700" }}>
+                {suggestion.source === "gemini" ? "Gemini" : "Built-in"}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22 }}>
           {suggestion.summary}
         </Text>
