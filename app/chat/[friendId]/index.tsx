@@ -42,12 +42,22 @@ function sharedKey(idA: string, idB: string) {
 }
 function encrypt(text: string, sharedKey: string) {
   const key = CryptoJS.SHA256(sharedKey)
-  const iv = CryptoJS.MD5(sharedKey)
-  return CryptoJS.AES.encrypt(text, key, { iv }).toString()
+  const iv = CryptoJS.lib.WordArray.random(16)
+  const ciphertext = CryptoJS.AES.encrypt(text, key, { iv }).toString()
+  // Prepend base64-encoded IV so decrypt can recover it: "<iv>:<ciphertext>"
+  return `${iv.toString(CryptoJS.enc.Base64)}:${ciphertext}`
 }
 function decrypt(cipher: string, sharedKey: string) {
   try {
     const key = CryptoJS.SHA256(sharedKey)
+    if (cipher.includes(":")) {
+      // New format: "<iv>:<ciphertext>"
+      const sep = cipher.indexOf(":")
+      const iv = CryptoJS.enc.Base64.parse(cipher.slice(0, sep))
+      const ct = cipher.slice(sep + 1)
+      return CryptoJS.AES.decrypt(ct, key, { iv }).toString(CryptoJS.enc.Utf8) || cipher
+    }
+    // Legacy format: fixed IV derived from key (old messages)
     const iv = CryptoJS.MD5(sharedKey)
     return CryptoJS.AES.decrypt(cipher, key, { iv }).toString(CryptoJS.enc.Utf8) || cipher
   } catch {
