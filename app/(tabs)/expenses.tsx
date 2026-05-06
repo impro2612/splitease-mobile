@@ -550,6 +550,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   const yAxisLabelWidth = 52
   const chartContainerWidth = width - 80
   const chartWidth = Math.max(220, chartContainerWidth - yAxisLabelWidth)
+  const chartRightInset = 12
   const selectedTrend = selectedTrendIndex !== null ? barData[selectedTrendIndex] : null
   const maxTrendValue = Math.max(...barData.map((d: { value: number }) => d.value), 0)
   const chartMaxValue = maxTrendValue > 0 ? maxTrendValue * 1.15 : 1
@@ -659,7 +660,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
               <Text style={{ color: C.textMuted, fontSize: 10, textAlign: "right" }}>{yAxisSteps[2]}</Text>
               <Text style={{ color: C.textMuted, fontSize: 10, textAlign: "right" }}>0</Text>
             </View>
-            <View style={{ width: chartWidth, height: chartHeight, position: "relative", paddingBottom: 28 }}>
+            <View style={{ width: chartWidth, height: chartHeight, position: "relative", paddingBottom: 28, paddingRight: chartRightInset }}>
               {yAxisSteps.map((step, index) => {
                 const bottom = ((step / chartMaxValue) * (chartHeight - 28))
                 return (
@@ -668,7 +669,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
                     style={{
                       position: "absolute",
                       left: 0,
-                      right: 0,
+                      right: chartRightInset,
                       bottom,
                       borderTopWidth: 1,
                       borderColor: "#d1d5db",
