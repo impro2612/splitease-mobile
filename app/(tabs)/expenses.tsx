@@ -364,19 +364,31 @@ export default function Expenses() {
       </View>
 
       {/* Tab bar */}
-      <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 4, marginBottom: 8 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginHorizontal: 20, marginBottom: 8, backgroundColor: C.iconBg, borderRadius: 12 }}
+        contentContainerStyle={{ padding: 3, gap: 4 }}
+      >
         {(["overview", "transactions", "insights", "suggestions"] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             onPress={() => setActiveTab(tab)}
-            style={{ flex: 1, paddingVertical: 7, borderRadius: 10, alignItems: "center",
-              backgroundColor: activeTab === tab ? "#6366f1" : C.card,
-              borderWidth: 1, borderColor: activeTab === tab ? "#6366f1" : C.border }}
+            style={{
+              backgroundColor: activeTab === tab ? "#6366f1" : "transparent",
+              borderRadius: 10,
+              paddingVertical: 8,
+              paddingHorizontal: 18,
+              alignItems: "center",
+              minWidth: 102,
+            }}
           >
-            <Text style={{ color: activeTab === tab ? "#fff" : C.textSub, fontSize: 11, fontWeight: "600", textTransform: "capitalize" }}>{tab}</Text>
+            <Text style={{ color: activeTab === tab ? "#fff" : C.textSub, fontSize: 13, fontWeight: "600", textTransform: "capitalize" }}>
+              {tab}
+            </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       <ScrollView
         style={{ flex: 1 }}
