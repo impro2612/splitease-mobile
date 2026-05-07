@@ -1016,7 +1016,19 @@ function SuggestionsTab({ C, suggestion, loading }: {
             </View>
           ) : null}
         </View>
-        <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22 }}>
+      </View>
+
+      <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: C.border }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(99,102,241,0.16)", alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="book-outline" size={18} color="#a5b4fc" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Monthly Money Story</Text>
+            <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{suggestion.title}</Text>
+          </View>
+        </View>
+        <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 23 }}>
           {suggestion.summary}
         </Text>
       </View>
