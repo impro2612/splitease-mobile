@@ -188,10 +188,10 @@ export default function Friends() {
       }
       setContacts(parsed)
 
-      // Lookup which contacts are on SplitEase — batch in 500s so all contacts are covered
+      // Lookup which contacts are on SplitEase — batch in 100s to match backend cap
       if (parsed.length > 0) {
         const normalized = parsed.map((c) => normalizePhone(c.phone))
-        const BATCH = 500
+        const BATCH = 100
         const merged: Record<string, unknown> = {}
         for (let i = 0; i < normalized.length; i += BATCH) {
           const res = await usersApi.lookupPhones(normalized.slice(i, i + BATCH)).catch(() => null)
