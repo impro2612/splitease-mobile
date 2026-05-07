@@ -95,6 +95,7 @@ export default function Profile() {
 
   // Privacy Policy modal
   const [showPrivacy, setShowPrivacy] = useState(false)
+  const [showSupport, setShowSupport] = useState(false)
 
   // Sign out confirm
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
@@ -350,6 +351,14 @@ export default function Profile() {
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
             </TouchableOpacity>
 
+            <TouchableOpacity onPress={() => setShowSupport(true)} style={{ ...rowStyle, ...divider }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="help-buoy" size={18} color="#4ade80" />
+              </View>
+              <Text style={{ color: C.text, flex: 1 }}>Support</Text>
+              <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
+            </TouchableOpacity>
+
             <View style={rowStyle}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="information-circle" size={18} color={C.textSub} />
@@ -563,6 +572,28 @@ export default function Profile() {
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(40, insets.bottom + 16) }} showsVerticalScrollIndicator={false}>
             <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 22 }}>{PRIVACY_POLICY}</Text>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Support Modal ───────────────────────────────────────────────────────── */}
+      <Modal visible={showSupport} transparent animationType="fade" onRequestClose={() => setShowSupport(false)}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name="mail-open-outline" size={26} color="#4ade80" />
+            </View>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Support</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22, marginBottom: 24, textAlign: "center" }}>
+              In case of any issues or support please write us at{" "}
+              <Text style={{ color: C.text, fontWeight: "700" }}>support.splitit@gmail.com</Text>
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowSupport(false)}
+              style={{ height: 50, borderRadius: 14, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
