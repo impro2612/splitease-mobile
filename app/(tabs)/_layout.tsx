@@ -90,18 +90,20 @@ export default function TabsLayout() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+      // Don't steal tap from child TouchableOpacity items
+      onStartShouldSetPanResponder: () => false,
+      // Capture only clear downward vertical drags
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && g.dy > Math.abs(g.dx),
       onPanResponderMove: (_, g) => {
-        panY.setValue(g.dy)
+        if (g.dy > 0) panY.setValue(g.dy)
       },
       onPanResponderRelease: (_, g) => {
         if (g.dy > 80 || g.vy > 0.5) {
-          // Swipe fast or far enough — close
+          // Transfer current drag offset into slideAnim so there's no position snap
+          slideAnim.setValue(Math.max(0, g.dy))
           panY.setValue(0)
           closeMore()
         } else {
-          // Snap back
           Animated.spring(panY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
         }
       },
@@ -138,7 +140,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="dashboard"
           options={{
-            title: "Dashboard",
+            title: "SplitBoard",
             tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
           }}
         />
@@ -191,6 +193,7 @@ export default function TabsLayout() {
         </Animated.View>
 
         <Animated.View
+          {...panResponder.panHandlers}
           style={{
             position: "absolute",
             bottom: 0,
@@ -205,8 +208,8 @@ export default function TabsLayout() {
             transform: [{ translateY }],
           }}
         >
-          {/* Drag handle — attach PanResponder here so list items still scroll */}
-          <View {...panResponder.panHandlers} style={{ paddingBottom: 12 }}>
+          {/* Drag handle */}
+          <View style={{ paddingBottom: 12 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center" }} />
           </View>
 
