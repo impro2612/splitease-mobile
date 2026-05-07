@@ -37,6 +37,15 @@ const ITEMS = [
     subtitle: "Relive your shared experiences",
     route: "/timeline",
   },
+  {
+    key: "wrapped",
+    icon: "sparkles-outline" as const,
+    color: "#f43f5e",
+    bg: "rgba(244,63,94,0.12)",
+    title: "SplitEase Wrapped",
+    subtitle: "Your year in money — shareable recap",
+    route: "/wrapped",
+  },
 ]
 
 export default function MoreTab() {
