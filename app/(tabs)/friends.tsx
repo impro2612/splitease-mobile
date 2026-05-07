@@ -61,12 +61,14 @@ export default function Friends() {
   // Invite bottom sheet
   const [inviteTarget, setInviteTarget] = useState<Contact | null>(null)
   const [showInvite, setShowInvite] = useState(false)
+  const [liveUpdatesPaused, setLiveUpdatesPaused] = useState(false)
 
   // Friend action menu (3-dot)
   const [actionFriend, setActionFriend] = useState<{ friendshipId: string; userId: string; name: string } | null>(null)
 
   // Search auto-focus
   const searchInputRef = useRef<any>(null)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track AppState for auto-sync
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
@@ -96,6 +98,7 @@ export default function Friends() {
     const myId = user?.id
     if (!myId) return
     const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
+    let isMounted = true
     const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
       cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
       channelAuthorization: {
@@ -116,18 +119,55 @@ export default function Friends() {
         },
       },
     })
+
+    const invalidateFriends = () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+    }
+
+    const scheduleReconnect = () => {
+      if (reconnectTimerRef.current) return
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null
+        try {
+          ;(pusher as any).connect?.()
+        } catch {
+          // Let the next disconnect/error event schedule another retry.
+        }
+      }, 10_000)
+    }
+
+    const markPaused = () => {
+      if (!isMounted) return
+      setLiveUpdatesPaused(true)
+      invalidateFriends()
+      scheduleReconnect()
+    }
+
+    const markLive = () => {
+      if (!isMounted) return
+      setLiveUpdatesPaused(false)
+    }
+
     const channel = pusher.subscribe(`private-user-${myId}`)
-    channel.bind("new-message", () => {
-      queryClient.invalidateQueries({ queryKey: ["friends"] })
-    })
-    channel.bind("friend-request", () => {
-      queryClient.invalidateQueries({ queryKey: ["friends"] })
-    })
-    channel.bind("friend-update", () => {
-      queryClient.invalidateQueries({ queryKey: ["friends"] })
-    })
+    channel.bind("new-message", invalidateFriends)
+    channel.bind("friend-request", invalidateFriends)
+    channel.bind("friend-update", invalidateFriends)
+    channel.bind("pusher:subscription_succeeded", markLive)
+    channel.bind("pusher:subscription_error", markPaused)
+    ;(pusher.connection as any).bind?.("connected", markLive)
+    ;(pusher.connection as any).bind?.("disconnected", markPaused)
+    ;(pusher.connection as any).bind?.("error", markPaused)
+
     return () => {
+      isMounted = false
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
+      }
       channel.unbind_all()
+      ;(pusher.connection as any).unbind?.("connected", markLive)
+      ;(pusher.connection as any).unbind?.("disconnected", markPaused)
+      ;(pusher.connection as any).unbind?.("error", markPaused)
       pusher.unsubscribe(`private-user-${myId}`)
       pusher.disconnect()
     }
@@ -393,6 +433,15 @@ export default function Friends() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {liveUpdatesPaused && (
+        <View style={{ marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: "rgba(245,158,11,0.28)", backgroundColor: "rgba(245,158,11,0.12)", flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="warning-outline" size={16} color="#fbbf24" />
+          <Text style={{ color: "#fde68a", fontSize: 12.5, fontWeight: "600", flex: 1 }}>
+            Live updates paused. We will reconnect automatically.
+          </Text>
+        </View>
+      )}
 
       {/* Friends Tab */}
       {tab === "friends" && (
