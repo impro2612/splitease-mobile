@@ -16,7 +16,7 @@ export default function Timeline() {
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(167,139,250,0.12)", alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="images-outline" size={20} color="#a78bfa" />
         </View>
-        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>Timeline & Memories</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>Your Timeline</Text>
       </View>
 
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>

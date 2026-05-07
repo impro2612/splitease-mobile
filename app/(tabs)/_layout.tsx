@@ -33,18 +33,18 @@ const MORE_ITEMS = [
     icon: "images-outline" as const,
     color: "#a78bfa",
     bg: "rgba(167,139,250,0.12)",
-    title: "Your Timeline & Memories",
+    title: "Your Timeline",
     subtitle: "Relive your shared experiences",
     route: "/timeline",
   },
   {
-    key: "wrapped",
+    key: "memories",
     icon: "sparkles-outline" as const,
     color: "#f43f5e",
     bg: "rgba(244,63,94,0.12)",
-    title: "SplitEase Wrapped",
+    title: "Memories",
     subtitle: "Your year in money — shareable recap",
-    route: "/wrapped",
+    route: "/memories",
   },
 ]
 

@@ -4,7 +4,7 @@ import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
 
-export default function Wrapped() {
+export default function Memories() {
   const C = useTheme()
 
   return (
@@ -16,7 +16,7 @@ export default function Wrapped() {
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.12)", alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="sparkles-outline" size={20} color="#f43f5e" />
         </View>
-        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>SplitEase Wrapped</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>Memories</Text>
       </View>
 
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
