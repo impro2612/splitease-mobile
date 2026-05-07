@@ -152,6 +152,13 @@ export default function Expenses() {
     }
   }, [pdfPasswordVisible])
 
+  useEffect(() => {
+    if (activeTab === "transactions") {
+      setSelectedCategory(null)
+      setSelectedDirection("all")
+    }
+  }, [activeTab])
+
   // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["tx-summary", selectedMonth],
