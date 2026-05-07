@@ -79,8 +79,9 @@ export default function Expenses() {
   const queryClient = useQueryClient()
 
   const now = new Date()
+  const initialMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const [selectedMonth, setSelectedMonth] = useState(
-    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    `${initialMonth.getFullYear()}-${String(initialMonth.getMonth() + 1).padStart(2, "0")}`
   )
   const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "insights" | "suggestions">("overview")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
