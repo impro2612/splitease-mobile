@@ -229,6 +229,11 @@ export const transactionsApi = {
   delete: (id: string) => api.delete(`/api/transactions/${id}`),
 }
 
+export const reactionsApi = {
+  toggle: (groupId: string, expenseId: string, emoji: string) =>
+    api.post(`/api/groups/${groupId}/expenses/${expenseId}/reactions`, { emoji }),
+}
+
 export const budgetsApi = {
   list:   () => api.get("/api/budgets"),
   set:    (category: string, amount: number) => api.post("/api/budgets", { category, amount }),

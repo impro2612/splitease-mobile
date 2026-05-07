@@ -2,14 +2,16 @@ import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, ActivityIndicator, FlatList, Platform,
-  useWindowDimensions, Animated,
+  useWindowDimensions, Animated, Pressable,
 } from "react-native"
+import Pusher from "pusher-js/react-native"
+import * as SecureStore from "expo-secure-store"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi } from "@/lib/api"
+import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi, reactionsApi, API_BASE_URL } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { formatCurrency, formatDate, GROUP_EMOJIS, GROUP_COLORS, guessCategory, getExpenseEmoji } from "@/lib/utils"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
@@ -277,6 +279,24 @@ export default function GroupDetail() {
   const [settleTarget, setSettleTarget] = useState<{ userId: string; name: string; amount: number; currency?: string } | null>(null)
   const [settleNote, setSettleNote] = useState("")
 
+  // Expense reactions
+  const REACTION_EMOJIS = ["😮", "😂", "👍", "❤️", "🔥", "😢"]
+  const [reactionPickerExp, setReactionPickerExp] = useState<any | null>(null)
+  const [togglingReaction, setTogglingReaction] = useState(false)
+
+  async function toggleReaction(expenseId: string, emoji: string) {
+    if (togglingReaction || !id) return
+    setTogglingReaction(true)
+    try {
+      await reactionsApi.toggle(id as string, expenseId, emoji)
+      queryClient.invalidateQueries({ queryKey: ["group", id] })
+    } catch {
+      Toast.show({ type: "error", text1: "Failed to react" })
+    } finally {
+      setTogglingReaction(false)
+    }
+  }
+
   // Balances tab — collapse/expand & inline settle
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set())
   const [inlineSettleKey, setInlineSettleKey] = useState<string | null>(null)
@@ -418,6 +438,34 @@ export default function GroupDetail() {
     queryFn: () => groupsApi.get(id).then((r) => r.data),
     enabled: !!id,
   })
+
+  // Real-time reaction updates via Pusher
+  useEffect(() => {
+    if (!user?.id || !id) return
+    const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
+    const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
+      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
+      channelAuthorization: {
+        customHandler: async ({ socketId, channelName }, callback) => {
+          try {
+            const token = await SecureStore.getItemAsync("session_token")
+            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
+            })
+            if (!res.ok) { callback(new Error("auth failed"), null); return }
+            callback(null, await res.json())
+          } catch (e) { callback(e as Error, null) }
+        },
+      },
+    })
+    const channel = pusher.subscribe(`private-user-${user.id}`)
+    channel.bind("expense-reaction", (data: { groupId: string }) => {
+      if (data.groupId === id) queryClient.invalidateQueries({ queryKey: ["group", id] })
+    })
+    return () => { channel.unbind_all(); pusher.unsubscribe(`private-user-${user.id}`); pusher.disconnect() }
+  }, [user?.id, id])
 
   const { data: balancesData } = useQuery({
     queryKey: ["balances", id],
@@ -961,29 +1009,71 @@ export default function GroupDetail() {
                 const payer = members.find((m: any) => m.userId === exp.paidById)
                 const myAmount = isPayer ? exp.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
                 const expCurr = CURRENCIES.find(c => c.code === (exp.currency ?? gc.code)) ?? gc
+                // Group reactions: { emoji -> [userId, ...] }
+                const reactionMap: Record<string, string[]> = {}
+                for (const r of (exp.reactions ?? [])) {
+                  if (!reactionMap[r.emoji]) reactionMap[r.emoji] = []
+                  reactionMap[r.emoji].push(r.userId)
+                }
+                const reactionEntries = Object.entries(reactionMap)
+
                 return (
                   <TouchableOpacity
                     key={exp.id}
                     onPress={() => openEdit(exp)}
+                    onLongPress={() => setReactionPickerExp(exp)}
+                    delayLongPress={350}
                     activeOpacity={0.75}
-                    style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
+                    style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, gap: 10 }}
                   >
-                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 18 }}>{getExpenseEmoji(exp.description)}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                      <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ fontSize: 18 }}>{getExpenseEmoji(exp.description)}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{exp.description}</Text>
+                        <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
+                          {isPayer ? "You paid" : `${payer?.user?.name ?? "Someone"} paid`}
+                        </Text>
+                        <Text style={{ color: C.textSub, fontSize: 12 }}>{formatDate(exp.date ?? exp.createdAt)}</Text>
+                      </View>
+                      <View style={{ alignItems: "flex-end", gap: 4 }}>
+                        <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
+                          {myAmount >= 0 ? "+" : "-"}{formatCurrency(Math.abs(myAmount), expCurr.symbol, expCurr.code)}
+                        </Text>
+                        <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, expCurr.symbol, expCurr.code)} total</Text>
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{exp.description}</Text>
-                      <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-                        {isPayer ? "You paid" : `${payer?.user?.name ?? "Someone"} paid`}
-                      </Text>
-                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatDate(exp.date ?? exp.createdAt)}</Text>
-                    </View>
-                    <View style={{ alignItems: "flex-end", gap: 4 }}>
-                      <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                        {myAmount >= 0 ? "+" : "-"}{formatCurrency(Math.abs(myAmount), expCurr.symbol, expCurr.code)}
-                      </Text>
-                      <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, expCurr.symbol, expCurr.code)} total</Text>
-                    </View>
+
+                    {/* Reactions row */}
+                    {reactionEntries.length > 0 && (
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                        {reactionEntries.map(([emoji, userIds]) => {
+                          const isMine = userIds.includes(user?.id ?? "")
+                          return (
+                            <TouchableOpacity
+                              key={emoji}
+                              onPress={() => toggleReaction(exp.id, emoji)}
+                              style={{
+                                flexDirection: "row", alignItems: "center", gap: 4,
+                                backgroundColor: isMine ? "rgba(99,102,241,0.18)" : C.iconBg,
+                                borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+                                borderWidth: 1, borderColor: isMine ? "#6366f1" : C.border,
+                              }}
+                            >
+                              <Text style={{ fontSize: 14 }}>{emoji}</Text>
+                              <Text style={{ color: isMine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "700" }}>{userIds.length}</Text>
+                            </TouchableOpacity>
+                          )
+                        })}
+                        <TouchableOpacity
+                          onPress={() => setReactionPickerExp(exp)}
+                          style={{ backgroundColor: C.iconBg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.border }}
+                        >
+                          <Text style={{ color: C.textSub, fontSize: 13 }}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 )
               })}
@@ -1707,6 +1797,44 @@ export default function GroupDetail() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Emoji Reaction Picker */}
+      <Modal visible={!!reactionPickerExp} transparent animationType="fade" onRequestClose={() => setReactionPickerExp(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} onPress={() => setReactionPickerExp(null)}>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: insets.bottom + 24, borderTopWidth: 1, borderColor: C.border }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 20 }} />
+              <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 4 }} numberOfLines={1}>
+                React to "{reactionPickerExp?.description}"
+              </Text>
+              <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 20 }}>Tap to add or remove your reaction</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
+                {REACTION_EMOJIS.map((emoji) => {
+                  const isMine = (reactionPickerExp?.reactions ?? []).some(
+                    (r: any) => r.emoji === emoji && r.userId === user?.id
+                  )
+                  return (
+                    <TouchableOpacity
+                      key={emoji}
+                      onPress={async () => {
+                        await toggleReaction(reactionPickerExp.id, emoji)
+                        setReactionPickerExp(null)
+                      }}
+                      style={{
+                        width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center",
+                        backgroundColor: isMine ? "rgba(99,102,241,0.2)" : C.iconBg,
+                        borderWidth: 2, borderColor: isMine ? "#6366f1" : "transparent",
+                      }}
+                    >
+                      <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Custom Confirm Dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
