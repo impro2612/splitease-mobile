@@ -367,8 +367,8 @@ export default function Expenses() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ marginHorizontal: 20, marginBottom: 8, backgroundColor: C.iconBg, borderRadius: 12 }}
-        contentContainerStyle={{ padding: 3, gap: 4 }}
+        style={{ marginHorizontal: 20, marginBottom: 8, backgroundColor: C.iconBg, borderRadius: 12, flexGrow: 0 }}
+        contentContainerStyle={{ padding: 3, gap: 4, alignItems: "center" }}
       >
         {(["overview", "transactions", "insights", "suggestions"] as const).map((tab) => (
           <TouchableOpacity
