@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef } from "react"
 import { Tabs, Redirect, router } from "expo-router"
 import { useAuthStore } from "@/store/auth"
 import {
   View, Text, ActivityIndicator, TouchableOpacity,
-  Modal, Animated, Pressable, StyleSheet,
+  Modal, Animated, Pressable, StyleSheet, PanResponder,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -55,9 +55,17 @@ export default function TabsLayout() {
 
   const [moreVisible, setMoreVisible] = useState(false)
   const slideAnim = useRef(new Animated.Value(300)).current
+  const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
 
+  // Combined translateY: open/close slide + live drag offset (clamped ≥ 0)
+  const translateY = Animated.add(slideAnim, panY.interpolate({
+    inputRange: [-9999, 0, 9999],
+    outputRange: [0, 0, 9999],   // block upward drag, allow downward
+  }))
+
   function openMore() {
+    panY.setValue(0)
     setMoreVisible(true)
     Animated.parallel([
       Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
@@ -70,6 +78,7 @@ export default function TabsLayout() {
       Animated.timing(slideAnim, { toValue: 300, duration: 220, useNativeDriver: true }),
       Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
     ]).start(() => {
+      panY.setValue(0)
       setMoreVisible(false)
       onDone?.()
     })
@@ -78,6 +87,26 @@ export default function TabsLayout() {
   function handleItem(route: string) {
     closeMore(() => router.push(route as any))
   }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+      onPanResponderMove: (_, g) => {
+        panY.setValue(g.dy)
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 80 || g.vy > 0.5) {
+          // Swipe fast or far enough — close
+          panY.setValue(0)
+          closeMore()
+        } else {
+          // Snap back
+          Animated.spring(panY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
+        }
+      },
+    })
+  ).current
 
   if (loading) {
     return (
@@ -173,11 +202,13 @@ export default function TabsLayout() {
             paddingHorizontal: 20,
             paddingTop: 16,
             paddingBottom: bottom + 20,
-            transform: [{ translateY: slideAnim }],
+            transform: [{ translateY }],
           }}
         >
-          {/* Handle bar */}
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 20 }} />
+          {/* Drag handle — attach PanResponder here so list items still scroll */}
+          <View {...panResponder.panHandlers} style={{ paddingBottom: 12 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center" }} />
+          </View>
 
           <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 2 }}>More</Text>
           <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 20 }}>Explore more features</Text>
