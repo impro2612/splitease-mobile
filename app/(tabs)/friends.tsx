@@ -188,11 +188,16 @@ export default function Friends() {
       }
       setContacts(parsed)
 
-      // Lookup which contacts are on SplitIT
+      // Lookup which contacts are on SplitEase — batch in 500s so all contacts are covered
       if (parsed.length > 0) {
         const normalized = parsed.map((c) => normalizePhone(c.phone))
-        const res = await usersApi.lookupPhones(normalized).catch(() => null)
-        if (res?.data) setPhoneUserMap(res.data)
+        const BATCH = 500
+        const merged: Record<string, unknown> = {}
+        for (let i = 0; i < normalized.length; i += BATCH) {
+          const res = await usersApi.lookupPhones(normalized.slice(i, i + BATCH)).catch(() => null)
+          if (res?.data) Object.assign(merged, res.data)
+        }
+        setPhoneUserMap(merged)
       }
 
       // Save last sync timestamp
