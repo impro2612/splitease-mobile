@@ -80,6 +80,9 @@ export default function Expenses() {
 
   const now = new Date()
   const initialMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  const earliestMonthDate = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+  const earliestMonthKey = `${earliestMonthDate.getFullYear()}-${String(earliestMonthDate.getMonth() + 1).padStart(2, "0")}`
   const [selectedMonth, setSelectedMonth] = useState(
     `${initialMonth.getFullYear()}-${String(initialMonth.getMonth() + 1).padStart(2, "0")}`
   )
@@ -270,7 +273,16 @@ export default function Expenses() {
   })
 
   // Month navigation
+  function monthToNumber(month: string) {
+    const [y, m] = month.split("-").map(Number)
+    return y * 12 + (m - 1)
+  }
+
+  const canGoPrevious = monthToNumber(selectedMonth) > monthToNumber(earliestMonthKey)
+  const canGoNext = monthToNumber(selectedMonth) < monthToNumber(currentMonthKey)
+
   function changeMonth(delta: number) {
+    if ((delta < 0 && !canGoPrevious) || (delta > 0 && !canGoNext)) return
     const [y, m] = selectedMonth.split("-").map(Number)
     const d = new Date(y, m - 1 + delta, 1)
     setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
@@ -338,15 +350,15 @@ export default function Expenses() {
 
         {/* Month nav */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 20 }}>
-          <TouchableOpacity onPress={() => changeMonth(-1)}>
-            <Ionicons name="chevron-back" size={20} color={C.text} />
+          <TouchableOpacity onPress={() => changeMonth(-1)} disabled={!canGoPrevious} style={{ opacity: canGoPrevious ? 1 : 0.35 }}>
+            <Ionicons name="chevron-back" size={20} color={canGoPrevious ? C.text : C.textMuted} />
           </TouchableOpacity>
           <Text style={{ color: C.text, fontWeight: "600", fontSize: 15, minWidth: 110, textAlign: "center" }}>
             {new Date(parseInt(selectedMonth.split("-")[0]), parseInt(selectedMonth.split("-")[1]) - 1)
               .toLocaleString("en-IN", { month: "long", year: "numeric" })}
           </Text>
-          <TouchableOpacity onPress={() => changeMonth(1)}>
-            <Ionicons name="chevron-forward" size={20} color={C.text} />
+          <TouchableOpacity onPress={() => changeMonth(1)} disabled={!canGoNext} style={{ opacity: canGoNext ? 1 : 0.35 }}>
+            <Ionicons name="chevron-forward" size={20} color={canGoNext ? C.text : C.textMuted} />
           </TouchableOpacity>
         </View>
       </View>
