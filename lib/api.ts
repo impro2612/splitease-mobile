@@ -22,12 +22,60 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
-// On 401, clear the session and send the user back to sign-in
+// On 401, attempt silent token refresh once; if that also fails, sign out
+let isRefreshing = false
+let refreshQueue: Array<(token: string | null) => void> = []
+
+async function tryRefresh(): Promise<string | null> {
+  const refreshToken = await SecureStore.getItemAsync("refresh_token")
+  if (!refreshToken) return null
+  try {
+    const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-refresh`, { refreshToken })
+    const { token, refreshToken: newRefresh } = res.data
+    await SecureStore.setItemAsync("session_token", token)
+    await SecureStore.setItemAsync("refresh_token", newRefresh)
+    return token
+  } catch {
+    return null
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    const original = error.config
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true
+
+      if (isRefreshing) {
+        // Queue subsequent 401s until the in-flight refresh resolves
+        return new Promise((resolve, reject) => {
+          refreshQueue.push((newToken) => {
+            if (newToken) {
+              original.headers["Authorization"] = `Bearer ${newToken}`
+              resolve(api(original))
+            } else {
+              reject(error)
+            }
+          })
+        })
+      }
+
+      isRefreshing = true
+      const newToken = await tryRefresh()
+      isRefreshing = false
+
+      refreshQueue.forEach((cb) => cb(newToken))
+      refreshQueue = []
+
+      if (newToken) {
+        original.headers["Authorization"] = `Bearer ${newToken}`
+        return api(original)
+      }
+
+      // Refresh failed — sign out
       await SecureStore.deleteItemAsync("session_token")
+      await SecureStore.deleteItemAsync("refresh_token")
       await SecureStore.deleteItemAsync("user_data")
       router.replace("/(auth)/signin")
     }

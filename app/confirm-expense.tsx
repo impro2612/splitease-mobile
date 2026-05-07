@@ -133,6 +133,19 @@ export default function ConfirmExpense() {
     )
   }
 
+  if (!group) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", padding: 32 }}>
+        <Ionicons name="alert-circle-outline" size={48} color={C.textSub} />
+        <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginTop: 16, textAlign: "center" }}>Group not found</Text>
+        <Text style={{ color: C.textSub, fontSize: 14, marginTop: 8, textAlign: "center" }}>This group may have been deleted or you may no longer have access.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 24, backgroundColor: "#6366f1", borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 }}>
+          <Text style={{ color: "#fff", fontWeight: "700" }}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    )
+  }
+
   const isForeignCurrency = activeCurrencyCode !== gc.code
 
   return (

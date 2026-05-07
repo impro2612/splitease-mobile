@@ -108,6 +108,8 @@ export default function ChatScreen() {
   const lastFetchRef = useRef<string | null>(null)
   const pusherRef = useRef<Pusher | null>(null)
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pusherConnectedRef = useRef(true)
 
   // ── Merge new messages (by clientId) into existing list ─────────────────────
   function mergeMessages(existing: Message[], incoming: Message[]): Message[] {
@@ -239,7 +241,37 @@ export default function ChatScreen() {
     })
     pusherRef.current = pusher
 
+    function startPolling() {
+      if (pollIntervalRef.current) return
+      pollIntervalRef.current = setInterval(() => { fetchDelta() }, 8000)
+    }
+    function stopPolling() {
+      if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
+    }
+
+    pusher.connection.bind("connected", () => {
+      pusherConnectedRef.current = true
+      stopPolling()
+    })
+    pusher.connection.bind("disconnected", () => {
+      pusherConnectedRef.current = false
+      startPolling()
+    })
+    pusher.connection.bind("failed", () => {
+      pusherConnectedRef.current = false
+      startPolling()
+    })
+    pusher.connection.bind("error", (err: unknown) => {
+      pusherConnectedRef.current = false
+      startPolling()
+      console.warn("Pusher connection error", err)
+    })
+
     const channel = pusher.subscribe(`private-user-${myId}`)
+    channel.bind("pusher:subscription_error", (err: unknown) => {
+      console.warn("Pusher subscription error", err)
+      startPolling()
+    })
     channel.bind("new-message", (data: { senderId: string }) => {
       if (data.senderId === friendId) {
         fetchDelta()
@@ -247,6 +279,7 @@ export default function ChatScreen() {
     })
 
     return () => {
+      stopPolling()
       channel.unbind_all()
       pusher.unsubscribe(`private-user-${myId}`)
       pusher.disconnect()
@@ -257,6 +290,7 @@ export default function ChatScreen() {
   useEffect(() => {
     return () => {
       if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current)
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     }
   }, [])
 

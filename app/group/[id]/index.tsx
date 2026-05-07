@@ -846,6 +846,19 @@ export default function GroupDetail() {
     )
   }
 
+  if (!group) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", padding: 32 }} edges={["top"]}>
+        <Ionicons name="alert-circle-outline" size={48} color="#64748b" />
+        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", marginTop: 16, textAlign: "center" }}>Group not found</Text>
+        <Text style={{ color: "#64748b", fontSize: 14, marginTop: 8, textAlign: "center" }}>This group may have been deleted or you may no longer be a member.</Text>
+        <TouchableOpacity onPress={() => router.replace("/groups")} style={{ marginTop: 24, backgroundColor: "#6366f1", borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 }}>
+          <Text style={{ color: "#fff", fontWeight: "700" }}>Back to Groups</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
