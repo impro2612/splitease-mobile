@@ -38,13 +38,13 @@ const MORE_ITEMS = [
     route: "/timeline",
   },
   {
-    key: "memories",
+    key: "scrapbook",
     icon: "sparkles-outline" as const,
     color: "#f43f5e",
     bg: "rgba(244,63,94,0.12)",
-    title: "Memories",
+    title: "Your ScrapBook",
     subtitle: "Your year in money — shareable recap",
-    route: "/memories",
+    route: "/scrapbook",
   },
 ]
 
@@ -88,27 +88,42 @@ export default function TabsLayout() {
     closeMore(() => router.push(route as any))
   }
 
+  const shouldStartDrag = (_: any, g: { dy: number; dx: number }) => g.dy > 8 && g.dy > Math.abs(g.dx)
+  const handleDragMove = (_: any, g: { dy: number }) => {
+    if (g.dy > 0) panY.setValue(g.dy)
+  }
+  const handleDragRelease = (_: any, g: { dy: number; vy: number }) => {
+    if (g.dy > 80 || g.vy > 0.5) {
+      slideAnim.setValue(Math.max(0, g.dy))
+      panY.setValue(0)
+      closeMore()
+    } else {
+      Animated.spring(panY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
+    }
+  }
+
   const panResponder = useRef(
     PanResponder.create({
       // Don't steal simple taps from child TouchableOpacity items
       onStartShouldSetPanResponder: () => false,
-      // Capture only clear downward vertical drags
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && g.dy > Math.abs(g.dx),
-      onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 8 && g.dy > Math.abs(g.dx),
-      onPanResponderMove: (_, g) => {
-        if (g.dy > 0) panY.setValue(g.dy)
-      },
+      onMoveShouldSetPanResponder: shouldStartDrag,
+      onMoveShouldSetPanResponderCapture: shouldStartDrag,
+      onPanResponderMove: handleDragMove,
       onPanResponderTerminationRequest: () => false,
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 80 || g.vy > 0.5) {
-          // Transfer current drag offset into slideAnim so there's no position snap
-          slideAnim.setValue(Math.max(0, g.dy))
-          panY.setValue(0)
-          closeMore()
-        } else {
-          Animated.spring(panY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
-        }
-      },
+      onPanResponderRelease: handleDragRelease,
+    })
+  ).current
+
+  const headerPanResponder = useRef(
+    PanResponder.create({
+      // Header/content area has no primary tap action, so let it claim the gesture early.
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: shouldStartDrag,
+      onMoveShouldSetPanResponderCapture: shouldStartDrag,
+      onPanResponderMove: handleDragMove,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderRelease: handleDragRelease,
     })
   ).current
 
@@ -210,13 +225,15 @@ export default function TabsLayout() {
             transform: [{ translateY }],
           }}
         >
-          {/* Drag handle */}
-          <View style={{ paddingBottom: 12 }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center" }} />
-          </View>
+          <View {...headerPanResponder.panHandlers}>
+            {/* Drag handle */}
+            <View style={{ paddingBottom: 12 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center" }} />
+            </View>
 
-          <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 2 }}>More</Text>
-          <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 20 }}>Explore more features</Text>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 2 }}>More</Text>
+            <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 20 }}>Explore more features</Text>
+          </View>
 
           {MORE_ITEMS.map((item) => (
             <TouchableOpacity
