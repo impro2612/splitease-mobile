@@ -5,6 +5,7 @@ import {
   Image, Platform, Modal, FlatList,
 } from "react-native"
 import { router } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { GoogleSignin } from "@react-native-google-signin/google-signin"
@@ -54,6 +55,7 @@ GoogleSignin.configure({
 
 export default function SignUp() {
   const { signUp, googleSignIn } = useAuthStore()
+  const queryClient = useQueryClient()
   const C = useTheme()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -78,6 +80,7 @@ export default function SignUp() {
     setLoading(true); setError("")
     try {
       await signUp(name.trim(), email.trim().toLowerCase(), password, `${countryCode}${digits}`)
+      queryClient.clear()
       router.replace("/(tabs)/dashboard")
     } catch (e: any) {
       if (!e?.response) {
@@ -99,6 +102,7 @@ export default function SignUp() {
       const idToken = userInfo.data?.idToken
       if (!idToken) throw new Error("No ID token returned")
       const { needsPhone } = await googleSignIn(idToken, "signup")
+      queryClient.clear()
       if (needsPhone) {
         router.replace("/(auth)/complete-profile")
       } else {

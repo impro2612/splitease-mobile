@@ -11,6 +11,7 @@ import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
 import { useTheme } from "@/lib/theme"
 import { transactionsApi } from "@/lib/api"
+import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
 import { CATEGORIES } from "@/lib/categorize-client"
 
@@ -74,6 +75,7 @@ function monthLabel(m: string) {
 
 export default function Expenses() {
   const C = useTheme()
+  const { user } = useAuthStore()
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const queryClient = useQueryClient()
@@ -165,12 +167,13 @@ export default function Expenses() {
 
   // Queries
   const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ["tx-summary", selectedMonth],
+    queryKey: ["tx-summary", user?.id, selectedMonth],
     queryFn: () => transactionsApi.summary(selectedMonth).then((r) => r.data),
+    enabled: !!user?.id,
   })
 
   const { data: txData, isLoading: txLoading } = useQuery({
-    queryKey: ["transactions", selectedMonth, selectedCategory, selectedDirection],
+    queryKey: ["transactions", user?.id, selectedMonth, selectedCategory, selectedDirection],
     queryFn: () => transactionsApi.list({
       month: selectedMonth,
       category: selectedCategory ?? undefined,
@@ -181,16 +184,17 @@ export default function Expenses() {
             ? "debit"
             : undefined,
     }).then((r) => r.data),
+    enabled: !!user?.id,
   })
 
   const { data: insights } = useQuery({
-    queryKey: ["tx-insights", selectedMonth],
+    queryKey: ["tx-insights", user?.id, selectedMonth],
     queryFn: () => transactionsApi.insights(selectedMonth).then((r) => r.data),
-    enabled: activeTab === "insights",
+    enabled: activeTab === "insights" && !!user?.id,
   })
 
   const { data: suggestions, isLoading: suggestionsLoading } = useQuery({
-    queryKey: ["tx-suggestions", selectedMonth],
+    queryKey: ["tx-suggestions", user?.id, selectedMonth],
     queryFn: () => transactionsApi.suggestions(selectedMonth).then((r) => r.data.suggestion as {
       analyzedMonth: string
       title: string
@@ -199,7 +203,7 @@ export default function Expenses() {
       recommendations: string[]
       updatedAt: string
     } | null),
-    enabled: activeTab === "suggestions",
+    enabled: activeTab === "suggestions" && !!user?.id,
   })
 
   const onRefresh = useCallback(async () => {
