@@ -4,6 +4,7 @@ import { useAuthStore } from "@/store/auth"
 import {
   View, Text, ActivityIndicator, TouchableOpacity,
   Modal, Animated, Pressable, StyleSheet, PanResponder,
+  useWindowDimensions,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -52,9 +53,11 @@ export default function TabsLayout() {
   const { user, loading } = useAuthStore()
   const { bottom } = useSafeAreaInsets()
   const C = useTheme()
+  const { height } = useWindowDimensions()
+  const hiddenTranslateY = Math.max(300, height)
 
   const [moreVisible, setMoreVisible] = useState(false)
-  const slideAnim = useRef(new Animated.Value(300)).current
+  const slideAnim = useRef(new Animated.Value(hiddenTranslateY)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
 
@@ -66,6 +69,7 @@ export default function TabsLayout() {
 
   function openMore() {
     panY.setValue(0)
+    slideAnim.setValue(hiddenTranslateY)
     setMoreVisible(true)
     Animated.parallel([
       Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
@@ -75,7 +79,7 @@ export default function TabsLayout() {
 
   function closeMore(onDone?: () => void) {
     Animated.parallel([
-      Animated.timing(slideAnim, { toValue: 300, duration: 220, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: hiddenTranslateY, duration: 220, useNativeDriver: true }),
       Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
     ]).start(() => {
       panY.setValue(0)
