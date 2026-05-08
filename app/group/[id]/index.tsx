@@ -1061,7 +1061,7 @@ export default function GroupDetail() {
                                     borderWidth: isMine ? 1.5 : 1, borderColor: isMine ? "#6366f1" : C.border,
                                   }}
                                 >
-                                  <Text style={{ fontSize: 18 }}>{emoji}</Text>
+                                  <Text style={{ fontSize: 14 }}>{emoji}</Text>
                                   <Text style={{ color: isMine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "700" }}>{userIds.length}</Text>
                                 </TouchableOpacity>
                               )

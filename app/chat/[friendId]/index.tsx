@@ -575,7 +575,7 @@ export default function ChatScreen() {
                             borderColor: mine ? "#6366f1" : C.border,
                           }}
                         >
-                          <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                          <Text style={{ fontSize: 14 }}>{emoji}</Text>
                           {count > 1 && <Text style={{ color: mine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "600" }}>{count}</Text>}
                         </TouchableOpacity>
                       ))}
