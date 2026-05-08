@@ -1046,38 +1046,36 @@ export default function GroupDetail() {
                           {myAmount >= 0 ? "+" : "-"}{formatCurrency(Math.abs(myAmount), expCurr.symbol, expCurr.code)}
                         </Text>
                         <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, expCurr.symbol, expCurr.code)} total</Text>
+                        {reactionEntries.length > 0 && (
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, justifyContent: "flex-end", marginTop: 2 }}>
+                            {reactionEntries.map(([emoji, userIds]) => {
+                              const isMine = userIds.includes(user?.id ?? "")
+                              return (
+                                <TouchableOpacity
+                                  key={emoji}
+                                  onPress={() => toggleReaction(exp.id, emoji)}
+                                  style={{
+                                    flexDirection: "row", alignItems: "center", gap: 4,
+                                    backgroundColor: C.iconBg,
+                                    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+                                    borderWidth: isMine ? 1.5 : 1, borderColor: isMine ? "#6366f1" : C.border,
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 18 }}>{emoji}</Text>
+                                  <Text style={{ color: isMine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "700" }}>{userIds.length}</Text>
+                                </TouchableOpacity>
+                              )
+                            })}
+                            <TouchableOpacity
+                              onPress={() => setReactionPickerExp(exp)}
+                              style={{ backgroundColor: C.iconBg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
+                            >
+                              <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 18 }}>+</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </View>
                     </View>
-
-                    {/* Reactions row */}
-                    {reactionEntries.length > 0 && (
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                        {reactionEntries.map(([emoji, userIds]) => {
-                          const isMine = userIds.includes(user?.id ?? "")
-                          return (
-                            <TouchableOpacity
-                              key={emoji}
-                              onPress={() => toggleReaction(exp.id, emoji)}
-                              style={{
-                                flexDirection: "row", alignItems: "center", gap: 5,
-                                backgroundColor: C.iconBg,
-                                borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
-                                borderWidth: isMine ? 1.5 : 1, borderColor: isMine ? "#6366f1" : C.border,
-                              }}
-                            >
-                              <Text style={{ fontSize: 20 }}>{emoji}</Text>
-                              <Text style={{ color: isMine ? "#a5b4fc" : C.textSub, fontSize: 13, fontWeight: "700" }}>{userIds.length}</Text>
-                            </TouchableOpacity>
-                          )
-                        })}
-                        <TouchableOpacity
-                          onPress={() => setReactionPickerExp(exp)}
-                          style={{ backgroundColor: C.iconBg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
-                        >
-                          <Text style={{ color: C.textSub, fontSize: 16, lineHeight: 20 }}>+</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
                   </TouchableOpacity>
                 )
               })}
