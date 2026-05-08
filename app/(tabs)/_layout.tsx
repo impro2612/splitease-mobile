@@ -90,13 +90,15 @@ export default function TabsLayout() {
 
   const panResponder = useRef(
     PanResponder.create({
-      // Don't steal tap from child TouchableOpacity items
+      // Don't steal simple taps from child TouchableOpacity items
       onStartShouldSetPanResponder: () => false,
       // Capture only clear downward vertical drags
       onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && g.dy > Math.abs(g.dx),
+      onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 8 && g.dy > Math.abs(g.dx),
       onPanResponderMove: (_, g) => {
         if (g.dy > 0) panY.setValue(g.dy)
       },
+      onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, g) => {
         if (g.dy > 80 || g.vy > 0.5) {
           // Transfer current drag offset into slideAnim so there's no position snap
