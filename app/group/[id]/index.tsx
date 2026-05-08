@@ -18,6 +18,7 @@ import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import EmojiKeyboard from "rn-emoji-keyboard"
 import { syncTrackConfigToNative, checkNotificationAccess, openNotificationAccessSettings } from "@/lib/nativeTrackExpense"
 import { useTheme } from "@/lib/theme"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
@@ -280,12 +281,15 @@ export default function GroupDetail() {
   const [settleNote, setSettleNote] = useState("")
 
   // Expense reactions
-  const REACTION_EMOJIS = ["😮", "😂", "👍", "❤️", "🔥", "😢"]
+  const QUICK_REACTION_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
   const [reactionPickerExp, setReactionPickerExp] = useState<any | null>(null)
+  const [expenseEmojiPickerOpen, setExpenseEmojiPickerOpen] = useState(false)
   const [togglingReaction, setTogglingReaction] = useState(false)
 
   async function toggleReaction(expenseId: string, emoji: string) {
     if (togglingReaction || !id) return
+    setReactionPickerExp(null)
+    setExpenseEmojiPickerOpen(false)
     setTogglingReaction(true)
     try {
       await reactionsApi.toggle(id as string, expenseId, emoji)
@@ -1798,43 +1802,90 @@ export default function GroupDetail() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Emoji Reaction Picker */}
-      <Modal visible={!!reactionPickerExp} transparent animationType="fade" onRequestClose={() => setReactionPickerExp(null)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} onPress={() => setReactionPickerExp(null)}>
+      {/* Expense Emoji Reaction Picker */}
+      <Modal visible={!!reactionPickerExp} transparent animationType="fade" onRequestClose={() => { setReactionPickerExp(null); setExpenseEmojiPickerOpen(false) }}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} onPress={() => { setReactionPickerExp(null); setExpenseEmojiPickerOpen(false) }}>
           <Pressable onPress={(e) => e.stopPropagation()}>
-            <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: insets.bottom + 24, borderTopWidth: 1, borderColor: C.border }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 20 }} />
-              <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 4 }} numberOfLines={1}>
+            <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 16, paddingBottom: insets.bottom + 20 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 14 }} />
+              <Text style={{ color: C.text, fontWeight: "700", fontSize: 14, marginBottom: 12, paddingHorizontal: 20 }} numberOfLines={1}>
                 React to "{reactionPickerExp?.description}"
               </Text>
-              <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 20 }}>Tap to add or remove your reaction</Text>
-              <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
-                {REACTION_EMOJIS.map((emoji) => {
+
+              {/* Quick-react bar — same style as messages */}
+              <View style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                marginHorizontal: 20,
+                backgroundColor: C.bg,
+                borderRadius: 32,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderColor: C.border,
+              }}>
+                {QUICK_REACTION_EMOJIS.map((emoji) => {
                   const isMine = (reactionPickerExp?.reactions ?? []).some(
                     (r: any) => r.emoji === emoji && r.userId === user?.id
                   )
                   return (
                     <TouchableOpacity
                       key={emoji}
-                      onPress={async () => {
-                        await toggleReaction(reactionPickerExp.id, emoji)
-                        setReactionPickerExp(null)
-                      }}
+                      onPress={() => toggleReaction(reactionPickerExp.id, emoji)}
                       style={{
-                        width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center",
-                        backgroundColor: isMine ? "rgba(99,102,241,0.2)" : C.iconBg,
-                        borderWidth: 2, borderColor: isMine ? "#6366f1" : "transparent",
+                        width: 40, height: 40, borderRadius: 20,
+                        alignItems: "center", justifyContent: "center",
+                        backgroundColor: isMine ? "rgba(99,102,241,0.2)" : "transparent",
+                        borderWidth: isMine ? 1.5 : 0,
+                        borderColor: "#6366f1",
                       }}
                     >
-                      <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
                     </TouchableOpacity>
                   )
                 })}
+                <TouchableOpacity
+                  onPress={() => setExpenseEmojiPickerOpen(true)}
+                  style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: C.iconBg }}
+                >
+                  <Ionicons name="add" size={22} color={C.textSub} />
+                </TouchableOpacity>
               </View>
             </View>
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Full emoji picker for expenses */}
+      <EmojiKeyboard
+        onEmojiSelected={(e) => {
+          if (reactionPickerExp) toggleReaction(reactionPickerExp.id, e.emoji)
+        }}
+        open={expenseEmojiPickerOpen}
+        onClose={() => setExpenseEmojiPickerOpen(false)}
+        theme={{
+          backdrop: "rgba(0,0,0,0.5)",
+          knob: C.border,
+          container: C.card,
+          header: C.text,
+          skinTonesContainer: C.card,
+          category: {
+            icon: C.textSub,
+            iconActive: "#6366f1",
+            container: C.card,
+            containerActive: "rgba(99,102,241,0.15)",
+          },
+          search: {
+            text: C.text,
+            placeholder: C.textMuted,
+            icon: C.textSub,
+            background: C.bg,
+          },
+          emoji: { selected: "rgba(99,102,241,0.2)" },
+        }}
+      />
 
       {/* Custom Confirm Dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
