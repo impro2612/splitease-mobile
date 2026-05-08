@@ -239,6 +239,14 @@ export const messageReactionsApi = {
     api.post(`/api/messages/${messageId}/reactions`, { emoji }),
 }
 
+export const borrowBookApi = {
+  list: () => api.get("/api/borrow-book"),
+  create: (data: { friendId: string; amount: number; note?: string; iAmLender: boolean; currency?: string }) =>
+    api.post("/api/borrow-book", data),
+  settle: (id: string) => api.patch(`/api/borrow-book/${id}`),
+  delete: (id: string) => api.delete(`/api/borrow-book/${id}`),
+}
+
 export const budgetsApi = {
   list:   () => api.get("/api/budgets"),
   set:    (category: string, amount: number) => api.post("/api/budgets", { category, amount }),
