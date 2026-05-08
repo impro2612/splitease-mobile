@@ -566,17 +566,17 @@ export default function ChatScreen() {
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 3,
+                            gap: 4,
                             backgroundColor: C.card,
-                            borderRadius: 12,
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
+                            borderRadius: 20,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
                             borderWidth: mine ? 1.5 : 1,
                             borderColor: mine ? "#6366f1" : C.border,
                           }}
                         >
-                          <Text style={{ fontSize: 14 }}>{emoji}</Text>
-                          {count > 1 && <Text style={{ color: mine ? "#a5b4fc" : C.textSub, fontSize: 11, fontWeight: "600" }}>{count}</Text>}
+                          <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                          {count > 1 && <Text style={{ color: mine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "600" }}>{count}</Text>}
                         </TouchableOpacity>
                       ))}
                     </View>

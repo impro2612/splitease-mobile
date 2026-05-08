@@ -1059,22 +1059,22 @@ export default function GroupDetail() {
                               key={emoji}
                               onPress={() => toggleReaction(exp.id, emoji)}
                               style={{
-                                flexDirection: "row", alignItems: "center", gap: 4,
+                                flexDirection: "row", alignItems: "center", gap: 5,
                                 backgroundColor: C.iconBg,
-                                borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+                                borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
                                 borderWidth: isMine ? 1.5 : 1, borderColor: isMine ? "#6366f1" : C.border,
                               }}
                             >
-                              <Text style={{ fontSize: 14 }}>{emoji}</Text>
-                              <Text style={{ color: isMine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "700" }}>{userIds.length}</Text>
+                              <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                              <Text style={{ color: isMine ? "#a5b4fc" : C.textSub, fontSize: 13, fontWeight: "700" }}>{userIds.length}</Text>
                             </TouchableOpacity>
                           )
                         })}
                         <TouchableOpacity
                           onPress={() => setReactionPickerExp(exp)}
-                          style={{ backgroundColor: C.iconBg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.border }}
+                          style={{ backgroundColor: C.iconBg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
                         >
-                          <Text style={{ color: C.textSub, fontSize: 13 }}>+</Text>
+                          <Text style={{ color: C.textSub, fontSize: 16, lineHeight: 20 }}>+</Text>
                         </TouchableOpacity>
                       </View>
                     )}
