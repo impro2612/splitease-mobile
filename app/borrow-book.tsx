@@ -77,7 +77,7 @@ export default function BorrowBook() {
     queryFn: async () => { const res = await friendsApi.list(); return res.data },
   })
 
-  const acceptedFriends: any[] = (friendsData?.accepted ?? []).map((f: any) => {
+  const acceptedFriends: any[] = (friendsData?.friends ?? []).map((f: any) => {
     return f.requesterId === user?.id ? f.addressee : f.requester
   })
 
