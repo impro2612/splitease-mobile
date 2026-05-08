@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Alert,
+  ScrollView,
 } from "react-native"
 import * as Clipboard from "expo-clipboard"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -13,6 +14,7 @@ import Pusher from "pusher-js/react-native"
 import CryptoJS from "crypto-js"
 import * as SecureStore from "expo-secure-store"
 import { useAuthStore } from "@/store/auth"
+import EmojiKeyboard from "rn-emoji-keyboard"
 
 function uuidv4() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -20,21 +22,26 @@ function uuidv4() {
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16)
   })
 }
-import { API_BASE_URL, messagesApi } from "@/lib/api"
+import { API_BASE_URL, messagesApi, messageReactionsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+type MsgReaction = { id: string; userId: string; emoji: string }
 type Message = {
   id?: string
   clientId: string
   senderId: string
   receiverId: string
-  content: string // decrypted
+  content: string
   createdAt: string
   pending?: boolean
+  reactions?: MsgReaction[]
 }
 
 const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
+
+// Quick-react emojis shown in the action sheet bar
+const QUICK_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
 
 // ─── Encryption helpers ───────────────────────────────────────────────────────
 function sharedKey(idA: string, idB: string) {
@@ -44,20 +51,17 @@ function encrypt(text: string, sharedKey: string) {
   const key = CryptoJS.SHA256(sharedKey)
   const iv = CryptoJS.lib.WordArray.random(16)
   const ciphertext = CryptoJS.AES.encrypt(text, key, { iv }).toString()
-  // Prepend base64-encoded IV so decrypt can recover it: "<iv>:<ciphertext>"
   return `${iv.toString(CryptoJS.enc.Base64)}:${ciphertext}`
 }
 function decrypt(cipher: string, sharedKey: string) {
   try {
     const key = CryptoJS.SHA256(sharedKey)
     if (cipher.includes(":")) {
-      // New format: "<iv>:<ciphertext>"
       const sep = cipher.indexOf(":")
       const iv = CryptoJS.enc.Base64.parse(cipher.slice(0, sep))
       const ct = cipher.slice(sep + 1)
       return CryptoJS.AES.decrypt(ct, key, { iv }).toString(CryptoJS.enc.Utf8) || cipher
     }
-    // Legacy format: fixed IV derived from key (old messages)
     const iv = CryptoJS.MD5(sharedKey)
     return CryptoJS.AES.decrypt(cipher, key, { iv }).toString(CryptoJS.enc.Utf8) || cipher
   } catch {
@@ -78,7 +82,6 @@ async function loadCache(key: string): Promise<Message[]> {
   }
 }
 async function saveCache(key: string, messages: Message[]) {
-  // Keep last 200
   const trimmed = messages.slice(-200)
   await AsyncStorage.setItem(key, JSON.stringify(trimmed)).catch(() => {})
 }
@@ -102,6 +105,7 @@ export default function ChatScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [actionMsg, setActionMsg] = useState<Message | null>(null)
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const isSelecting = selectedIds.size > 0
 
   const flatListRef = useRef<FlatList>(null)
@@ -111,7 +115,6 @@ export default function ChatScreen() {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pusherConnectedRef = useRef(true)
 
-  // ── Merge new messages (by clientId) into existing list ─────────────────────
   function mergeMessages(existing: Message[], incoming: Message[]): Message[] {
     const map = new Map(existing.map((m) => [m.clientId, m]))
     for (const m of incoming) {
@@ -122,7 +125,6 @@ export default function ChatScreen() {
     )
   }
 
-  // ── Fetch delta from server ──────────────────────────────────────────────────
   const fetchDelta = useCallback(async () => {
     try {
       const res = await messagesApi.history(friendId, {
@@ -142,17 +144,15 @@ export default function ChatScreen() {
           saveCache(ck, merged)
           return merged
         })
-        // Update lastFetch to newest message time
         const newest = decrypted[decrypted.length - 1]
         lastFetchRef.current = newest.createdAt
       }
       setHasMore(more)
-    } catch (e) {
-      // silently fail on delta fetch
+    } catch {
+      // silently fail
     }
   }, [friendId, key, ck])
 
-  // ── Load older (pagination) ─────────────────────────────────────────────────
   async function loadOlderMessages() {
     if (loadingOlder || !hasMore || messages.length === 0) return
     setLoadingOlder(true)
@@ -178,16 +178,11 @@ export default function ChatScreen() {
     }
   }
 
-  // ── Mark read (debounced) ────────────────────────────────────────────────────
   function scheduleMarkRead() {
     if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current)
-    markReadTimerRef.current = setTimeout(() => {
-      // Triggering a delta fetch also marks messages as read server-side
-      fetchDelta()
-    }, 1500)
+    markReadTimerRef.current = setTimeout(() => { fetchDelta() }, 1500)
   }
 
-  // ── Initial load: cache → delta ──────────────────────────────────────────────
   useEffect(() => {
     let mounted = true
     async function init() {
@@ -221,17 +216,9 @@ export default function ChatScreen() {
                 "Content-Type": "application/json",
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
               },
-              body: JSON.stringify({
-                socket_id: socketId,
-                channel_name: channelName,
-              }),
+              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
             })
-
-            if (!res.ok) {
-              callback(new Error("Pusher auth failed"), null)
-              return
-            }
-
+            if (!res.ok) { callback(new Error("Pusher auth failed"), null); return }
             callback(null, await res.json())
           } catch (error) {
             callback(error as Error, null)
@@ -249,33 +236,28 @@ export default function ChatScreen() {
       if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
     }
 
-    pusher.connection.bind("connected", () => {
-      pusherConnectedRef.current = true
-      stopPolling()
-    })
-    pusher.connection.bind("disconnected", () => {
-      pusherConnectedRef.current = false
-      startPolling()
-    })
-    pusher.connection.bind("failed", () => {
-      pusherConnectedRef.current = false
-      startPolling()
-    })
-    pusher.connection.bind("error", (err: unknown) => {
-      pusherConnectedRef.current = false
-      startPolling()
-      console.warn("Pusher connection error", err)
-    })
+    pusher.connection.bind("connected", () => { pusherConnectedRef.current = true; stopPolling() })
+    pusher.connection.bind("disconnected", () => { pusherConnectedRef.current = false; startPolling() })
+    pusher.connection.bind("failed", () => { pusherConnectedRef.current = false; startPolling() })
+    pusher.connection.bind("error", (err: unknown) => { pusherConnectedRef.current = false; startPolling(); console.warn("Pusher error", err) })
 
     const channel = pusher.subscribe(`private-user-${myId}`)
-    channel.bind("pusher:subscription_error", (err: unknown) => {
-      console.warn("Pusher subscription error", err)
-      startPolling()
-    })
+    channel.bind("pusher:subscription_error", (err: unknown) => { console.warn("Pusher subscription error", err); startPolling() })
     channel.bind("new-message", (data: { senderId: string }) => {
-      if (data.senderId === friendId) {
-        fetchDelta()
-      }
+      if (data.senderId === friendId) fetchDelta()
+    })
+    channel.bind("message-reaction", (data: { messageId: string; emoji: string; userId: string; action: "added" | "removed" }) => {
+      setMessages((prev) => prev.map((m) => {
+        if (m.id !== data.messageId) return m
+        const reactions = m.reactions ?? []
+        if (data.action === "removed") {
+          return { ...m, reactions: reactions.filter((r) => !(r.userId === data.userId && r.emoji === data.emoji)) }
+        }
+        // added — avoid duplicates
+        const exists = reactions.some((r) => r.userId === data.userId && r.emoji === data.emoji)
+        if (exists) return m
+        return { ...m, reactions: [...reactions, { id: `${data.userId}-${data.emoji}`, userId: data.userId, emoji: data.emoji }] }
+      }))
     })
 
     return () => {
@@ -286,7 +268,6 @@ export default function ChatScreen() {
     }
   }, [myId, friendId, fetchDelta])
 
-  // ── Cleanup timers ───────────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current)
@@ -300,7 +281,6 @@ export default function ChatScreen() {
     if (!text || sending) return
     setInput("")
     setSending(true)
-
     try {
       const clientId = uuidv4()
       const encrypted = encrypt(text, key)
@@ -311,16 +291,11 @@ export default function ChatScreen() {
         content: text,
         createdAt: new Date().toISOString(),
         pending: true,
+        reactions: [],
       }
-
       setMessages((prev) => mergeMessages(prev, [optimistic]))
-
       const res = await messagesApi.send({ receiverId: friendId, content: encrypted, clientId })
-      const saved: Message = {
-        ...res.data,
-        content: text,
-        pending: false,
-      }
+      const saved: Message = { ...res.data, content: text, pending: false }
       setMessages((prev) => {
         const merged = mergeMessages(prev, [saved])
         saveCache(ck, merged)
@@ -335,6 +310,31 @@ export default function ChatScreen() {
     }
   }
 
+  // ── Reactions ─────────────────────────────────────────────────────────────────
+  async function toggleReaction(msg: Message, emoji: string) {
+    if (!msg.id) return
+    setActionMsg(null)
+    setEmojiPickerOpen(false)
+    // Optimistic update
+    setMessages((prev) => prev.map((m) => {
+      if (m.id !== msg.id) return m
+      const reactions = m.reactions ?? []
+      const exists = reactions.some((r) => r.userId === myId && r.emoji === emoji)
+      return {
+        ...m,
+        reactions: exists
+          ? reactions.filter((r) => !(r.userId === myId && r.emoji === emoji))
+          : [...reactions, { id: `opt-${myId}-${emoji}`, userId: myId, emoji }],
+      }
+    }))
+    try {
+      await messageReactionsApi.toggle(msg.id, emoji)
+    } catch {
+      // revert on error
+      fetchDelta()
+    }
+  }
+
   // ── Selection helpers ─────────────────────────────────────────────────────────
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -343,10 +343,7 @@ export default function ChatScreen() {
       return next
     })
   }
-
-  function cancelSelection() {
-    setSelectedIds(new Set())
-  }
+  function cancelSelection() { setSelectedIds(new Set()) }
 
   async function deleteSelected() {
     const ids = Array.from(selectedIds)
@@ -366,7 +363,7 @@ export default function ChatScreen() {
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render helpers ────────────────────────────────────────────────────────────
   const friendName = decodeURIComponent(name ?? "Chat")
 
   function formatTime(iso: string) {
@@ -384,7 +381,6 @@ export default function ChatScreen() {
     return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
   }
 
-  // Insert date separators
   type ListItem = Message | { type: "date"; label: string; key: string }
   function buildListItems(): ListItem[] {
     const items: ListItem[] = []
@@ -398,6 +394,20 @@ export default function ChatScreen() {
       items.push(m)
     }
     return items
+  }
+
+  // Group reactions by emoji for display: { emoji: { count, mine } }
+  function groupReactions(reactions: MsgReaction[] | undefined) {
+    if (!reactions || reactions.length === 0) return []
+    const map = new Map<string, { count: number; mine: boolean }>()
+    for (const r of reactions) {
+      const existing = map.get(r.emoji)
+      map.set(r.emoji, {
+        count: (existing?.count ?? 0) + 1,
+        mine: (existing?.mine ?? false) || r.userId === myId,
+      })
+    }
+    return Array.from(map.entries()).map(([emoji, v]) => ({ emoji, ...v }))
   }
 
   const listItems = buildListItems()
@@ -414,14 +424,12 @@ export default function ChatScreen() {
         </TouchableOpacity>
         {isSelecting ? (
           <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>
-              {selectedIds.size} selected
-            </Text>
+            <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{selectedIds.size} selected</Text>
           </View>
         ) : (
           <>
             <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{friendName.charAt(0).toUpperCase()}</Text>
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{friendName.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
@@ -436,7 +444,6 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
-        {/* Messages */}
         {loading ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <ActivityIndicator color="#6366f1" size="large" />
@@ -464,10 +471,7 @@ export default function ChatScreen() {
             }
             onScroll={(e) => {
               scheduleMarkRead()
-              // Load older messages when user scrolls close to the top of the list
-              if (e.nativeEvent.contentOffset.y <= 80) {
-                loadOlderMessages()
-              }
+              if (e.nativeEvent.contentOffset.y <= 80) loadOlderMessages()
             }}
             scrollEventThrottle={300}
             renderItem={({ item }) => {
@@ -484,61 +488,94 @@ export default function ChatScreen() {
               const isMine = msg.senderId === myId
               const msgId = msg.id ?? msg.clientId
               const isSelected = selectedIds.has(msgId)
+              const grouped = groupReactions(msg.reactions)
+
               return (
                 <Pressable
                   onLongPress={() => {
-                    if (msg.pending) return
-                    if (isSelecting) return
+                    if (msg.pending || isSelecting) return
                     setActionMsg(msg)
                   }}
                   onPress={() => {
                     if (isSelecting && msg.id) toggleSelect(msgId)
                   }}
                   delayLongPress={350}
-                  style={{ flexDirection: "row", alignItems: "center", marginBottom: 6, gap: 8 }}
+                  style={{ marginBottom: grouped.length > 0 ? 2 : 6 }}
                 >
-                  {/* Checkbox — always on far left in selection mode */}
-                  {isSelecting ? (
-                    <View style={{
-                      width: 22, height: 22, borderRadius: 11,
-                      backgroundColor: isSelected ? "#6366f1" : "transparent",
-                      borderWidth: 2, borderColor: isSelected ? "#6366f1" : C.textMuted,
-                      alignItems: "center", justifyContent: "center",
-                      flexShrink: 0,
-                    }}>
-                      {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
-                    </View>
-                  ) : null}
-
-                  {/* Bubble row — push mine to right */}
-                  <View style={{ flex: 1, flexDirection: "row", justifyContent: isMine ? "flex-end" : "flex-start" }}>
-                    <View style={{
-                      maxWidth: "78%",
-                      backgroundColor: isSelected ? "rgba(99,102,241,0.35)" : isMine ? "#6366f1" : "#1a1a2e",
-                      borderRadius: 18,
-                      borderBottomRightRadius: isMine ? 4 : 18,
-                      borderBottomLeftRadius: isMine ? 18 : 4,
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      borderWidth: isMine ? 0 : 1,
-                      borderColor: isSelected ? "#6366f1" : C.border,
-                      opacity: msg.pending ? 0.65 : 1,
-                    }}>
-                      <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3, justifyContent: "flex-end" }}>
-                        <Text style={{ color: isMine ? "rgba(255,255,255,0.55)" : C.textMuted, fontSize: 10 }}>
-                          {formatTime(msg.createdAt)}
-                        </Text>
-                        {isMine && (
-                          <Ionicons
-                            name={msg.pending ? "time-outline" : "checkmark-done"}
-                            size={11}
-                            color={msg.pending ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.55)"}
-                          />
-                        )}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    {isSelecting ? (
+                      <View style={{
+                        width: 22, height: 22, borderRadius: 11,
+                        backgroundColor: isSelected ? "#6366f1" : "transparent",
+                        borderWidth: 2, borderColor: isSelected ? "#6366f1" : C.textMuted,
+                        alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
+                      </View>
+                    ) : null}
+                    <View style={{ flex: 1, flexDirection: "row", justifyContent: isMine ? "flex-end" : "flex-start" }}>
+                      <View style={{
+                        maxWidth: "78%",
+                        backgroundColor: isSelected ? "rgba(99,102,241,0.35)" : isMine ? "#6366f1" : "#1a1a2e",
+                        borderRadius: 18,
+                        borderBottomRightRadius: isMine ? 4 : 18,
+                        borderBottomLeftRadius: isMine ? 18 : 4,
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderWidth: isMine ? 0 : 1,
+                        borderColor: isSelected ? "#6366f1" : C.border,
+                        opacity: msg.pending ? 0.65 : 1,
+                      }}>
+                        <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3, justifyContent: "flex-end" }}>
+                          <Text style={{ color: isMine ? "rgba(255,255,255,0.55)" : C.textMuted, fontSize: 10 }}>
+                            {formatTime(msg.createdAt)}
+                          </Text>
+                          {isMine && (
+                            <Ionicons
+                              name={msg.pending ? "time-outline" : "checkmark-done"}
+                              size={11}
+                              color={msg.pending ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.55)"}
+                            />
+                          )}
+                        </View>
                       </View>
                     </View>
                   </View>
+
+                  {/* Reaction pills below the bubble */}
+                  {grouped.length > 0 && (
+                    <View style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: isMine ? "flex-end" : "flex-start",
+                      marginTop: 3,
+                      marginBottom: 4,
+                      gap: 4,
+                      paddingHorizontal: isSelecting ? 30 : 0,
+                    }}>
+                      {grouped.map(({ emoji, count, mine }) => (
+                        <TouchableOpacity
+                          key={emoji}
+                          onPress={() => msg.id && toggleReaction(msg, emoji)}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 3,
+                            backgroundColor: mine ? "rgba(99,102,241,0.2)" : C.card,
+                            borderRadius: 12,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderWidth: 1,
+                            borderColor: mine ? "#6366f1" : C.border,
+                          }}
+                        >
+                          <Text style={{ fontSize: 14 }}>{emoji}</Text>
+                          {count > 1 && <Text style={{ color: mine ? "#a5b4fc" : C.textSub, fontSize: 11, fontWeight: "600" }}>{count}</Text>}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </Pressable>
               )
             }}
@@ -557,14 +594,10 @@ export default function ChatScreen() {
             <TouchableOpacity
               onPress={() => {
                 const count = selectedIds.size
-                Alert.alert(
-                  "Delete Messages",
-                  `Delete ${count} message${count > 1 ? "s" : ""}? This cannot be undone.`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Delete", style: "destructive", onPress: deleteSelected },
-                  ]
-                )
+                Alert.alert("Delete Messages", `Delete ${count} message${count > 1 ? "s" : ""}? This cannot be undone.`, [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete", style: "destructive", onPress: deleteSelected },
+                ])
               }}
               disabled={deleting}
               style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
@@ -604,22 +637,71 @@ export default function ChatScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
-      {/* Message action popup */}
+
+      {/* Message action bottom sheet */}
       <Modal
         visible={!!actionMsg}
         transparent
         animationType="fade"
-        onRequestClose={() => setActionMsg(null)}
+        onRequestClose={() => { setActionMsg(null); setEmojiPickerOpen(false) }}
       >
         <Pressable
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
-          onPress={() => setActionMsg(null)}
+          onPress={() => { setActionMsg(null); setEmojiPickerOpen(false) }}
         >
           <Pressable onPress={() => {}}>
             <View style={{ backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: insets.bottom + 8, paddingTop: 8 }}>
-              {/* Handle bar */}
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 16 }} />
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 12 }} />
 
+              {/* Quick-react bar */}
+              <View style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                marginHorizontal: 20,
+                marginBottom: 12,
+                backgroundColor: C.bg,
+                borderRadius: 32,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderColor: C.border,
+              }}>
+                {QUICK_EMOJIS.map((emoji) => {
+                  const alreadyReacted = actionMsg?.reactions?.some((r) => r.userId === myId && r.emoji === emoji)
+                  return (
+                    <TouchableOpacity
+                      key={emoji}
+                      onPress={() => actionMsg && toggleReaction(actionMsg, emoji)}
+                      style={{
+                        width: 40, height: 40, borderRadius: 20,
+                        alignItems: "center", justifyContent: "center",
+                        backgroundColor: alreadyReacted ? "rgba(99,102,241,0.2)" : "transparent",
+                        borderWidth: alreadyReacted ? 1.5 : 0,
+                        borderColor: "#6366f1",
+                      }}
+                    >
+                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+                {/* + button */}
+                <TouchableOpacity
+                  onPress={() => setEmojiPickerOpen(true)}
+                  style={{
+                    width: 40, height: 40, borderRadius: 20,
+                    alignItems: "center", justifyContent: "center",
+                    backgroundColor: C.iconBg,
+                  }}
+                >
+                  <Ionicons name="add" size={22} color={C.textSub} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: C.border, marginHorizontal: 20, marginBottom: 4 }} />
+
+              {/* Copy */}
               <TouchableOpacity
                 onPress={async () => {
                   if (!actionMsg) return
@@ -627,7 +709,7 @@ export default function ChatScreen() {
                   setActionMsg(null)
                   Toast.show({ type: "success", text1: "Copied to clipboard" })
                 }}
-                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 16, gap: 16 }}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 14, gap: 16 }}
               >
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
                   <Ionicons name="copy-outline" size={20} color="#a5b4fc" />
@@ -637,6 +719,7 @@ export default function ChatScreen() {
 
               <View style={{ height: 1, backgroundColor: C.border, marginHorizontal: 24 }} />
 
+              {/* Delete */}
               <TouchableOpacity
                 onPress={() => {
                   if (!actionMsg?.id) return
@@ -644,7 +727,7 @@ export default function ChatScreen() {
                   setActionMsg(null)
                   setSelectedIds(new Set([msgId]))
                 }}
-                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 16, gap: 16 }}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 14, gap: 16 }}
               >
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center" }}>
                   <Ionicons name="trash-outline" size={20} color="#f87171" />
@@ -655,6 +738,35 @@ export default function ChatScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Full emoji picker */}
+      <EmojiKeyboard
+        onEmojiSelected={(e) => {
+          if (actionMsg) toggleReaction(actionMsg, e.emoji)
+        }}
+        open={emojiPickerOpen}
+        onClose={() => setEmojiPickerOpen(false)}
+        theme={{
+          backdrop: "rgba(0,0,0,0.5)",
+          knob: C.border,
+          container: C.card,
+          header: C.text,
+          skinTonesContainer: C.card,
+          category: {
+            icon: C.textSub,
+            iconActive: "#6366f1",
+            container: C.card,
+            containerActive: "rgba(99,102,241,0.15)",
+          },
+          search: {
+            text: C.text,
+            placeholder: C.textMuted,
+            icon: C.textSub,
+            background: C.bg,
+          },
+          emoji: { selected: "rgba(99,102,241,0.2)" },
+        }}
+      />
     </SafeAreaView>
   )
 }

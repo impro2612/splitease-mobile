@@ -234,6 +234,11 @@ export const reactionsApi = {
     api.post(`/api/groups/${groupId}/expenses/${expenseId}/reactions`, { emoji }),
 }
 
+export const messageReactionsApi = {
+  toggle: (messageId: string, emoji: string) =>
+    api.post(`/api/messages/${messageId}/reactions`, { emoji }),
+}
+
 export const budgetsApi = {
   list:   () => api.get("/api/budgets"),
   set:    (category: string, amount: number) => api.post("/api/budgets", { category, amount }),
