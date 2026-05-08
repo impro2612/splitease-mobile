@@ -241,10 +241,12 @@ export const messageReactionsApi = {
 
 export const borrowBookApi = {
   list: () => api.get("/api/borrow-book"),
-  create: (data: { friendId: string; amount: number; note?: string; iAmLender: boolean; currency?: string }) =>
+  create: (data: { friendId: string; amount: number; note?: string; iAmLender: boolean; currency?: string; date?: string }) =>
     api.post("/api/borrow-book", data),
   settle: (id: string) => api.patch(`/api/borrow-book/${id}`),
   delete: (id: string) => api.delete(`/api/borrow-book/${id}`),
+  addPayment: (id: string, data: { amount: number; date?: string; note?: string }) =>
+    api.post(`/api/borrow-book/${id}/payments`, data),
 }
 
 export const budgetsApi = {
