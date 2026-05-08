@@ -567,11 +567,11 @@ export default function ChatScreen() {
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 3,
-                            backgroundColor: mine ? "rgba(99,102,241,0.2)" : C.card,
+                            backgroundColor: C.card,
                             borderRadius: 12,
                             paddingHorizontal: 8,
                             paddingVertical: 3,
-                            borderWidth: 1,
+                            borderWidth: mine ? 1.5 : 1,
                             borderColor: mine ? "#6366f1" : C.border,
                           }}
                         >

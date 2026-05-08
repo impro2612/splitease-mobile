@@ -1060,9 +1060,9 @@ export default function GroupDetail() {
                               onPress={() => toggleReaction(exp.id, emoji)}
                               style={{
                                 flexDirection: "row", alignItems: "center", gap: 4,
-                                backgroundColor: isMine ? "rgba(99,102,241,0.18)" : C.iconBg,
+                                backgroundColor: C.iconBg,
                                 borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
-                                borderWidth: 1, borderColor: isMine ? "#6366f1" : C.border,
+                                borderWidth: isMine ? 1.5 : 1, borderColor: isMine ? "#6366f1" : C.border,
                               }}
                             >
                               <Text style={{ fontSize: 14 }}>{emoji}</Text>
