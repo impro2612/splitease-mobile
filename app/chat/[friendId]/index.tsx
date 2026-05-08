@@ -12,6 +12,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Pusher from "pusher-js/react-native"
 import CryptoJS from "crypto-js"
+import * as ExpoCrypto from "expo-crypto"
 import * as SecureStore from "expo-secure-store"
 import { useAuthStore } from "@/store/auth"
 import EmojiKeyboard from "rn-emoji-keyboard"
@@ -47,9 +48,13 @@ const QUICK_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
 function sharedKey(idA: string, idB: string) {
   return [idA, idB].sort().join("-")
 }
+function randomWordArray(size: number) {
+  const bytes = ExpoCrypto.getRandomBytes(size)
+  return CryptoJS.lib.WordArray.create(Array.from(bytes) as number[])
+}
 function encrypt(text: string, sharedKey: string) {
   const key = CryptoJS.SHA256(sharedKey)
-  const iv = CryptoJS.lib.WordArray.random(16)
+  const iv = randomWordArray(16)
   const ciphertext = CryptoJS.AES.encrypt(text, key, { iv }).toString()
   return `${iv.toString(CryptoJS.enc.Base64)}:${ciphertext}`
 }
