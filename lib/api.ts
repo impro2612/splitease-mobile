@@ -249,6 +249,22 @@ export const borrowBookApi = {
     api.post(`/api/borrow-book/${id}/payments`, data),
 }
 
+export const tripsApi = {
+  list: () => api.get("/api/trips"),
+  get: (id: string) => api.get(`/api/trips/${id}`),
+  create: (data: {
+    name: string; emoji?: string; startDate: string; endDate: string
+    totalBudget: number; currency?: string; groupId?: string
+    categories?: { category: string; amount: number }[]
+  }) => api.post("/api/trips", data),
+  update: (id: string, data: {
+    name?: string; emoji?: string; startDate?: string; endDate?: string
+    totalBudget?: number; currency?: string; status?: string; groupId?: string | null
+    categories?: { category: string; amount: number }[]
+  }) => api.patch(`/api/trips/${id}`, data),
+  delete: (id: string) => api.delete(`/api/trips/${id}`),
+}
+
 export const budgetsApi = {
   list:   () => api.get("/api/budgets"),
   set:    (category: string, amount: number) => api.post("/api/budgets", { category, amount }),
