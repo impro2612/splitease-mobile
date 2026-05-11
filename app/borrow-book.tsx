@@ -416,7 +416,7 @@ export default function BorrowBook() {
                   <TouchableOpacity
                     onPress={() => { setSelectedFriend(null); setAddFriendId(liveFriend.friend.id); setShowAdd(true) }}
                     style={{ backgroundColor: ACCENT_BG, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: ACCENT_BORDER }}>
-                    <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Add</Text>
+                    <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Add Amount</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -471,7 +471,7 @@ export default function BorrowBook() {
                                 <TouchableOpacity
                                   onPress={() => { setPayingEntry(e); setPayDate(new Date()) }}
                                   style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: ACCENT_BG, borderWidth: 1, borderColor: ACCENT_BORDER, alignItems: "center", justifyContent: "center" }}>
-                                  <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Add Amount</Text>
+                                  <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Part Payment</Text>
                                 </TouchableOpacity>
                                 {/* Mark Settled */}
                                 <TouchableOpacity
