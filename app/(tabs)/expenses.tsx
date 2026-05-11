@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator,
-  Modal, TextInput, Alert, FlatList, useWindowDimensions, RefreshControl,
+  Modal, TextInput, FlatList, useWindowDimensions, RefreshControl,
   KeyboardAvoidingView, Platform, Animated, Keyboard,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -93,6 +93,11 @@ export default function Expenses() {
   const [selectedDirection, setSelectedDirection] = useState<"all" | "incoming" | "outgoing">("all")
   const [refreshing, setRefreshing] = useState(false)
   const [selectedTrendIndex, setSelectedTrendIndex] = useState<number | null>(null)
+
+  // Confirm dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string; message: string; confirmText: string; danger?: boolean; onConfirm: () => void
+  } | null>(null)
 
   // PDF password modal
   const [pendingPdfFile, setPendingPdfFile] = useState<{ uri: string; name: string } | null>(null)
@@ -422,10 +427,13 @@ export default function Expenses() {
                 setSelectedCategory={setSelectedCategory}
                 selectedDirection={selectedDirection}
                 setSelectedDirection={setSelectedDirection}
-                onDelete={(id: string) => Alert.alert("Delete", "Remove this transaction?", [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Delete", style: "destructive", onPress: () => deleteCategoryMutation.mutate(id) },
-                ])}
+                onDelete={(id: string) => setConfirmDialog({
+                  title: "Delete Transaction",
+                  message: "Remove this transaction permanently?",
+                  confirmText: "Delete",
+                  danger: true,
+                  onConfirm: () => deleteCategoryMutation.mutate(id),
+                })}
                 C={C}
               />
             )}
@@ -547,6 +555,31 @@ export default function Expenses() {
             </Animated.View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Custom Confirm Dialog */}
+      <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name="warning-outline" size={26} color="#f87171" />
+            </View>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setConfirmDialog(null)}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   )

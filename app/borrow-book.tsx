@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
-  Modal, ActivityIndicator, Pressable, Alert, RefreshControl, Platform,
+  Modal, ActivityIndicator, Pressable, RefreshControl, Platform,
   Animated, PanResponder, useWindowDimensions,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -194,6 +194,11 @@ export default function BorrowBook() {
   const [addIAmLender, setAddIAmLender] = useState(true)
   const [addCurrency, setAddCurrency] = useState("INR")
   const [addDate, setAddDate] = useState(new Date())
+
+  // Confirm dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string; message: string; confirmText: string; danger?: boolean; onConfirm: () => void
+  } | null>(null)
 
   // Part-payment form
   const [payingEntry, setPayingEntry] = useState<Entry | null>(null)
@@ -475,19 +480,25 @@ export default function BorrowBook() {
                                 </TouchableOpacity>
                                 {/* Mark Settled */}
                                 <TouchableOpacity
-                                  onPress={() => Alert.alert("Mark as Settled", "Confirm this amount has been fully paid back?", [
-                                    { text: "Cancel", style: "cancel" },
-                                    { text: "Yes, Settle", onPress: () => settleMutation.mutate(e.id) },
-                                  ])}
+                                  onPress={() => setConfirmDialog({
+                                    title: "Mark as Settled",
+                                    message: "Confirm this amount has been fully paid back?",
+                                    confirmText: "Yes, Settle",
+                                    danger: false,
+                                    onConfirm: () => settleMutation.mutate(e.id),
+                                  })}
                                   style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
                                   <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>✓ Mark Settled</Text>
                                 </TouchableOpacity>
                                 {/* Delete */}
                                 <TouchableOpacity
-                                  onPress={() => Alert.alert("Delete Entry", "Remove this IOU record permanently?", [
-                                    { text: "Cancel", style: "cancel" },
-                                    { text: "Delete", style: "destructive", onPress: () => deleteMutation.mutate(e.id) },
-                                  ])}
+                                  onPress={() => setConfirmDialog({
+                                    title: "Delete Entry",
+                                    message: "Remove this IOU record permanently?",
+                                    confirmText: "Delete",
+                                    danger: true,
+                                    onConfirm: () => deleteMutation.mutate(e.id),
+                                  })}
                                   style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)", alignItems: "center", justifyContent: "center" }}>
                                   <Ionicons name="trash-outline" size={15} color="#f87171" />
                                 </TouchableOpacity>
@@ -694,6 +705,30 @@ export default function BorrowBook() {
             </TouchableOpacity>
         </View>
       </SwipeDownSheet>
+      {/* Custom Confirm Dialog */}
+      <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: confirmDialog?.danger ? "rgba(239,68,68,0.15)" : "rgba(74,222,128,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name={confirmDialog?.danger ? "warning-outline" : "checkmark-circle-outline"} size={26} color={confirmDialog?.danger ? "#f87171" : "#4ade80"} />
+            </View>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setConfirmDialog(null)}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: confirmDialog?.danger ? "#ef4444" : "#4ade80", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
