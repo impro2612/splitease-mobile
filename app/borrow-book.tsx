@@ -149,6 +149,18 @@ function SwipeDownSheet({
     })
   ).current
 
+  const contentPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: shouldStartDrag,
+      onMoveShouldSetPanResponderCapture: shouldStartDrag,
+      onPanResponderMove: handleDragMove,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderRelease: handleDragRelease,
+    })
+  ).current
+
   if (!mounted) return null
 
   return (
@@ -170,7 +182,7 @@ function SwipeDownSheet({
         ]}
       >
         <View
-          {...panResponder.panHandlers}
+          {...contentPanResponder.panHandlers}
           collapsable={false}
         >
           {children}
