@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, Pressable, Alert, RefreshControl, Platform,
-  Animated, PanResponder, useWindowDimensions,
+  Animated, PanResponder, StyleSheet, useWindowDimensions,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -149,10 +149,10 @@ function SwipeDownSheet({
     })
   ).current
 
-  const contentPanResponder = useRef(
+  const backgroundPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onStartShouldSetPanResponderCapture: () => false,
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: shouldStartDrag,
       onMoveShouldSetPanResponderCapture: shouldStartDrag,
       onPanResponderMove: handleDragMove,
@@ -182,10 +182,16 @@ function SwipeDownSheet({
         ]}
       >
         <View
-          {...contentPanResponder.panHandlers}
-          collapsable={false}
+          {...backgroundPanResponder.panHandlers}
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+          }}
         >
-          {children}
+          <View pointerEvents="box-none" collapsable={false}>
+            {children}
+          </View>
         </View>
       </Animated.View>
     </Modal>
