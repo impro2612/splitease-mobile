@@ -140,7 +140,10 @@ function SwipeDownSheet({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      // Return true so blank-area drags are claimed immediately.
+      // In RN's bubble phase, deeper views (TextInput, buttons) still win
+      // over this parent — so taps on interactive children are unaffected.
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: shouldStartDrag,
       onMoveShouldSetPanResponderCapture: shouldStartDrag,
       onPanResponderMove: handleDragMove,
@@ -169,13 +172,7 @@ function SwipeDownSheet({
           sheetStyle,
         ]}
       >
-        <View
-          {...panResponder.panHandlers}
-          pointerEvents="box-none"
-          collapsable={false}
-        >
-          {children}
-        </View>
+        {children}
       </Animated.View>
     </Modal>
   )
