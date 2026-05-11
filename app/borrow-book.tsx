@@ -151,8 +151,8 @@ function SwipeDownSheet({
 
   const contentPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: shouldStartDrag,
       onMoveShouldSetPanResponderCapture: shouldStartDrag,
       onPanResponderMove: handleDragMove,
