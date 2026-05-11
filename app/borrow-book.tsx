@@ -169,7 +169,12 @@ function SwipeDownSheet({
           sheetStyle,
         ]}
       >
-        {children}
+        <View
+          {...panResponder.panHandlers}
+          collapsable={false}
+        >
+          {children}
+        </View>
       </Animated.View>
     </Modal>
   )
