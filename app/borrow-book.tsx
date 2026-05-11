@@ -188,10 +188,9 @@ function SwipeDownSheet({
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
           }}
-        >
-          <View pointerEvents="box-none" collapsable={false}>
-            {children}
-          </View>
+        />
+        <View pointerEvents="box-none" collapsable={false}>
+          {children}
         </View>
       </Animated.View>
     </Modal>
