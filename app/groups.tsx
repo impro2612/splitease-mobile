@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, Alert, FlatList,
+  Modal, ActivityIndicator, Alert, FlatList, Platform,
   useWindowDimensions, Keyboard, TouchableWithoutFeedback,
 } from "react-native"
+import DateTimePicker from "@react-native-community/datetimepicker"
 import { router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
@@ -26,7 +27,10 @@ export default function Groups() {
   const { height: windowH } = useWindowDimensions()
   const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
+  const [startDate, setStartDate] = useState<Date | null>(null)
+  const [endDate, setEndDate] = useState<Date | null>(null)
+  const [showStartPicker, setShowStartPicker] = useState(false)
+  const [showEndPicker, setShowEndPicker] = useState(false)
   const [location, setLocation] = useState("")
   const [locationLat, setLocationLat] = useState<number | null>(null)
   const [locationLng, setLocationLng] = useState<number | null>(null)
@@ -77,7 +81,7 @@ export default function Groups() {
   function closeCreate() {
     Keyboard.dismiss()
     setShowCreate(false)
-    setName(""); setDescription("")
+    setName(""); setStartDate(null); setEndDate(null)
     setLocation(""); setLocationLat(null); setLocationLng(null); setLocationResults([])
     setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
     setCurrencySearch("")
@@ -108,7 +112,7 @@ export default function Groups() {
   }
 
   const createMutation = useMutation({
-    mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency, location: location.trim() || undefined, lat: locationLat ?? undefined, lng: locationLng ?? undefined }),
+    mutationFn: () => groupsApi.create({ name: name.trim(), emoji, color, currency: groupCurrency, location: location.trim() || undefined, lat: locationLat ?? undefined, lng: locationLng ?? undefined, startDate: startDate?.toISOString().slice(0, 10), endDate: endDate?.toISOString().slice(0, 10) }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
@@ -271,19 +275,52 @@ export default function Groups() {
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 22 }}>{emoji}</Text>
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>{name || "Group name"}</Text>
-                  <Text style={{ color: C.textSub, fontSize: 12 }}>{description || "No description"}</Text>
+                  <Text style={{ color: C.textSub, fontSize: 12 }}>
+                    {startDate ? startDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "No dates set"}
+                    {startDate && endDate ? ` → ${endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+                  </Text>
                 </View>
               </View>
               <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group name *</Text>
               <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
                 <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="e.g. NYC Trip, Apartment" placeholderTextColor={C.textMuted} value={name} onChangeText={setName} />
               </View>
-              <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Description (optional)</Text>
-              <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
-                <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="What's this group for?" placeholderTextColor={C.textMuted} value={description} onChangeText={setDescription} />
+              <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>📅 Dates (optional)</Text>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowStartPicker(true) }}
+                  style={{ flex: 1, backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: startDate ? "#6366f1" : C.border, height: 48, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 8 }}>
+                  <Ionicons name="calendar-outline" size={16} color={startDate ? "#6366f1" : C.textSub} />
+                  <Text style={{ color: startDate ? C.text : C.textMuted, fontSize: 14, flex: 1 }} numberOfLines={1}>
+                    {startDate ? startDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Start date"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEndPicker(true) }}
+                  style={{ flex: 1, backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: endDate ? "#6366f1" : C.border, height: 48, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 8 }}>
+                  <Ionicons name="calendar-outline" size={16} color={endDate ? "#6366f1" : C.textSub} />
+                  <Text style={{ color: endDate ? C.text : C.textMuted, fontSize: 14, flex: 1 }} numberOfLines={1}>
+                    {endDate ? endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "End date"}
+                  </Text>
+                </TouchableOpacity>
               </View>
+              {showStartPicker && (
+                <DateTimePicker
+                  value={startDate ?? new Date()}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(_, d) => { setShowStartPicker(false); if (d) { setStartDate(d); if (endDate && d > endDate) setEndDate(null) } }}
+                />
+              )}
+              {showEndPicker && (
+                <DateTimePicker
+                  value={endDate ?? startDate ?? new Date()}
+                  mode="date"
+                  minimumDate={startDate ?? undefined}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(_, d) => { setShowEndPicker(false); if (d) setEndDate(d) }}
+                />
+              )}
               <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>📍 Location (optional)</Text>
               <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: locationLat ? "#6366f1" : C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: locationResults.length > 0 || locationSearching ? 4 : 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Ionicons name="location-outline" size={16} color={locationLat ? "#6366f1" : C.textSub} />
