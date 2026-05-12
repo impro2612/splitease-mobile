@@ -112,7 +112,7 @@ export const authApi = {
 export const groupsApi = {
   list: () => api.get("/api/groups"),
   get: (id: string) => api.get(`/api/groups/${id}`),
-  create: (data: { name: string; description?: string; color: string; emoji: string; currency: string; location?: string }) =>
+  create: (data: { name: string; description?: string; color: string; emoji: string; currency: string; location?: string; lat?: number; lng?: number }) =>
     api.post("/api/groups", data),
   update: (id: string, data: { name?: string; description?: string; emoji?: string; color?: string; currency?: string }) =>
     api.patch(`/api/groups/${id}`, data),

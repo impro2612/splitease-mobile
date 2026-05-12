@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, ActivityIndicator, Alert, FlatList,
@@ -28,6 +28,11 @@ export default function Groups() {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [location, setLocation] = useState("")
+  const [locationLat, setLocationLat] = useState<number | null>(null)
+  const [locationLng, setLocationLng] = useState<number | null>(null)
+  const [locationResults, setLocationResults] = useState<{ display_name: string; lat: string; lon: string }[]>([])
+  const [locationSearching, setLocationSearching] = useState(false)
+  const locationDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [emoji, setEmoji] = useState("💰")
   const [color, setColor] = useState("#6366f1")
   const [groupCurrency, setGroupCurrency] = useState(defaultCurrency)
@@ -72,12 +77,38 @@ export default function Groups() {
   function closeCreate() {
     Keyboard.dismiss()
     setShowCreate(false)
-    setName(""); setDescription(""); setLocation(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
+    setName(""); setDescription("")
+    setLocation(""); setLocationLat(null); setLocationLng(null); setLocationResults([])
+    setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
     setCurrencySearch("")
   }
 
+  function handleLocationChange(text: string) {
+    setLocation(text)
+    setLocationLat(null); setLocationLng(null) // clear confirmed coords when text changes
+    if (locationDebounce.current) clearTimeout(locationDebounce.current)
+    if (!text.trim() || text.trim().length < 2) { setLocationResults([]); return }
+    locationDebounce.current = setTimeout(async () => {
+      setLocationSearching(true)
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text.trim())}&format=json&limit=5`, { headers: { "User-Agent": "SplitEase/1.0" } })
+        const data = await res.json()
+        setLocationResults(Array.isArray(data) ? data : [])
+      } catch { setLocationResults([]) }
+      finally { setLocationSearching(false) }
+    }, 400)
+  }
+
+  function selectLocation(item: { display_name: string; lat: string; lon: string }) {
+    setLocation(item.display_name)
+    setLocationLat(parseFloat(item.lat))
+    setLocationLng(parseFloat(item.lon))
+    setLocationResults([])
+    Keyboard.dismiss()
+  }
+
   const createMutation = useMutation({
-    mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency, location: location.trim() || undefined }),
+    mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency, location: location.trim() || undefined, lat: locationLat ?? undefined, lng: locationLng ?? undefined }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
@@ -254,10 +285,31 @@ export default function Groups() {
                 <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="What's this group for?" placeholderTextColor={C.textMuted} value={description} onChangeText={setDescription} />
               </View>
               <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>📍 Location (optional)</Text>
-              <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Ionicons name="location-outline" size={16} color={C.textSub} />
-                <TextInput style={{ flex: 1, color: C.text, fontSize: 15 }} placeholder="e.g. Goa, India" placeholderTextColor={C.textMuted} value={location} onChangeText={setLocation} />
+              <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: locationLat ? "#6366f1" : C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: locationResults.length > 0 || locationSearching ? 4 : 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="location-outline" size={16} color={locationLat ? "#6366f1" : C.textSub} />
+                <TextInput style={{ flex: 1, color: C.text, fontSize: 15 }} placeholder="e.g. Goa, India" placeholderTextColor={C.textMuted} value={location} onChangeText={handleLocationChange} />
+                {locationLat ? <Ionicons name="checkmark-circle" size={16} color="#4ade80" /> : null}
               </View>
+              {locationSearching && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6, paddingHorizontal: 4 }}>
+                  <ActivityIndicator size="small" color="#6366f1" />
+                  <Text style={{ color: C.textSub, fontSize: 12 }}>Searching…</Text>
+                </View>
+              )}
+              {locationResults.length > 0 && (
+                <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, marginBottom: 10, overflow: "hidden" }}>
+                  {locationResults.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => selectLocation(item)}
+                      style={{ padding: 12, borderBottomWidth: idx < locationResults.length - 1 ? 1 : 0, borderBottomColor: C.border, flexDirection: "row", alignItems: "center", gap: 10 }}
+                    >
+                      <Ionicons name="location" size={14} color="#6366f1" />
+                      <Text style={{ flex: 1, color: C.text, fontSize: 13 }} numberOfLines={2}>{item.display_name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group Currency</Text>
               <TouchableOpacity onPress={() => setShowCurrencyPicker(true)} style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
