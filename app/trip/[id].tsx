@@ -394,7 +394,7 @@ export default function TripDetail() {
               </View>
               {isOverLimit && (
                 <Text style={{ color: "#ef4444", fontSize: 12, marginBottom: 14 }}>
-                  Exceeds remaining budget by {fmt(entered - maxAllowed, trip.currency)}
+                  Exceeds remaining budget
                 </Text>
               )}
               <TouchableOpacity
