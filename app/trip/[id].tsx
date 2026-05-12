@@ -357,16 +357,28 @@ export default function TripDetail() {
         <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
         {editingCategory && (() => {
           const cat = TRIP_CATEGORIES.find(c => c.key === editingCategory)!
+          const currentAmount = categoryMap.get(editingCategory)?.amount ?? 0
+          // headroom = total budget minus every OTHER category's allocation
+          const otherAllocated = allocatedTotal - currentAmount
+          const maxAllowed = trip.totalBudget - otherAllocated
+          const entered = parseFloat(catAmount || "0")
+          const isOverLimit = entered > maxAllowed
+          const inputBorderColor = isOverLimit ? "#ef4444" : C.border
           return (
             <>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: `${cat.color}22`, alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 24 }}>{cat.emoji}</Text>
                 </View>
-                <Text style={{ color: C.text, fontSize: 18, fontWeight: "800" }}>{cat.label} Budget</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontSize: 18, fontWeight: "800" }}>{cat.label} Budget</Text>
+                  <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
+                    Max {fmt(maxAllowed, trip.currency)} available
+                  </Text>
+                </View>
               </View>
               <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>PLANNED AMOUNT</Text>
-              <View style={{ height: 52, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, marginBottom: 20 }}>
+              <View style={{ height: 52, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: inputBorderColor, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, marginBottom: isOverLimit ? 6 : 20 }}>
                 <Text style={{ color: C.textSub, fontSize: 18, marginRight: 4 }}>{symbols[trip.currency] ?? "₹"}</Text>
                 <TextInput
                   style={{ flex: 1, color: C.text, fontSize: 20, fontWeight: "700" }}
@@ -378,10 +390,15 @@ export default function TripDetail() {
                   autoFocus
                 />
               </View>
+              {isOverLimit && (
+                <Text style={{ color: "#ef4444", fontSize: 12, marginBottom: 14 }}>
+                  Exceeds remaining budget by {fmt(entered - maxAllowed, trip.currency)}
+                </Text>
+              )}
               <TouchableOpacity
-                onPress={() => saveCatMutation.mutate(parseFloat(catAmount || "0"))}
-                disabled={saveCatMutation.isPending}
-                style={{ height: 52, borderRadius: 16, backgroundColor: TEAL, alignItems: "center", justifyContent: "center" }}>
+                onPress={() => saveCatMutation.mutate(entered)}
+                disabled={saveCatMutation.isPending || isOverLimit || entered <= 0}
+                style={{ height: 52, borderRadius: 16, backgroundColor: isOverLimit || entered <= 0 ? `${TEAL}55` : TEAL, alignItems: "center", justifyContent: "center" }}>
                 {saveCatMutation.isPending
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save Budget</Text>
