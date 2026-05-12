@@ -68,6 +68,13 @@ function SwipeSheet({
   const overlayAnim = useRef(new Animated.Value(0)).current
   const translateY = Animated.add(slideAnim, panY.interpolate({ inputRange: [-9999, 0, 9999], outputRange: [0, 0, 9999] }))
 
+  function close() {
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: hidden, duration: 220, useNativeDriver: true }),
+      Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => { panY.setValue(0); setMounted(false); onClose() })
+  }
+
   const prevVisible = useRef(visible)
   if (prevVisible.current !== visible) {
     prevVisible.current = visible
@@ -77,14 +84,9 @@ function SwipeSheet({
         Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
         Animated.timing(overlayAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start()
+    } else {
+      close()
     }
-  }
-
-  function close() {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: hidden, duration: 220, useNativeDriver: true }),
-      Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start(() => { panY.setValue(0); setMounted(false); onClose() })
   }
 
   const shouldDrag = (_: any, g: any) => g.dy > 8 && g.dy > Math.abs(g.dx)
