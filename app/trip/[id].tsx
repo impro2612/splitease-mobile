@@ -206,7 +206,7 @@ export default function TripDetail() {
           </View>
           <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, alignItems: "center" }}>
             <Text style={{ color: C.textSub, fontSize: 10, fontWeight: "700", marginBottom: 4 }}>LEFT</Text>
-            <Text style={{ color: remaining >= 0 ? TEAL : "#f87171", fontSize: 18, fontWeight: "800" }}>{fmt(Math.abs(remaining), trip.currency)}</Text>
+            <Text style={{ color: remaining >= 0 ? TEAL : "#f87171", fontSize: 18, fontWeight: "800" }}>{remaining < 0 ? "-" : ""}{fmt(Math.abs(remaining), trip.currency)}</Text>
           </View>
         </View>
 
