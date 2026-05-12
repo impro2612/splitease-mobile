@@ -33,7 +33,8 @@ type TripDetail = {
   totalBudget: number; currency: string; status: string
   actualSpent: number; groupId?: string | null
   group?: { id: string; name: string; emoji: string; color: string } | null
-  categories: { id: string; category: string; amount: number; actualAmount?: number }[]
+  categories: { id: string; category: string; amount: number }[]
+  categoryActuals: Record<string, number>
   memberSpending: { user: { id: string; name?: string; email: string }; paid: number }[]
   recentExpenses: { id: string; description: string; amount: number; category: string; date: string; paidBy: { name?: string; email: string } }[]
 }
@@ -244,16 +245,17 @@ export default function TripDetail() {
         <View style={{ backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: "hidden", marginBottom: 16 }}>
           {TRIP_CATEGORIES.map((cat, idx) => {
             const planned = categoryMap.get(cat.key)?.amount ?? 0
-            const actual = (categoryMap.get(cat.key)?.actualAmount ?? 0) / 100
+            const actual = trip.categoryActuals?.[cat.key] ?? 0
             const catPct = planned > 0 ? Math.min(1, actual / planned) : 0
             const catBar = catPct > 0.9 ? "#ef4444" : catPct > 0.7 ? "#f59e0b" : cat.color
+            const hasActual = trip.group && actual > 0
             return (
               <TouchableOpacity
                 key={cat.key}
                 onPress={() => { setEditingCategory(cat.key); setCatAmount(planned > 0 ? String(planned) : "") }}
                 style={{ padding: 14, borderBottomWidth: idx < TRIP_CATEGORIES.length - 1 ? 1 : 0, borderBottomColor: C.border }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: planned > 0 ? 6 : 0 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: (planned > 0 || hasActual) ? 6 : 0 }}>
                   <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: `${cat.color}22`, alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ fontSize: 18 }}>{cat.emoji}</Text>
                   </View>
@@ -262,17 +264,22 @@ export default function TripDetail() {
                     <Text style={{ color: planned > 0 ? C.text : C.textMuted, fontSize: 14, fontWeight: "700" }}>
                       {planned > 0 ? fmt(planned, trip.currency) : "Set budget"}
                     </Text>
-                    {trip.group && planned > 0 && (
-                      <Text style={{ color: catBar, fontSize: 11, marginTop: 1 }}>
+                    {hasActual && (
+                      <Text style={{ color: planned > 0 ? catBar : "#f59e0b", fontSize: 11, marginTop: 1 }}>
                         {fmt(actual, trip.currency)} spent
                       </Text>
                     )}
                   </View>
                   <Ionicons name="chevron-forward" size={14} color={C.textSub} />
                 </View>
-                {planned > 0 && trip.group && (
+                {hasActual && planned > 0 && (
                   <View style={{ height: 4, backgroundColor: C.border, borderRadius: 2, overflow: "hidden" }}>
                     <View style={{ height: "100%", width: `${Math.round(catPct * 100)}%`, backgroundColor: catBar, borderRadius: 2 }} />
+                  </View>
+                )}
+                {hasActual && planned === 0 && (
+                  <View style={{ height: 4, backgroundColor: C.border, borderRadius: 2, overflow: "hidden" }}>
+                    <View style={{ height: "100%", width: "100%", backgroundColor: "#f59e0b33", borderRadius: 2 }} />
                   </View>
                 )}
               </TouchableOpacity>
