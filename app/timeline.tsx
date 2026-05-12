@@ -42,37 +42,39 @@ function buildMapHtml(pins: Pin[]) {
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  html, body, #map { width:100%; height:100%; background:#0f172a; }
+  html, body, #map { width:100%; height:100%; background:#e8edf2; }
   .leaflet-control-zoom { border:none !important; }
   .leaflet-control-zoom a {
-    background:#1e293b !important; color:#e2e8f0 !important;
-    border:1px solid #334155 !important; width:32px !important; height:32px !important;
+    background:#ffffff !important; color:#334155 !important;
+    border:1px solid #cbd5e1 !important; width:32px !important; height:32px !important;
     line-height:32px !important; font-size:18px !important; border-radius:8px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
   }
-  .leaflet-control-zoom a:hover { background:#334155 !important; }
+  .leaflet-control-zoom a:hover { background:#f1f5f9 !important; }
   .leaflet-control-attribution { display:none !important; }
   .pin-wrap { position:relative; width:36px; height:44px; }
   .pin-bubble {
     position:absolute; top:0; left:50%; transform:translateX(-50%);
-    background:#a78bfa; border-radius:50% 50% 50% 0; width:32px; height:32px;
+    background:#7c3aed; border-radius:50% 50% 50% 0; width:32px; height:32px;
     display:flex; align-items:center; justify-content:center; font-size:16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    box-shadow: 0 3px 10px rgba(124,58,237,0.45);
     transform: translateX(-50%) rotate(-45deg);
   }
   .pin-emoji { transform: rotate(45deg); display:block; }
   .pin-tip {
     position:absolute; bottom:0; left:50%; transform:translateX(-50%);
     width:6px; height:14px;
-    background:linear-gradient(to bottom, #a78bfa, transparent);
+    background:linear-gradient(to bottom, #7c3aed, transparent);
     border-radius:0 0 4px 4px;
   }
   .popup-box {
-    background:#1e293b; border:1px solid #334155; border-radius:12px;
+    background:#ffffff; border:1px solid #e2e8f0; border-radius:12px;
     padding:10px 14px; min-width:160px;
     font-family: -apple-system, sans-serif;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }
-  .popup-title { font-size:14px; font-weight:700; color:#f1f5f9; margin-bottom:3px; }
-  .popup-date { font-size:11px; color:#94a3b8; }
+  .popup-title { font-size:14px; font-weight:700; color:#1e293b; margin-bottom:3px; }
+  .popup-date { font-size:11px; color:#64748b; }
   .leaflet-popup-content-wrapper { background:transparent; box-shadow:none; padding:0; }
   .leaflet-popup-content { margin:0 !important; }
   .leaflet-popup-tip-container { display:none; }
@@ -89,7 +91,7 @@ const map = L.map('map', {
   zoomControl: true,
 });
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   maxZoom: 19,
   subdomains: 'abcd',
 }).addTo(map);
