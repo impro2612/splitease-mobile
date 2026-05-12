@@ -36,7 +36,7 @@ type TripDetail = {
   categories: { id: string; category: string; amount: number }[]
   categoryActuals: Record<string, number>
   memberSpending: { user: { id: string; name?: string; email: string }; paid: number }[]
-  recentExpenses: { id: string; description: string; amount: number; category: string; date: string; paidBy: { name?: string; email: string } }[]
+  recentExpenses?: { id: string; description: string; amount: number; category: string; date: string; paidBy: { name?: string; email: string } }[]
 }
 
 const symbols: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" }
@@ -168,7 +168,6 @@ export default function TripDetail() {
   const barColor = pct > 0.9 ? "#ef4444" : pct > 0.7 ? "#f59e0b" : TEAL
 
   const allocatedTotal = trip.categories.reduce((s, c) => s + c.amount, 0)
-  const unallocated = trip.totalBudget - allocatedTotal
 
   const categoryMap = new Map(trip.categories.map(c => [c.category, c]))
 
@@ -289,14 +288,6 @@ export default function TripDetail() {
           })}
         </View>
 
-        {allocatedTotal > 0 && (
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 20, paddingHorizontal: 4 }}>
-            <Text style={{ color: C.textSub, fontSize: 12 }}>Allocated: {fmt(allocatedTotal, trip.currency)}</Text>
-            <Text style={{ color: unallocated >= 0 ? TEAL : "#f87171", fontSize: 12, fontWeight: "600" }}>
-              {unallocated >= 0 ? `${fmt(unallocated, trip.currency)} unallocated` : `${fmt(Math.abs(unallocated), trip.currency)} over budget`}
-            </Text>
-          </View>
-        )}
 
         {/* Member spending */}
         {trip.memberSpending.length > 0 && (
@@ -323,31 +314,6 @@ export default function TripDetail() {
           </View>
         )}
 
-        {/* Recent expenses from group */}
-        {trip.recentExpenses.length > 0 && (
-          <View>
-            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "700", letterSpacing: 0.5, marginBottom: 10 }}>EXPENSES FROM GROUP</Text>
-            <View style={{ gap: 6 }}>
-              {trip.recentExpenses.map((e) => {
-                const cat = TRIP_CATEGORIES.find(c => c.key === e.category)
-                return (
-                  <View key={e.id} style={{ backgroundColor: C.card, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: `${cat?.color ?? "#6b7280"}22`, alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 18 }}>{cat?.emoji ?? "💸"}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: C.text, fontSize: 13, fontWeight: "600" }}>{e.description}</Text>
-                      <Text style={{ color: C.textSub, fontSize: 11, marginTop: 1 }}>
-                        {e.paidBy.name ?? e.paidBy.email} · {fmtDate(e.date)}
-                      </Text>
-                    </View>
-                    <Text style={{ color: C.text, fontSize: 14, fontWeight: "700" }}>{fmt(e.amount, trip.currency)}</Text>
-                  </View>
-                )
-              })}
-            </View>
-          </View>
-        )}
       </ScrollView>
 
       {/* Category budget edit sheet */}
