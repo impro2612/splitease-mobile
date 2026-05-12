@@ -27,6 +27,7 @@ export default function Groups() {
   const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [location, setLocation] = useState("")
   const [emoji, setEmoji] = useState("💰")
   const [color, setColor] = useState("#6366f1")
   const [groupCurrency, setGroupCurrency] = useState(defaultCurrency)
@@ -71,12 +72,12 @@ export default function Groups() {
   function closeCreate() {
     Keyboard.dismiss()
     setShowCreate(false)
-    setName(""); setDescription(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
+    setName(""); setDescription(""); setLocation(""); setEmoji("💰"); setColor("#6366f1"); setGroupCurrency(defaultCurrency)
     setCurrencySearch("")
   }
 
   const createMutation = useMutation({
-    mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency }),
+    mutationFn: () => groupsApi.create({ name: name.trim(), description, emoji, color, currency: groupCurrency, location: location.trim() || undefined }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
@@ -251,6 +252,11 @@ export default function Groups() {
               <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Description (optional)</Text>
               <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
                 <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="What's this group for?" placeholderTextColor={C.textMuted} value={description} onChangeText={setDescription} />
+              </View>
+              <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>📍 Location (optional)</Text>
+              <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="location-outline" size={16} color={C.textSub} />
+                <TextInput style={{ flex: 1, color: C.text, fontSize: 15 }} placeholder="e.g. Goa, India" placeholderTextColor={C.textMuted} value={location} onChangeText={setLocation} />
               </View>
               <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group Currency</Text>
               <TouchableOpacity onPress={() => setShowCurrencyPicker(true)} style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
