@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react"
 import {
   View, Text, TouchableOpacity, ActivityIndicator,
-  FlatList, Animated, Dimensions, ScrollView, StyleSheet,
+  FlatList, Animated, Dimensions, ScrollView, StyleSheet, useWindowDimensions,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -252,21 +252,29 @@ function SlideOutro({ data, year }: { data: WrappedData; year: number }) {
 
 export default function ScrapBook() {
   const insets = useSafeAreaInsets()
+  const { height: SCREEN_H } = useWindowDimensions()
+  // Header ≈ 62px, dot bar ≈ 34px
+  const SLIDE_H = SCREEN_H - insets.top - 62 - 34
+
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const [activeSlide, setActiveSlide] = useState(0)
   const listRef = useRef<FlatList>(null)
 
-  const { data, isLoading } = useQuery<WrappedData>({
+  const { data, isLoading, isError, refetch } = useQuery<WrappedData>({
     queryKey: ["wrapped", selectedYear],
     queryFn: async () => { const r = await wrappedApi.get(selectedYear ?? undefined); return r.data },
+    retry: 2,
   })
 
   const activeYear = selectedYear ?? data?.availableYears?.[0] ?? new Date().getFullYear()
   const availableYears = data?.availableYears ?? []
 
-  const visibleSlides: SlideId[] = data?.empty
-    ? ["intro", "outro"]
-    : ["intro", "groups", "cities", "wildest", "category", "generous", "balance", "outro"]
+  // Only populate slides once data has loaded
+  const visibleSlides: SlideId[] = !data ? [] : (
+    data.empty
+      ? ["intro", "outro"]
+      : ["intro", "groups", "cities", "wildest", "category", "generous", "balance", "outro"]
+  )
 
   const handleYearSelect = (y: number) => {
     setSelectedYear(y)
@@ -286,10 +294,9 @@ export default function ScrapBook() {
       balance: <SlideBalance data={data} />,
       outro: <SlideOutro data={data} year={activeYear} />,
     }
-    return <View style={{ width: SCREEN_W }}>{slideMap[item]}</View>
-  }, [data, activeYear])
-
-  const totalHeight = Dimensions.get("window").height - insets.top - 60
+    // Explicit height so LinearGradient fills correctly in horizontal FlatList
+    return <View style={{ width: SCREEN_W, height: SLIDE_H }}>{slideMap[item]}</View>
+  }, [data, activeYear, SLIDE_H])
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0f0a1e" }} edges={["top"]}>
@@ -323,10 +330,19 @@ export default function ScrapBook() {
         )}
       </View>
 
-      {isLoading ? (
+      {(isLoading || !data) && !isError ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color="#a78bfa" size="large" />
           <Text style={{ color: "#94a3b8", marginTop: 12, fontSize: 13 }}>Building your recap…</Text>
+        </View>
+      ) : isError ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
+          <Text style={{ fontSize: 48 }}>😕</Text>
+          <Text style={{ color: "#f1f5f9", fontSize: 18, fontWeight: "800", marginTop: 16, textAlign: "center" }}>Couldn't load recap</Text>
+          <Text style={{ color: "#64748b", fontSize: 13, textAlign: "center", marginTop: 8 }}>Check your connection and try again</Text>
+          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 24, backgroundColor: "#7c3aed", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={{ flex: 1 }}>
@@ -343,7 +359,7 @@ export default function ScrapBook() {
               setActiveSlide(idx)
             }}
             getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
-            style={{ height: totalHeight }}
+            style={{ height: SLIDE_H }}
           />
 
           {/* Dot indicator */}
@@ -370,7 +386,7 @@ export default function ScrapBook() {
 const styles = StyleSheet.create({
   slide: {
     width: SCREEN_W,
-    flex: 1,
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
