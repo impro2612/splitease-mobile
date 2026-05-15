@@ -1,5 +1,5 @@
-import { useRef, useState } from "react"
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated } from "react-native"
+import { useRef, useState, useMemo } from "react"
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, ScrollView } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -131,7 +131,26 @@ export default function Timeline() {
     queryFn: async () => { const r = await timelineApi.pins(); return r.data },
   })
 
-  const hasMap = pins.length > 0
+  const availableYears = useMemo(() => {
+    const years = new Set<number>()
+    pins.forEach(p => { if (p.startDate) years.add(new Date(p.startDate).getFullYear()) })
+    return Array.from(years).sort((a, b) => b - a)
+  }, [pins])
+
+  const [selectedYear, setSelectedYear] = useState<number | null>(null)
+  const activeYear = selectedYear ?? availableYears[0] ?? null
+
+  const visiblePins = useMemo(() => {
+    if (!activeYear) return pins
+    return pins.filter(p => p.startDate && new Date(p.startDate).getFullYear() === activeYear)
+  }, [pins, activeYear])
+
+  const handleYearSelect = (year: number) => {
+    fadeAnim.setValue(0)
+    setSelectedYear(year)
+  }
+
+  const hasMap = visiblePins.length > 0
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0f172a" }} edges={["top"]}>
@@ -146,10 +165,41 @@ export default function Timeline() {
         <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", flex: 1 }}>Your Timeline</Text>
         {!isLoading && (
           <View style={{ backgroundColor: PURPLE_BG, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: PURPLE, fontSize: 12, fontWeight: "700" }}>{pins.length} place{pins.length !== 1 ? "s" : ""}</Text>
+            <Text style={{ color: PURPLE, fontSize: 12, fontWeight: "700" }}>{visiblePins.length} place{visiblePins.length !== 1 ? "s" : ""}</Text>
           </View>
         )}
       </View>
+
+      {/* Year filter */}
+      {!isLoading && availableYears.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
+          style={{ backgroundColor: "#0f172a", flexGrow: 0 }}
+        >
+          {availableYears.map(year => {
+            const isActive = year === activeYear
+            return (
+              <TouchableOpacity
+                key={year}
+                onPress={() => handleYearSelect(year)}
+                style={{
+                  paddingHorizontal: 18, paddingVertical: 7,
+                  borderRadius: 20,
+                  backgroundColor: isActive ? PURPLE : "rgba(255,255,255,0.08)",
+                  borderWidth: 1,
+                  borderColor: isActive ? PURPLE : "rgba(255,255,255,0.12)",
+                }}
+              >
+                <Text style={{ color: isActive ? "#ffffff" : "#94a3b8", fontSize: 14, fontWeight: isActive ? "700" : "500" }}>
+                  {year}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      )}
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -169,7 +219,8 @@ export default function Timeline() {
       ) : (
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <WebView
-            source={{ html: buildMapHtml(pins) }}
+            key={activeYear ?? "all"}
+            source={{ html: buildMapHtml(visiblePins) }}
             style={{ flex: 1, backgroundColor: "#0f172a" }}
             scrollEnabled={false}
             onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
