@@ -243,7 +243,7 @@ function SlideOutro({ data, year }: { data: WrappedData; year: number }) {
       <Text style={[styles.subtitle, { marginTop: 8 }]}>Here's to even more adventures ahead</Text>
       <View style={{ marginTop: 36 }}>
         <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, textAlign: "center" }}>
-          Made with SplitEase ✨
+          Made with SplitIT ✨
         </Text>
       </View>
     </LinearGradient>
@@ -329,15 +329,14 @@ export default function ScrapBook() {
                 onPress={() => handleYearSelect(y)}
                 activeOpacity={0.8}
                 style={{
-                  paddingHorizontal: 18, paddingVertical: 7, borderRadius: 20,
-                  backgroundColor: isActive ? "#7c3aed" : "rgba(255,255,255,0.08)",
-                  borderWidth: 1, borderColor: isActive ? "#a78bfa" : "rgba(255,255,255,0.12)",
+                  paddingHorizontal: 22, paddingVertical: 9, borderRadius: 28,
+                  backgroundColor: isActive ? "#7c3aed" : "#2d2d3a",
                   shadowColor: isActive ? "#7c3aed" : "transparent",
                   shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8,
                   elevation: isActive ? 8 : 0,
                 }}
               >
-                <Text style={{ color: isActive ? "#fff" : "#94a3b8", fontSize: 14, fontWeight: "700", letterSpacing: 0.5 }}>{y}</Text>
+                <Text style={{ color: isActive ? "#fff" : "#9ca3af", fontSize: 15, fontWeight: "700" }}>{y}</Text>
               </TouchableOpacity>
             )
           })}
