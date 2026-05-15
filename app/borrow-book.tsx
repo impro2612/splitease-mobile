@@ -9,7 +9,7 @@ import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
+import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { borrowBookApi, friendsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
@@ -60,13 +60,23 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
-function openAndroidDatePicker(current: Date, onChange: (d: Date) => void) {
-  DateTimePickerAndroid.open({
-    value: current,
-    mode: "date",
-    maximumDate: new Date(),
-    onChange: (_, d) => { if (d) onChange(d) },
-  })
+type IosPickerCfg = { current: Date; onChange: (d: Date) => void }
+
+function openDatePicker(
+  current: Date,
+  onChange: (d: Date) => void,
+  setIosPicker?: (cfg: IosPickerCfg | null) => void,
+) {
+  if (Platform.OS === "android") {
+    DateTimePickerAndroid.open({
+      value: current,
+      mode: "date",
+      maximumDate: new Date(),
+      onChange: (_, d) => { if (d) onChange(d) },
+    })
+  } else {
+    setIosPicker?.({ current, onChange })
+  }
 }
 
 function SwipeDownSheet({
@@ -205,6 +215,7 @@ export default function BorrowBook() {
   const [payAmount, setPayAmount] = useState("")
   const [payNote, setPayNote] = useState("")
   const [payDate, setPayDate] = useState(new Date())
+  const [iosPickerCfg, setIosPickerCfg] = useState<IosPickerCfg | null>(null)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["borrow-book"],
@@ -582,7 +593,7 @@ export default function BorrowBook() {
             {/* Date */}
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>DATE</Text>
             <TouchableOpacity
-              onPress={() => openAndroidDatePicker(payDate, setPayDate)}
+              onPress={() => openDatePicker(payDate, setPayDate, setIosPickerCfg)}
               style={{ height: 48, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 10, marginBottom: 14 }}>
               <Ionicons name="calendar-outline" size={18} color={C.textSub} />
               <Text style={{ color: C.text, fontSize: 15 }}>{fmtDate(payDate.toISOString())}</Text>
@@ -680,7 +691,7 @@ export default function BorrowBook() {
             {/* Date */}
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>DATE</Text>
             <TouchableOpacity
-              onPress={() => openAndroidDatePicker(addDate, setAddDate)}
+              onPress={() => openDatePicker(addDate, setAddDate, setIosPickerCfg)}
               style={{ height: 48, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 10, marginBottom: 14 }}>
               <Ionicons name="calendar-outline" size={18} color={C.textSub} />
               <Text style={{ color: C.text, fontSize: 15 }}>{fmtDate(addDate.toISOString())}</Text>
@@ -733,6 +744,27 @@ export default function BorrowBook() {
           </View>
         </View>
       </Modal>
+
+      {Platform.OS === "ios" && iosPickerCfg && (
+        <Modal transparent animationType="slide" onRequestClose={() => setIosPickerCfg(null)}>
+          <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setIosPickerCfg(null)} />
+          <View style={{ backgroundColor: "#1c1c1e", borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 }}>
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 4 }}>
+              <TouchableOpacity onPress={() => setIosPickerCfg(null)}>
+                <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 16 }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={iosPickerCfg.current}
+              mode="date"
+              display="spinner"
+              maximumDate={new Date()}
+              onChange={(_, d) => { if (d) iosPickerCfg.onChange(d) }}
+              themeVariant="dark"
+            />
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   )
 }
