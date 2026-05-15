@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo } from "react"
 import { View, Text, TouchableOpacity, ActivityIndicator, Animated, ScrollView } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
@@ -28,7 +28,7 @@ function fmtRange(start: string | null, end: string | null) {
   return `${s.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${e.toLocaleDateString("en-IN", opts)}`
 }
 
-function buildMapHtml(pins: Pin[]) {
+function buildMapHtml(pins: Pin[], bottomInset: number = 0) {
   const pinsJson = JSON.stringify(pins.map(p => ({
     lat: p.lat, lng: p.lng,
     name: p.name, emoji: p.emoji,
@@ -53,6 +53,7 @@ function buildMapHtml(pins: Pin[]) {
   }
   .leaflet-control-zoom a:hover { background:#f1f5f9 !important; }
   .leaflet-control-attribution { display:none !important; }
+  .leaflet-bottom { padding-bottom: ${bottomInset + 8}px; }
   .pin-wrap { position:relative; width:36px; height:44px; }
   .pin-bubble {
     position:absolute; top:0; left:50%; transform:translateX(-50%);
@@ -128,6 +129,7 @@ else if (pins.length > 1) {
 
 export default function Timeline() {
   const C = useTheme()
+  const { bottom: bottomInset } = useSafeAreaInsets()
   const fadeAnim = useRef(new Animated.Value(0)).current
 
   const { data: pins = [], isLoading, isError } = useQuery<Pin[]>({
@@ -194,7 +196,7 @@ export default function Timeline() {
           <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
             <WebView
               key={activeYear ?? "all"}
-              source={{ html: buildMapHtml(visiblePins) }}
+              source={{ html: buildMapHtml(visiblePins, bottomInset) }}
               style={{ flex: 1, backgroundColor: "#0f172a" }}
               scrollEnabled={false}
               onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
