@@ -90,8 +90,9 @@ const pins = ${pinsJson};
 
 const map = L.map('map', {
   center: [20, 10], zoom: 2, minZoom: 2, maxZoom: 16,
-  zoomControl: true,
+  zoomControl: false,
 });
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   maxZoom: 19,
