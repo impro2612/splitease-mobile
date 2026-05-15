@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useQuery } from "@tanstack/react-query"
 import { wrappedApi } from "@/lib/api"
 import LinearGradient from "react-native-linear-gradient"
+import { useTheme } from "@/lib/theme"
 
 const { width: SCREEN_W } = Dimensions.get("window")
 
@@ -251,6 +252,7 @@ function SlideOutro({ data, year }: { data: WrappedData; year: number }) {
 }
 
 export default function ScrapBook() {
+  const C = useTheme()
   const insets = useSafeAreaInsets()
   const { height: SCREEN_H } = useWindowDimensions()
 
@@ -301,16 +303,16 @@ export default function ScrapBook() {
   }, [data, activeYear, SLIDE_H])
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0f0a1e" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header row */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="arrow-back" size={18} color="#f1f5f9" />
+        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.15)", alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="sparkles-outline" size={20} color="#f43f5e" />
         </View>
-        <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", flex: 1 }} numberOfLines={1}>Your ScrapBook</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }} numberOfLines={1}>Your ScrapBook</Text>
       </View>
 
       {/* Year pills row */}
@@ -319,7 +321,7 @@ export default function ScrapBook() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
-          style={{ flexGrow: 0, backgroundColor: "#0f0a1e" }}
+          style={{ flexGrow: 0, backgroundColor: C.bg }}
         >
           {availableYears.map(y => {
             const isActive = y === activeYear
@@ -330,13 +332,13 @@ export default function ScrapBook() {
                 activeOpacity={0.8}
                 style={{
                   paddingHorizontal: 22, paddingVertical: 9, borderRadius: 28,
-                  backgroundColor: isActive ? "#7c3aed" : "#2d2d3a",
+                  backgroundColor: isActive ? "#7c3aed" : C.surface,
                   shadowColor: isActive ? "#7c3aed" : "transparent",
                   shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8,
                   elevation: isActive ? 8 : 0,
                 }}
               >
-                <Text style={{ color: isActive ? "#fff" : "#9ca3af", fontSize: 15, fontWeight: "700" }}>{y}</Text>
+                <Text style={{ color: isActive ? "#fff" : C.textSub, fontSize: 15, fontWeight: "700" }}>{y}</Text>
               </TouchableOpacity>
             )
           })}
@@ -346,13 +348,13 @@ export default function ScrapBook() {
       {(isLoading || !data) && !isError ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color="#a78bfa" size="large" />
-          <Text style={{ color: "#94a3b8", marginTop: 12, fontSize: 13 }}>Building your recap…</Text>
+          <Text style={{ color: C.textSub, marginTop: 12, fontSize: 13 }}>Building your recap…</Text>
         </View>
       ) : isError ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
           <Text style={{ fontSize: 48 }}>😕</Text>
-          <Text style={{ color: "#f1f5f9", fontSize: 18, fontWeight: "800", marginTop: 16, textAlign: "center" }}>Couldn't load recap</Text>
-          <Text style={{ color: "#64748b", fontSize: 13, textAlign: "center", marginTop: 8 }}>Check your connection and try again</Text>
+          <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginTop: 16, textAlign: "center" }}>Couldn't load recap</Text>
+          <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginTop: 8 }}>Check your connection and try again</Text>
           <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 24, backgroundColor: "#7c3aed", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
             <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
           </TouchableOpacity>
@@ -376,7 +378,7 @@ export default function ScrapBook() {
           />
 
           {/* Dot indicator */}
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingVertical: 14 }}>
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingVertical: 14, backgroundColor: C.bg }}>
             {visibleSlides.map((_, i) => (
               <TouchableOpacity
                 key={i}
@@ -385,7 +387,7 @@ export default function ScrapBook() {
                 <View style={{
                   width: i === activeSlide ? 20 : 6,
                   height: 6, borderRadius: 3,
-                  backgroundColor: i === activeSlide ? "#a78bfa" : "rgba(255,255,255,0.2)",
+                  backgroundColor: i === activeSlide ? "#a78bfa" : C.border,
                 }} />
               </TouchableOpacity>
             ))}

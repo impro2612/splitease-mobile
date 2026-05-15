@@ -159,7 +159,7 @@ export default function Timeline() {
   const hasMap = visiblePins.length > 0
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0f172a" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
         <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
@@ -168,7 +168,7 @@ export default function Timeline() {
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="earth-outline" size={20} color={PURPLE} />
         </View>
-        <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", flex: 1 }}>Your Timeline</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>Your Timeline</Text>
         {!isLoading && (
           <View style={{ backgroundColor: PURPLE_BG, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
             <Text style={{ color: PURPLE, fontSize: 12, fontWeight: "700" }}>{visiblePins.length} place{visiblePins.length !== 1 ? "s" : ""}</Text>
@@ -179,15 +179,15 @@ export default function Timeline() {
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={PURPLE} size="large" />
-          <Text style={{ color: "#94a3b8", marginTop: 12, fontSize: 13 }}>Loading your map…</Text>
+          <Text style={{ color: C.textSub, marginTop: 12, fontSize: 13 }}>Loading your map…</Text>
         </View>
       ) : !hasMap ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
           <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
             <Ionicons name="earth-outline" size={40} color={PURPLE} />
           </View>
-          <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 8 }}>No places yet</Text>
-          <Text style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", lineHeight: 22 }}>
+          <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 8 }}>No places yet</Text>
+          <Text style={{ color: C.textSub, fontSize: 14, textAlign: "center", lineHeight: 22 }}>
             Add a location when creating a group — it'll show up as a pin on your world map.
           </Text>
         </View>
@@ -197,7 +197,7 @@ export default function Timeline() {
             <WebView
               key={activeYear ?? "all"}
               source={{ html: buildMapHtml(visiblePins, bottomInset) }}
-              style={{ flex: 1, backgroundColor: "#0f172a" }}
+              style={{ flex: 1, backgroundColor: C.bg }}
               scrollEnabled={false}
               onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
               originWhitelist={["*"]}
