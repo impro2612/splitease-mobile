@@ -170,37 +170,6 @@ export default function Timeline() {
         )}
       </View>
 
-      {/* Year filter */}
-      {!isLoading && availableYears.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
-          style={{ backgroundColor: "#0f172a", flexGrow: 0 }}
-        >
-          {availableYears.map(year => {
-            const isActive = year === activeYear
-            return (
-              <TouchableOpacity
-                key={year}
-                onPress={() => handleYearSelect(year)}
-                style={{
-                  paddingHorizontal: 18, paddingVertical: 7,
-                  borderRadius: 20,
-                  backgroundColor: isActive ? PURPLE : "rgba(255,255,255,0.08)",
-                  borderWidth: 1,
-                  borderColor: isActive ? PURPLE : "rgba(255,255,255,0.12)",
-                }}
-              >
-                <Text style={{ color: isActive ? "#ffffff" : "#94a3b8", fontSize: 14, fontWeight: isActive ? "700" : "500" }}>
-                  {year}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
-      )}
-
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={PURPLE} size="large" />
@@ -217,17 +186,64 @@ export default function Timeline() {
           </Text>
         </View>
       ) : (
-        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-          <WebView
-            key={activeYear ?? "all"}
-            source={{ html: buildMapHtml(visiblePins) }}
-            style={{ flex: 1, backgroundColor: "#0f172a" }}
-            scrollEnabled={false}
-            onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
-            originWhitelist={["*"]}
-            javaScriptEnabled
-          />
-        </Animated.View>
+        <View style={{ flex: 1 }}>
+          <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+            <WebView
+              key={activeYear ?? "all"}
+              source={{ html: buildMapHtml(visiblePins) }}
+              style={{ flex: 1, backgroundColor: "#0f172a" }}
+              scrollEnabled={false}
+              onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
+              originWhitelist={["*"]}
+              javaScriptEnabled
+            />
+          </Animated.View>
+
+          {/* Floating year filter over map */}
+          {availableYears.length > 0 && (
+            <View style={{
+              position: "absolute", top: 16, left: 0, right: 0,
+              zIndex: 10, pointerEvents: "box-none",
+            }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+                style={{ flexGrow: 0 }}
+              >
+                {availableYears.map(year => {
+                  const isActive = year === activeYear
+                  return (
+                    <TouchableOpacity
+                      key={year}
+                      onPress={() => handleYearSelect(year)}
+                      activeOpacity={0.8}
+                      style={{
+                        paddingHorizontal: 20, paddingVertical: 9,
+                        borderRadius: 24,
+                        backgroundColor: isActive ? "rgba(124,58,237,0.92)" : "rgba(15,23,42,0.72)",
+                        borderWidth: 1,
+                        borderColor: isActive ? "#a78bfa" : "rgba(255,255,255,0.18)",
+                        shadowColor: isActive ? "#7c3aed" : "#000",
+                        shadowOffset: { width: 0, height: isActive ? 6 : 3 },
+                        shadowOpacity: isActive ? 0.55 : 0.25,
+                        shadowRadius: isActive ? 12 : 5,
+                        elevation: isActive ? 10 : 4,
+                      }}
+                    >
+                      <Text style={{
+                        color: isActive ? "#ffffff" : "rgba(203,213,225,0.85)",
+                        fontSize: 14, fontWeight: "700", letterSpacing: 0.8,
+                      }}>
+                        {year}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            </View>
+          )}
+        </View>
       )}
     </SafeAreaView>
   )
