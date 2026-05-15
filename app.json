@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.splitit.app"
+      "bundleIdentifier": "com.splitit.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "SplitIT uses your photo library to set your profile photo.",
+        "NSCameraUsageDescription": "SplitIT uses your camera to take a profile photo."
+      }
     },
     "android": {
       "adaptiveIcon": {
