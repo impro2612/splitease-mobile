@@ -253,9 +253,6 @@ function SlideOutro({ data, year }: { data: WrappedData; year: number }) {
 export default function ScrapBook() {
   const insets = useSafeAreaInsets()
   const { height: SCREEN_H } = useWindowDimensions()
-  // Header ≈ 54px, year pills row ≈ 46px (hidden when loading), dot bar ≈ 34px
-  const yearRowH = !isLoading && availableYears.length > 0 ? 46 : 0
-  const SLIDE_H = SCREEN_H - insets.top - 54 - yearRowH - 34
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const [activeSlide, setActiveSlide] = useState(0)
@@ -269,6 +266,10 @@ export default function ScrapBook() {
 
   const activeYear = selectedYear ?? data?.availableYears?.[0] ?? new Date().getFullYear()
   const availableYears = data?.availableYears ?? []
+
+  // Header ≈ 54px, year pills row ≈ 46px (hidden when loading), dot bar ≈ 34px
+  const yearRowH = !isLoading && availableYears.length > 0 ? 46 : 0
+  const SLIDE_H = SCREEN_H - insets.top - 54 - yearRowH - 34
 
   // Only populate slides once data has loaded
   const visibleSlides: SlideId[] = !data ? [] : (
