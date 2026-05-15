@@ -90,7 +90,7 @@ function SlideGroups({ data }: { data: WrappedData }) {
   return (
     <LinearGradient colors={["#0f2027", "#203a43", "#2c5364"]} style={styles.slide}>
       <Text style={{ fontSize: 64, marginBottom: 16 }}>👥</Text>
-      <Text style={styles.label}>YOU SHARED MEMORIES WITH</Text>
+      <Text style={styles.label}>LIFE HAPPENED ACROSS</Text>
       <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6 }}>
         <CountUp target={data.totalGroups ?? 0} style={styles.heroNumber} />
         <Text style={[styles.heroUnit, { marginBottom: 10 }]}>group{(data.totalGroups ?? 0) !== 1 ? "s" : ""}</Text>
