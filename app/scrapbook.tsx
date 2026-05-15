@@ -361,26 +361,32 @@ export default function ScrapBook() {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <FlatList
-            ref={listRef}
-            data={visibleSlides}
-            renderItem={renderSlide}
-            keyExtractor={item => item}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={e => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
-              setActiveSlide(idx)
-            }}
-            getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
-            style={{ height: SLIDE_H }}
-          />
-          {/* Fade from header bg into the dark slide */}
-          <LinearGradient
-            colors={[C.bg, "transparent"]}
-            style={{ position: "absolute", top: 0, left: 0, right: 0, height: 36, pointerEvents: "none" }}
-          />
+          {/* Slide area with 4-sided frame fade */}
+          <View style={{ height: SLIDE_H }}>
+            <FlatList
+              ref={listRef}
+              data={visibleSlides}
+              renderItem={renderSlide}
+              keyExtractor={item => item}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={e => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
+                setActiveSlide(idx)
+              }}
+              getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
+              style={{ flex: 1 }}
+            />
+            {/* Top */}
+            <LinearGradient colors={[C.bg, "transparent"]} style={frameStyle.top} pointerEvents="none" />
+            {/* Bottom */}
+            <LinearGradient colors={["transparent", C.bg]} style={frameStyle.bottom} pointerEvents="none" />
+            {/* Left */}
+            <LinearGradient colors={[C.bg, "transparent"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={frameStyle.left} pointerEvents="none" />
+            {/* Right */}
+            <LinearGradient colors={["transparent", C.bg]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={frameStyle.right} pointerEvents="none" />
+          </View>
 
           {/* Dot indicator */}
           <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingVertical: 14, backgroundColor: C.bg }}>
@@ -479,4 +485,11 @@ const styles = StyleSheet.create({
     maxWidth: 80,
     textAlign: "center",
   },
+})
+
+const frameStyle = StyleSheet.create({
+  top:    { position: "absolute", top: 0,    left: 0, right: 0,  height: 40 },
+  bottom: { position: "absolute", bottom: 0, left: 0, right: 0,  height: 40 },
+  left:   { position: "absolute", top: 0,    left: 0, bottom: 0, width: 20 },
+  right:  { position: "absolute", top: 0,    right: 0, bottom: 0, width: 20 },
 })
