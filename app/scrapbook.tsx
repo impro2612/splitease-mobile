@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react"
+import React, { useRef, useState, useEffect, useCallback } from "react"
 import {
   View, Text, TouchableOpacity, ActivityIndicator,
   FlatList, Animated, Dimensions, ScrollView, StyleSheet, useWindowDimensions,
@@ -323,7 +323,7 @@ export default function ScrapBook() {
 
   const renderSlide = useCallback(({ item }: { item: SlideId }) => {
     if (!data) return null
-    const slideMap: Record<SlideId, JSX.Element> = {
+    const slideMap: Record<SlideId, React.JSX.Element> = {
       intro: <SlideIntro data={data} />,
       groups: <SlideGroups data={data} />,
       squad: <SlideSquad data={data} />,
