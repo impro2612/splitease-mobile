@@ -33,6 +33,7 @@ function buildMapHtml(pins: Pin[]) {
     lat: p.lat, lng: p.lng,
     name: p.name, emoji: p.emoji,
     dateRange: fmtRange(p.startDate, p.endDate),
+    location: p.location ?? null,
   })))
 
   return `<!DOCTYPE html>
@@ -74,7 +75,8 @@ function buildMapHtml(pins: Pin[]) {
     box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }
   .popup-title { font-size:14px; font-weight:700; color:#1e293b; margin-bottom:3px; }
-  .popup-date { font-size:11px; color:#64748b; }
+  .popup-date { font-size:11px; color:#64748b; margin-bottom:2px; }
+  .popup-location { font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:3px; }
   .leaflet-popup-content-wrapper { background:transparent; box-shadow:none; padding:0; }
   .leaflet-popup-content { margin:0 !important; }
   .leaflet-popup-tip-container { display:none; }
@@ -107,6 +109,7 @@ pins.forEach(p => {
   const popupContent = \`<div class="popup-box">
     <div class="popup-title">\${p.emoji} \${p.name}</div>
     \${p.dateRange ? '<div class="popup-date">' + p.dateRange + '</div>' : ''}
+    \${p.location ? '<div class="popup-location">📍 ' + p.location + '</div>' : ''}
   </div>\`;
   marker.bindPopup(popupContent, { closeButton: false, autoPan: true });
   marker.on('click', () => marker.openPopup());
