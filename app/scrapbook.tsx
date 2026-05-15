@@ -20,7 +20,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 }
 
 const SLIDES = [
-  "intro", "groups", "cities", "wildest", "category", "generous", "balance", "outro",
+  "intro", "groups", "squad", "cities", "wildest", "category", "generous", "balance", "outro",
 ] as const
 type SlideId = typeof SLIDES[number]
 
@@ -36,6 +36,7 @@ type WrappedData = {
   mostGenerous?: { name: string; count: number; total: number } | null
   owedToUser?: number
   userOwes?: number
+  topFriends?: Array<{ name: string; count: number }>
 }
 
 // Formats cents → currency string
@@ -95,6 +96,40 @@ function SlideGroups({ data }: { data: WrappedData }) {
         <Text style={[styles.heroUnit, { marginBottom: 10 }]}>group{(data.totalGroups ?? 0) !== 1 ? "s" : ""}</Text>
       </View>
       <Text style={styles.subtitle}>Bonds built over shared bills 💙</Text>
+    </LinearGradient>
+  )
+}
+
+function SlideSquad({ data }: { data: WrappedData }) {
+  const friends = data.topFriends ?? []
+  const MEDALS = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+  return (
+    <LinearGradient colors={["#1c0a2e", "#7c2d8a", "#c2185b"]} style={styles.slide}>
+      <Text style={{ fontSize: 68, marginBottom: 10 }}>🫂</Text>
+      <Text style={styles.label}>MOST MEMORIES SHARED WITH</Text>
+      {friends.length > 0 ? (
+        <View style={{ marginTop: 20, width: "100%", gap: 10 }}>
+          {friends.map((f, i) => (
+            <View key={f.name + i} style={{
+              flexDirection: "row", alignItems: "center",
+              backgroundColor: "rgba(255,255,255,0.1)",
+              borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
+              borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+              gap: 12,
+            }}>
+              <Text style={{ fontSize: 22, width: 32, textAlign: "center" }}>{MEDALS[i]}</Text>
+              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700", flex: 1 }} numberOfLines={1}>{f.name}</Text>
+              <View style={{ backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800" }}>
+                  {f.count} {f.count === 1 ? "group" : "groups"}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={[styles.subtitle, { marginTop: 20 }]}>No shared group members yet</Text>
+      )}
     </LinearGradient>
   )
 }
@@ -277,7 +312,7 @@ export default function ScrapBook() {
   const visibleSlides: SlideId[] = !data ? [] : (
     data.empty
       ? ["intro", "outro"]
-      : ["intro", "groups", "cities", "wildest", "category", "generous", "balance", "outro"]
+      : ["intro", "groups", "squad", "cities", "wildest", "category", "generous", "balance", "outro"]
   )
 
   const handleYearSelect = (y: number) => {
@@ -291,6 +326,7 @@ export default function ScrapBook() {
     const slideMap: Record<SlideId, JSX.Element> = {
       intro: <SlideIntro data={data} />,
       groups: <SlideGroups data={data} />,
+      squad: <SlideSquad data={data} />,
       cities: <SlideCities data={data} />,
       wildest: <SlideWildest data={data} />,
       category: <SlideCategory data={data} />,
