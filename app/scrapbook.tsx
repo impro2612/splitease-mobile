@@ -253,8 +253,9 @@ function SlideOutro({ data, year }: { data: WrappedData; year: number }) {
 export default function ScrapBook() {
   const insets = useSafeAreaInsets()
   const { height: SCREEN_H } = useWindowDimensions()
-  // Header ≈ 62px, dot bar ≈ 34px
-  const SLIDE_H = SCREEN_H - insets.top - 62 - 34
+  // Header ≈ 54px, year pills row ≈ 46px (hidden when loading), dot bar ≈ 34px
+  const yearRowH = !isLoading && availableYears.length > 0 ? 46 : 0
+  const SLIDE_H = SCREEN_H - insets.top - 54 - yearRowH - 34
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const [activeSlide, setActiveSlide] = useState(0)
@@ -300,35 +301,47 @@ export default function ScrapBook() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0f0a1e" }} edges={["top"]}>
-      {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 10, gap: 12 }}>
+      {/* Header row */}
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, gap: 12 }}>
         <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color="#f1f5f9" />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.15)", alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="sparkles-outline" size={20} color="#f43f5e" />
         </View>
-        <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", flex: 1 }}>ScrapBook</Text>
+        <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", flex: 1 }} numberOfLines={1}>Your ScrapBook</Text>
+      </View>
 
-        {/* Year pills */}
-        {availableYears.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 6 }}>
-            {availableYears.map(y => (
+      {/* Year pills row */}
+      {!isLoading && availableYears.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
+          style={{ flexGrow: 0, backgroundColor: "#0f0a1e" }}
+        >
+          {availableYears.map(y => {
+            const isActive = y === activeYear
+            return (
               <TouchableOpacity
                 key={y}
                 onPress={() => handleYearSelect(y)}
+                activeOpacity={0.8}
                 style={{
-                  paddingHorizontal: 14, paddingVertical: 5, borderRadius: 16,
-                  backgroundColor: y === activeYear ? "#7c3aed" : "rgba(255,255,255,0.08)",
-                  borderWidth: 1, borderColor: y === activeYear ? "#a78bfa" : "rgba(255,255,255,0.12)",
+                  paddingHorizontal: 18, paddingVertical: 7, borderRadius: 20,
+                  backgroundColor: isActive ? "#7c3aed" : "rgba(255,255,255,0.08)",
+                  borderWidth: 1, borderColor: isActive ? "#a78bfa" : "rgba(255,255,255,0.12)",
+                  shadowColor: isActive ? "#7c3aed" : "transparent",
+                  shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8,
+                  elevation: isActive ? 8 : 0,
                 }}
               >
-                <Text style={{ color: y === activeYear ? "#fff" : "#94a3b8", fontSize: 13, fontWeight: "700" }}>{y}</Text>
+                <Text style={{ color: isActive ? "#fff" : "#94a3b8", fontSize: 14, fontWeight: "700", letterSpacing: 0.5 }}>{y}</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
-      </View>
+            )
+          })}
+        </ScrollView>
+      )}
 
       {(isLoading || !data) && !isError ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
