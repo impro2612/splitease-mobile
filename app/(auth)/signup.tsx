@@ -68,7 +68,9 @@ export default function SignUp() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const strength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3
+  const hasMinLength = password.length >= 8
+  const hasDigit = /\d/.test(password)
+  const strength = password.length === 0 ? 0 : (!hasMinLength || !hasDigit) ? 1 : password.length < 12 ? 2 : 3
   const strengthColors = ["transparent", "#f43f5e", "#f59e0b", "#22c55e"]
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) ?? COUNTRY_CODES[0]
 
@@ -76,7 +78,8 @@ export default function SignUp() {
     if (!name || !email || !password) { setError("All fields are required"); return }
     const digits = phone.replace(/\D/g, "")
     if (digits.length < 6) { setError("Please enter a valid phone number"); return }
-    if (password.length < 6) { setError("Password must be at least 6 characters"); return }
+    if (password.length < 8) { setError("Password must be at least 8 characters"); return }
+    if (!/\d/.test(password)) { setError("Password must contain at least one number"); return }
     setLoading(true); setError("")
     try {
       await signUp(name.trim(), email.trim().toLowerCase(), password, `${countryCode}${digits}`)
@@ -174,18 +177,30 @@ export default function SignUp() {
             {/* Password */}
             <View style={inputStyle}>
               <Ionicons name="lock-closed-outline" size={18} color={C.textSub} />
-              <TextInput style={{ flex: 1, color: C.text, fontSize: 15, marginLeft: 12 }} placeholder="Min. 6 characters" placeholderTextColor={C.textMuted} value={password} onChangeText={setPassword} secureTextEntry={!showPass} />
+              <TextInput style={{ flex: 1, color: C.text, fontSize: 15, marginLeft: 12 }} placeholder="Min. 8 chars, include a number" placeholderTextColor={C.textMuted} value={password} onChangeText={setPassword} secureTextEntry={!showPass} />
               <TouchableOpacity onPress={() => setShowPass(!showPass)}>
                 <Ionicons name={showPass ? "eye-off-outline" : "eye-outline"} size={18} color={C.textSub} />
               </TouchableOpacity>
             </View>
 
-            {/* Strength bar */}
+            {/* Strength bar + requirements */}
             {password.length > 0 && (
-              <View style={{ flexDirection: "row", gap: 6, marginTop: -8, marginBottom: 14 }}>
-                {[1, 2, 3].map((i) => (
-                  <View key={i} style={{ height: 4, flex: 1, borderRadius: 4, backgroundColor: i <= strength ? strengthColors[strength] : C.border }} />
-                ))}
+              <View style={{ marginTop: -8, marginBottom: 14, gap: 8 }}>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  {[1, 2, 3].map((i) => (
+                    <View key={i} style={{ height: 4, flex: 1, borderRadius: 4, backgroundColor: i <= strength ? strengthColors[strength] : C.border }} />
+                  ))}
+                </View>
+                <View style={{ flexDirection: "row", gap: 16 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Ionicons name={hasMinLength ? "checkmark-circle" : "ellipse-outline"} size={13} color={hasMinLength ? "#22c55e" : C.textMuted} />
+                    <Text style={{ fontSize: 12, color: hasMinLength ? "#22c55e" : C.textMuted }}>8+ characters</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Ionicons name={hasDigit ? "checkmark-circle" : "ellipse-outline"} size={13} color={hasDigit ? "#22c55e" : C.textMuted} />
+                    <Text style={{ fontSize: 12, color: hasDigit ? "#22c55e" : C.textMuted }}>At least 1 number</Text>
+                  </View>
+                </View>
               </View>
             )}
 
