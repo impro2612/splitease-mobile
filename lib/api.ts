@@ -274,3 +274,7 @@ export const budgetsApi = {
 export const timelineApi = {
   pins: () => api.get("/api/timeline"),
 }
+
+export const wrappedApi = {
+  get: (year?: number) => api.get("/api/wrapped", { params: year ? { year } : {} }),
+}
