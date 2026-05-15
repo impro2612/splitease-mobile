@@ -478,30 +478,34 @@ export default function BorrowBook() {
                                   style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: ACCENT_BG, borderWidth: 1, borderColor: ACCENT_BORDER, alignItems: "center", justifyContent: "center" }}>
                                   <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Part Payment</Text>
                                 </TouchableOpacity>
-                                {/* Mark Settled */}
-                                <TouchableOpacity
-                                  onPress={() => setConfirmDialog({
-                                    title: "Mark as Settled",
-                                    message: "Confirm this amount has been fully paid back?",
-                                    confirmText: "Yes, Settle",
-                                    danger: false,
-                                    onConfirm: () => settleMutation.mutate(e.id),
-                                  })}
-                                  style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
-                                  <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>✓ Mark Settled</Text>
-                                </TouchableOpacity>
-                                {/* Delete */}
-                                <TouchableOpacity
-                                  onPress={() => setConfirmDialog({
-                                    title: "Delete Entry",
-                                    message: "Remove this IOU record permanently?",
-                                    confirmText: "Delete",
-                                    danger: true,
-                                    onConfirm: () => deleteMutation.mutate(e.id),
-                                  })}
-                                  style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)", alignItems: "center", justifyContent: "center" }}>
-                                  <Ionicons name="trash-outline" size={15} color="#f87171" />
-                                </TouchableOpacity>
+                                {iAmLender && (
+                                  <>
+                                    {/* Mark Settled */}
+                                    <TouchableOpacity
+                                      onPress={() => setConfirmDialog({
+                                        title: "Mark as Settled",
+                                        message: "Confirm this amount has been fully paid back?",
+                                        confirmText: "Yes, Settle",
+                                        danger: false,
+                                        onConfirm: () => settleMutation.mutate(e.id),
+                                      })}
+                                      style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
+                                      <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>✓ Mark Settled</Text>
+                                    </TouchableOpacity>
+                                    {/* Delete */}
+                                    <TouchableOpacity
+                                      onPress={() => setConfirmDialog({
+                                        title: "Delete Entry",
+                                        message: "Remove this IOU record permanently?",
+                                        confirmText: "Delete",
+                                        danger: true,
+                                        onConfirm: () => deleteMutation.mutate(e.id),
+                                      })}
+                                      style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)", alignItems: "center", justifyContent: "center" }}>
+                                      <Ionicons name="trash-outline" size={15} color="#f87171" />
+                                    </TouchableOpacity>
+                                  </>
+                                )}
                               </View>
                             </View>
                           )
