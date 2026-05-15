@@ -29,12 +29,13 @@ function fmtRange(start: string | null, end: string | null) {
 }
 
 function buildMapHtml(pins: Pin[], bottomInset: number = 0) {
+  // Replace </ with <\/ so the HTML parser can't see </script> inside the JSON blob
   const pinsJson = JSON.stringify(pins.map(p => ({
     lat: p.lat, lng: p.lng,
     name: p.name, emoji: p.emoji,
     dateRange: fmtRange(p.startDate, p.endDate),
     location: p.location ?? null,
-  })))
+  }))).replace(/<\//g, "<\\/")
 
   return `<!DOCTYPE html>
 <html>
@@ -89,6 +90,11 @@ function buildMapHtml(pins: Pin[], bottomInset: number = 0) {
 <script>
 const pins = ${pinsJson};
 
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 const map = L.map('map', {
   center: [20, 10], zoom: 2, minZoom: 2, maxZoom: 16,
   zoomControl: false,
@@ -102,16 +108,16 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 
 pins.forEach(p => {
   const iconHtml = \`<div class="pin-wrap">
-    <div class="pin-bubble"><span class="pin-emoji">\${p.emoji}</span></div>
+    <div class="pin-bubble"><span class="pin-emoji">\${esc(p.emoji)}</span></div>
     <div class="pin-tip"></div>
   </div>\`;
   const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -48] });
   const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
 
   const popupContent = \`<div class="popup-box">
-    <div class="popup-title">\${p.emoji} \${p.name}</div>
-    \${p.dateRange ? '<div class="popup-date">' + p.dateRange + '</div>' : ''}
-    \${p.location ? '<div class="popup-location">📍 ' + p.location + '</div>' : ''}
+    <div class="popup-title">\${esc(p.emoji)} \${esc(p.name)}</div>
+    \${p.dateRange ? '<div class="popup-date">' + esc(p.dateRange) + '</div>' : ''}
+    \${p.location ? '<div class="popup-location">📍 ' + esc(p.location) + '</div>' : ''}
   </div>\`;
   marker.bindPopup(popupContent, { closeButton: false, autoPan: true });
   marker.on('click', () => marker.openPopup());
