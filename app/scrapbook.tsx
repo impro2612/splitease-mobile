@@ -269,9 +269,9 @@ export default function ScrapBook() {
   const activeYear = selectedYear ?? data?.availableYears?.[0] ?? new Date().getFullYear()
   const availableYears = data?.availableYears ?? []
 
-  // Header ≈ 54px, year pills row ≈ 46px (hidden when loading), dot bar ≈ 34px
+  // Header ≈ 54px, year pills row ≈ 46px, dot bar ≈ 34px, bottom nav bar = insets.bottom
   const yearRowH = !isLoading && availableYears.length > 0 ? 46 : 0
-  const SLIDE_H = SCREEN_H - insets.top - 54 - yearRowH - 34
+  const SLIDE_H = SCREEN_H - insets.top - 54 - yearRowH - 34 - insets.bottom
 
   // Only populate slides once data has loaded
   const visibleSlides: SlideId[] = !data ? [] : (
@@ -389,7 +389,7 @@ export default function ScrapBook() {
           </View>
 
           {/* Dot indicator */}
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingVertical: 14, backgroundColor: C.bg }}>
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingTop: 14, paddingBottom: 14 + insets.bottom, backgroundColor: C.bg }}>
             {visibleSlides.map((_, i) => (
               <TouchableOpacity
                 key={i}
