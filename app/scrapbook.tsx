@@ -376,6 +376,11 @@ export default function ScrapBook() {
             getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
             style={{ height: SLIDE_H }}
           />
+          {/* Fade from header bg into the dark slide */}
+          <LinearGradient
+            colors={[C.bg, "transparent"]}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, height: 36, pointerEvents: "none" }}
+          />
 
           {/* Dot indicator */}
           <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingVertical: 14, backgroundColor: C.bg }}>
