@@ -27,7 +27,7 @@
         "backgroundColor": "#0a0a1a"
       },
       "package": "com.splitit.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
