@@ -16,6 +16,7 @@ import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { useTheme } from "@/lib/theme"
+import { useOffline } from "@/context/OfflineContext"
 
 const SIGNUP_URL = "https://splitwithease.vercel.app/signup"
 
@@ -41,6 +42,7 @@ type ConfirmDialog = { title: string; message: string; onConfirm: () => void }
 export default function Friends() {
   const { user } = useAuthStore()
   const C = useTheme()
+  const { isOnline } = useOffline()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>("friends")
@@ -410,7 +412,8 @@ export default function Friends() {
         )}
       </View>
 
-      {/* Tabs */}
+      {/* Tabs + Content — greyed when offline */}
+      <View style={{ flex: 1, opacity: isOnline ? 1 : 0.4 }} pointerEvents={isOnline ? "auto" : "none"}>
       <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 8, marginBottom: 16 }}>
         {tabs.map((t) => (
           <TouchableOpacity
@@ -854,6 +857,7 @@ export default function Friends() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+      </View>{/* end offline wrapper */}
     </SafeAreaView>
   )
 }

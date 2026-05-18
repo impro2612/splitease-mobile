@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import EmojiKeyboard from "rn-emoji-keyboard"
 import { syncTrackConfigToNative, checkNotificationAccess, openNotificationAccessSettings } from "@/lib/nativeTrackExpense"
 import { useTheme } from "@/lib/theme"
+import { useOffline } from "@/context/OfflineContext"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
 import { getRate } from "@/lib/exchange"
 import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg"
@@ -233,6 +234,7 @@ export default function GroupDetail() {
   const { user } = useAuthStore()
   const C = useTheme()
   const queryClient = useQueryClient()
+  const { isOnline, enqueueExpense } = useOffline()
   const [tab, setTab] = useState<Tab>("expenses")
 
   // Edit Group modal
@@ -506,7 +508,7 @@ export default function GroupDetail() {
   }, [fxRateEffect_tab, fxRateEffect_balances, fxRateEffect_groupCurrency])
 
   const addExpenseMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const numAmount = parseFloat(expAmount)
       const memberIds = members.map((m: any) => m.userId)
       const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
@@ -550,18 +552,30 @@ export default function GroupDetail() {
           .map((uid: string) => ({ userId: uid, amount: parseFloat(customSplits[uid] || "0") }))
       }
 
-      return expensesApi.add(id, {
+      const payload = {
         description: expDesc.trim(),
         amount: numAmount,
         category: expCategory,
         paidById: expPaidBy || user!.id,
         splitType: apiSplitType,
-        splits,
+        splits: splits as { userId: string; amount: number }[],
         date: expDate.toISOString(),
         currency: activeCurrency,
-      })
+      }
+
+      if (!isOnline) {
+        await enqueueExpense({
+          id: `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          groupId: id,
+          createdAt: Date.now(),
+          payload,
+        })
+        return null
+      }
+
+      return expensesApi.add(id, payload)
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["group", id] })
       queryClient.invalidateQueries({ queryKey: ["balances", id] })
       queryClient.invalidateQueries({ queryKey: ["groups"] })
@@ -569,7 +583,11 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowAddExpense(false)
       resetAddForm()
-      Toast.show({ type: "success", text1: "Expense added!" })
+      if (result === null) {
+        Toast.show({ type: "info", text1: "Expense saved offline", text2: "Will sync when back online" })
+      } else {
+        Toast.show({ type: "success", text1: "Expense added!" })
+      }
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to add expense" }),
   })
@@ -825,6 +843,10 @@ export default function GroupDetail() {
   }
 
   function openSettle(userId: string, name: string, amount: number) {
+    if (!isOnline) {
+      Toast.show({ type: "error", text1: "No connection", text2: "Settle requires internet" })
+      return
+    }
     setSettleTarget({ userId, name, amount })
     setShowSettle(true)
   }
@@ -1298,6 +1320,10 @@ export default function GroupDetail() {
                                         </View>
                                         <TouchableOpacity
                                           onPress={() => {
+                                            if (!isOnline) {
+                                              Toast.show({ type: "error", text1: "No connection", text2: "Settle requires internet" })
+                                              return
+                                            }
                                             const amt = parseFloat(inlineSettleAmount)
                                             if (!amt || amt <= 0) return
                                             const capped = Math.min(amt, d.amount)

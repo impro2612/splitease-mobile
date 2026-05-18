@@ -1,12 +1,14 @@
 import "../global.css"
 import { useEffect, useRef, useState } from "react"
 import { Platform, View, Text, useColorScheme, AppState, AppStateStatus } from "react-native"
-import NetInfo from "@react-native-community/netinfo"
 import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client"
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import Toast from "react-native-toast-message"
 import { Ionicons } from "@expo/vector-icons"
 import * as SplashScreen from "expo-splash-screen"
@@ -14,9 +16,11 @@ import * as Notifications from "expo-notifications"
 import * as Device from "expo-device"
 import { useAuthStore } from "@/store/auth"
 import { pushApi } from "@/lib/api"
-import { getTrackConfig, clearTrackConfig } from "@/lib/trackExpense"
+import { getTrackConfig } from "@/lib/trackExpense"
 import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
 import { LaunchIntro } from "@/components/LaunchIntro"
+import { OfflineProvider, useOffline } from "@/context/OfflineContext"
+import queryClient from "@/lib/query-client"
 
 // ── Custom Toast UI ───────────────────────────────────────────────────────────
 function ToastBase({
@@ -132,11 +136,25 @@ const toastConfig = {
 // ── Offline Banner ────────────────────────────────────────────────────────────
 function OfflineBanner() {
   const { top } = useSafeAreaInsets()
+  const { isOnline, pendingCount, isSyncing } = useOffline()
+  if (isOnline) return null
+
+  const label = isSyncing
+    ? `Syncing ${pendingCount} expense${pendingCount !== 1 ? "s" : ""}…`
+    : pendingCount > 0
+      ? `Offline — ${pendingCount} expense${pendingCount !== 1 ? "s" : ""} will sync on reconnect`
+      : "No internet connection"
+
+  const color = isSyncing ? "#fbbf24" : "#f87171"
+  const icon = isSyncing ? "sync-outline" : "cloud-offline-outline"
+  const bg = isSyncing ? "#1f1a00" : "#1a1020"
+  const border = isSyncing ? "rgba(251,191,36,0.3)" : "rgba(248,113,113,0.3)"
+
   return (
     <View style={{
-      backgroundColor: "#1a1020",
+      backgroundColor: bg,
       borderBottomWidth: 1,
-      borderBottomColor: "rgba(248,113,113,0.3)",
+      borderBottomColor: border,
       paddingTop: top + 6,
       paddingBottom: 6,
       paddingHorizontal: 16,
@@ -145,10 +163,8 @@ function OfflineBanner() {
       justifyContent: "center",
       gap: 6,
     }}>
-      <Ionicons name="cloud-offline-outline" size={14} color="#f87171" />
-      <Text style={{ color: "#f87171", fontSize: 12, fontWeight: "600" }}>
-        No internet connection
-      </Text>
+      <Ionicons name={icon} size={14} color={color} />
+      <Text style={{ color, fontSize: 12, fontWeight: "600" }}>{label}</Text>
     </View>
   )
 }
@@ -166,9 +182,7 @@ Notifications.setNotificationHandler({
   }),
 })
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
-})
+const asyncStoragePersister = createAsyncStoragePersister({ storage: AsyncStorage })
 
 async function registerForPushNotifications() {
   if (!Device.isDevice) return
@@ -249,25 +263,7 @@ function handleAppUrl(url?: string) {
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   const scheme = useColorScheme()
-  const [isOnline, setIsOnline] = useState(true)
   const [showLaunchIntro, setShowLaunchIntro] = useState(true)
-  const prevOnlineRef = useRef<boolean | null>(null)
-
-  useEffect(() => {
-    NetInfo.fetch().then((state) => setIsOnline(!!state.isConnected && !!state.isInternetReachable))
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsOnline(!!state.isConnected && !!state.isInternetReachable)
-    })
-    return () => unsubscribe()
-  }, [])
-
-  // Refetch all active queries the moment connectivity is restored
-  useEffect(() => {
-    if (prevOnlineRef.current === false && isOnline) {
-      queryClient.refetchQueries({ type: "active" })
-    }
-    prevOnlineRef.current = isOnline
-  }, [isOnline])
 
   useEffect(() => {
     loadSession()
@@ -316,27 +312,29 @@ export default function RootLayout() {
   if (loading) return null
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>
-          <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
-          {showLaunchIntro ? (
-            <LaunchIntro />
-          ) : (
-            <>
-              {!isOnline && <OfflineBanner />}
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
-                <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
-              </Stack>
-            </>
-          )}
-          <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
-        </View>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
+      <OfflineProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
+            {showLaunchIntro ? (
+              <LaunchIntro />
+            ) : (
+              <>
+                <OfflineBanner />
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
+                  <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
+                </Stack>
+              </>
+            )}
+            <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
+          </View>
+        </GestureHandlerRootView>
+      </OfflineProvider>
+    </PersistQueryClientProvider>
   )
 }

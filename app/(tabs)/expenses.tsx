@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
 import { useTheme } from "@/lib/theme"
+import { useOffline } from "@/context/OfflineContext"
 import { transactionsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
@@ -79,6 +80,7 @@ export default function Expenses() {
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const queryClient = useQueryClient()
+  const { isOnline } = useOffline()
 
   const now = new Date()
   const initialMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -347,7 +349,7 @@ export default function Expenses() {
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <Text style={{ color: C.text, fontSize: 22, fontWeight: "700" }}>Expenses</Text>
-          <TouchableOpacity onPress={() => importMutation.mutate()} disabled={importMutation.isPending} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <TouchableOpacity onPress={isOnline ? () => importMutation.mutate() : undefined} disabled={importMutation.isPending || !isOnline} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5, opacity: isOnline ? 1 : 0.4 }}>
             {importMutation.isPending
               ? <ActivityIndicator size="small" color="#6366f1" />
               : <Ionicons name="document-text-outline" size={14} color="#6366f1" />}

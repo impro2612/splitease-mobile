@@ -16,6 +16,7 @@ import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { useTheme } from "@/lib/theme"
+import { useOffline } from "@/context/OfflineContext"
 import { getRate } from "@/lib/exchange"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
@@ -23,6 +24,7 @@ export default function Groups() {
   const { user, currency: defaultCurrency } = useAuthStore()
   const C = useTheme()
   const queryClient = useQueryClient()
+  const { isOnline } = useOffline()
   const insets = useSafeAreaInsets()
   const { height: windowH } = useWindowDimensions()
   const [showCreate, setShowCreate] = useState(false)
@@ -152,7 +154,10 @@ export default function Groups() {
             <Text style={{ color: C.textSub, fontSize: 13 }}>{groups.length} group{groups.length !== 1 ? "s" : ""}</Text>
           </View>
           <TouchableOpacity
-            onPress={() => setShowCreate(true)}
+            onPress={() => {
+              if (!isOnline) { Toast.show({ type: "error", text1: "No connection", text2: "Creating a group requires internet" }); return }
+              setShowCreate(true)
+            }}
             className="bg-primary rounded-2xl px-4 py-2.5 flex-row items-center gap-2"
           >
             <Ionicons name="add" size={18} color="#fff" />
@@ -189,7 +194,10 @@ export default function Groups() {
               <Text style={{ fontSize: 56, marginBottom: 16 }}>👥</Text>
               <Text style={{ color: C.text, fontSize: 18, fontWeight: "600", marginBottom: 8 }}>No groups yet</Text>
               <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 24 }}>Create a group to start splitting expenses</Text>
-              <TouchableOpacity onPress={() => setShowCreate(true)} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+              <TouchableOpacity onPress={() => {
+                if (!isOnline) { Toast.show({ type: "error", text1: "No connection", text2: "Creating a group requires internet" }); return }
+                setShowCreate(true)
+              }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
                 <Text style={{ color: C.text, fontWeight: "600" }}>Create first group</Text>
               </TouchableOpacity>
             </View>

@@ -9,6 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@/lib/theme"
+import { useOffline } from "@/context/OfflineContext"
 
 const MORE_ITEMS = [
   {
@@ -56,6 +57,7 @@ export default function TabsLayout() {
   const { height } = useWindowDimensions()
   const hiddenTranslateY = Math.max(300, height)
 
+  const { isOnline } = useOffline()
   const [moreVisible, setMoreVisible] = useState(false)
   const slideAnim = useRef(new Animated.Value(hiddenTranslateY)).current
   const panY = useRef(new Animated.Value(0)).current
@@ -242,7 +244,7 @@ export default function TabsLayout() {
           {MORE_ITEMS.map((item) => (
             <TouchableOpacity
               key={item.key}
-              onPress={() => handleItem(item.route)}
+              onPress={isOnline ? () => handleItem(item.route) : undefined}
               activeOpacity={0.75}
               style={{
                 flexDirection: "row",
@@ -255,6 +257,7 @@ export default function TabsLayout() {
                 marginBottom: 10,
                 borderWidth: 1,
                 borderColor: C.border,
+                opacity: isOnline ? 1 : 0.4,
               }}
             >
               <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: item.bg, alignItems: "center", justifyContent: "center" }}>
