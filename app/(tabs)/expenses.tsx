@@ -410,7 +410,8 @@ export default function Expenses() {
           <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
         ) : (!summary || summary.transactionCount === 0) && activeTab !== "suggestions" ? (
           <EmptyState
-            onImport={() => importMutation.mutate()}
+            onImport={isOnline ? () => importMutation.mutate() : undefined}
+            disabled={!isOnline}
             C={C}
           />
         ) : (
@@ -589,8 +590,8 @@ export default function Expenses() {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function EmptyState({ onImport, C }: {
-  onImport: () => void; C: ReturnType<typeof useTheme>
+function EmptyState({ onImport, disabled, C }: {
+  onImport: (() => void) | undefined; disabled?: boolean; C: ReturnType<typeof useTheme>
 }) {
   return (
     <View style={{ alignItems: "center", padding: 40 }}>
@@ -599,7 +600,7 @@ function EmptyState({ onImport, C }: {
       <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 32 }}>
         Upload a PDF bank statement to automatically import and categorize your transactions.
       </Text>
-      <TouchableOpacity onPress={onImport} style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, width: "100%" }}>
+      <TouchableOpacity onPress={onImport} disabled={disabled} style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, width: "100%", opacity: disabled ? 0.4 : 1 }}>
         <Ionicons name="document-text-outline" size={18} color="#fff" />
         <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Import Bank Statement (PDF)</Text>
       </TouchableOpacity>

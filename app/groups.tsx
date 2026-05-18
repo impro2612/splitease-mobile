@@ -154,11 +154,10 @@ export default function Groups() {
             <Text style={{ color: C.textSub, fontSize: 13 }}>{groups.length} group{groups.length !== 1 ? "s" : ""}</Text>
           </View>
           <TouchableOpacity
-            onPress={() => {
-              if (!isOnline) { Toast.show({ type: "error", text1: "No connection", text2: "Creating a group requires internet" }); return }
-              setShowCreate(true)
-            }}
+            onPress={isOnline ? () => setShowCreate(true) : undefined}
+            disabled={!isOnline}
             className="bg-primary rounded-2xl px-4 py-2.5 flex-row items-center gap-2"
+            style={{ opacity: isOnline ? 1 : 0.4 }}
           >
             <Ionicons name="add" size={18} color="#fff" />
             <Text className="text-white font-semibold text-sm">New Group</Text>
@@ -194,10 +193,7 @@ export default function Groups() {
               <Text style={{ fontSize: 56, marginBottom: 16 }}>👥</Text>
               <Text style={{ color: C.text, fontSize: 18, fontWeight: "600", marginBottom: 8 }}>No groups yet</Text>
               <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 24 }}>Create a group to start splitting expenses</Text>
-              <TouchableOpacity onPress={() => {
-                if (!isOnline) { Toast.show({ type: "error", text1: "No connection", text2: "Creating a group requires internet" }); return }
-                setShowCreate(true)
-              }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
+              <TouchableOpacity onPress={isOnline ? () => setShowCreate(true) : undefined} disabled={!isOnline} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12, opacity: isOnline ? 1 : 0.4 }}>
                 <Text style={{ color: C.text, fontWeight: "600" }}>Create first group</Text>
               </TouchableOpacity>
             </View>

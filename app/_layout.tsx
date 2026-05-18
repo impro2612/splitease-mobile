@@ -156,15 +156,19 @@ function OfflineBanner() {
       borderBottomWidth: 1,
       borderBottomColor: border,
       paddingTop: top + 6,
-      paddingBottom: 6,
+      paddingBottom: 8,
       paddingHorizontal: 16,
-      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 6,
+      gap: 2,
     }}>
-      <Ionicons name={icon} size={14} color={color} />
-      <Text style={{ color, fontSize: 12, fontWeight: "600" }}>{label}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Ionicons name={icon} size={14} color={color} />
+        <Text style={{ color, fontSize: 12, fontWeight: "600" }}>{label}</Text>
+      </View>
+      {!isSyncing && (
+        <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "400" }}>Working in offline mode</Text>
+      )}
     </View>
   )
 }
