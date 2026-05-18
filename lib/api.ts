@@ -2,12 +2,7 @@ import axios from "axios"
 import * as SecureStore from "expo-secure-store"
 import { router } from "expo-router"
 
-// ← Change this to your Next.js server URL
-// For local dev: use your Mac's local network IP (e.g. http://192.168.1.5:3000)
-// For production: use your deployed URL
-// Replace with your ngrok URL when testing on a physical device
-// e.g. export const API_BASE_URL = "https://abc123.ngrok-free.app"
-export const API_BASE_URL = "https://splitwithease.vercel.app"
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "https://splitwithease.vercel.app"
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
