@@ -5,7 +5,6 @@ import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { QueryClientProvider } from "@tanstack/react-query"
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client"
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -313,30 +312,30 @@ export default function RootLayout() {
     }
   }, [loading])
 
-  if (loading) return null
-
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
       <OfflineProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <View style={{ flex: 1 }}>
-            <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
-            {showLaunchIntro ? (
-              <LaunchIntro />
-            ) : (
-              <>
-                <OfflineBanner />
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-                  <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
-                  <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
-                </Stack>
-              </>
-            )}
-            <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
-          </View>
+          {loading ? null : (
+            <View style={{ flex: 1 }}>
+              <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
+              {showLaunchIntro ? (
+                <LaunchIntro />
+              ) : (
+                <>
+                  <OfflineBanner />
+                  <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
+                    <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
+                  </Stack>
+                </>
+              )}
+              <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
+            </View>
+          )}
         </GestureHandlerRootView>
       </OfflineProvider>
     </PersistQueryClientProvider>
