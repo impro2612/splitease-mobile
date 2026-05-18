@@ -7,6 +7,7 @@ import { useTheme } from "@/lib/theme"
 import { useQuery } from "@tanstack/react-query"
 import { timelineApi } from "@/lib/api"
 import WebView from "react-native-webview"
+import { LEAFLET_CSS, LEAFLET_JS } from "@/lib/leaflet-bundle"
 
 const PURPLE = "#a78bfa"
 const PURPLE_BG = "rgba(167,139,250,0.12)"
@@ -41,7 +42,7 @@ function buildMapHtml(pins: Pin[], bottomInset: number = 0) {
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>${LEAFLET_CSS}</style>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body, #map { width:100%; height:100%; background:#e8edf2; }
@@ -86,7 +87,7 @@ function buildMapHtml(pins: Pin[], bottomInset: number = 0) {
 </head>
 <body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>${LEAFLET_JS}</script>
 <script>
 const pins = ${pinsJson};
 

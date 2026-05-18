@@ -8,7 +8,7 @@ import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useQuery } from "@tanstack/react-query"
 import { wrappedApi } from "@/lib/api"
-import LinearGradient from "react-native-linear-gradient"
+import { LinearGradient } from "expo-linear-gradient"
 import { useTheme } from "@/lib/theme"
 
 const { width: SCREEN_W } = Dimensions.get("window")
