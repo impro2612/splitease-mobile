@@ -4,6 +4,7 @@ import {
   Modal, ActivityIndicator, FlatList, Platform,
   useWindowDimensions, Animated, Pressable,
 } from "react-native"
+import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import Pusher from "pusher-js/react-native"
 import * as SecureStore from "expo-secure-store"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -284,13 +285,21 @@ export default function GroupDetail() {
 
   // Expense reactions
   const QUICK_REACTION_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
-  const [reactionPickerExp, setReactionPickerExp] = useState<any | null>(null)
+  const [reactionPickerState, setReactionPickerState] = useState<{ exp: any; anchor: MenuAnchor } | null>(null)
+  const reactionPickerExp = reactionPickerState?.exp ?? null
   const [expenseEmojiPickerOpen, setExpenseEmojiPickerOpen] = useState(false)
   const [togglingReaction, setTogglingReaction] = useState(false)
+  const expenseRefs = useRef<Record<string, any>>({})
+
+  function openReactionPicker(exp: any) {
+    expenseRefs.current[exp.id]?.measure((_x: number, _y: number, w: number, h: number, pageX: number, pageY: number) => {
+      setReactionPickerState({ exp, anchor: { pageX, pageY, width: w, height: h } })
+    })
+  }
 
   async function toggleReaction(expenseId: string, emoji: string) {
     if (togglingReaction || !id) return
-    setReactionPickerExp(null)
+    setReactionPickerState(null)
     setExpenseEmojiPickerOpen(false)
     setTogglingReaction(true)
     try {
@@ -1046,8 +1055,9 @@ export default function GroupDetail() {
                 return (
                   <TouchableOpacity
                     key={exp.id}
+                    ref={(r) => { expenseRefs.current[exp.id] = r }}
                     onPress={() => openEdit(exp)}
-                    onLongPress={() => setReactionPickerExp(exp)}
+                    onLongPress={() => openReactionPicker(exp)}
                     delayLongPress={350}
                     activeOpacity={0.75}
                     style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, gap: 10 }}
@@ -1089,7 +1099,7 @@ export default function GroupDetail() {
                               )
                             })}
                             <TouchableOpacity
-                              onPress={() => setReactionPickerExp(exp)}
+                              onPress={() => openReactionPicker(exp)}
                               style={{ backgroundColor: C.iconBg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
                             >
                               <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 18 }}>+</Text>
@@ -1826,66 +1836,21 @@ export default function GroupDetail() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Expense Emoji Reaction Picker */}
-      <Modal visible={!!reactionPickerExp} transparent animationType="fade" onRequestClose={() => { setReactionPickerExp(null); setExpenseEmojiPickerOpen(false) }}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} onPress={() => { setReactionPickerExp(null); setExpenseEmojiPickerOpen(false) }}>
-          <Pressable onPress={(e) => e.stopPropagation()}>
-            <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 16, paddingBottom: insets.bottom + 20 }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 14 }} />
-              <Text style={{ color: C.text, fontWeight: "700", fontSize: 14, marginBottom: 12, paddingHorizontal: 20 }} numberOfLines={1}>
-                React to "{reactionPickerExp?.description}"
-              </Text>
-
-              {/* Quick-react bar — same style as messages */}
-              <View style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                marginHorizontal: 20,
-                backgroundColor: C.bg,
-                borderRadius: 32,
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderWidth: 1,
-                borderColor: C.border,
-              }}>
-                {QUICK_REACTION_EMOJIS.map((emoji) => {
-                  const isMine = (reactionPickerExp?.reactions ?? []).some(
-                    (r: any) => r.emoji === emoji && r.userId === user?.id
-                  )
-                  return (
-                    <TouchableOpacity
-                      key={emoji}
-                      onPress={() => toggleReaction(reactionPickerExp.id, emoji)}
-                      style={{
-                        width: 40, height: 40, borderRadius: 20,
-                        alignItems: "center", justifyContent: "center",
-                        backgroundColor: isMine ? "rgba(99,102,241,0.2)" : "transparent",
-                        borderWidth: isMine ? 1.5 : 0,
-                        borderColor: "#6366f1",
-                      }}
-                    >
-                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
-                    </TouchableOpacity>
-                  )
-                })}
-                <TouchableOpacity
-                  onPress={() => setExpenseEmojiPickerOpen(true)}
-                  style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: C.iconBg }}
-                >
-                  <Ionicons name="add" size={22} color={C.textSub} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {/* Expense Emoji Reaction Picker — floating */}
+      <FloatingContextMenu
+        visible={!!reactionPickerState}
+        anchor={reactionPickerState?.anchor ?? null}
+        emojis={QUICK_REACTION_EMOJIS}
+        reactedEmojis={(reactionPickerExp?.reactions ?? []).filter((r: any) => r.userId === user?.id).map((r: any) => r.emoji)}
+        onEmojiPress={(emoji) => reactionPickerExp && toggleReaction(reactionPickerExp.id, emoji)}
+        onMoreEmoji={() => setExpenseEmojiPickerOpen(true)}
+        onDismiss={() => { setReactionPickerState(null); setExpenseEmojiPickerOpen(false) }}
+      />
 
       {/* Full emoji picker for expenses */}
       <EmojiKeyboard
         onEmojiSelected={(e) => {
-          if (reactionPickerExp) toggleReaction(reactionPickerExp.id, e.emoji)
+          if (reactionPickerState?.exp) toggleReaction(reactionPickerState.exp.id, e.emoji)
         }}
         open={expenseEmojiPickerOpen}
         onClose={() => setExpenseEmojiPickerOpen(false)}

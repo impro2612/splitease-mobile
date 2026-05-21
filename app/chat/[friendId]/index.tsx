@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Alert,
   ScrollView,
 } from "react-native"
+import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import * as Clipboard from "expo-clipboard"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@/lib/theme"
@@ -109,11 +110,13 @@ export default function ChatScreen() {
   const [hasMore, setHasMore] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
-  const [actionMsg, setActionMsg] = useState<Message | null>(null)
+  const [actionState, setActionState] = useState<{ msg: Message; anchor: MenuAnchor } | null>(null)
+  const actionMsg = actionState?.msg ?? null
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const isSelecting = selectedIds.size > 0
 
   const flatListRef = useRef<FlatList>(null)
+  const msgRefs = useRef<Record<string, any>>({})
   const lastFetchRef = useRef<string | null>(null)
   const pusherRef = useRef<Pusher | null>(null)
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -318,7 +321,7 @@ export default function ChatScreen() {
   // ── Reactions ─────────────────────────────────────────────────────────────────
   async function toggleReaction(msg: Message, emoji: string) {
     if (!msg.id) return
-    setActionMsg(null)
+    setActionState(null)
     setEmojiPickerOpen(false)
     // Optimistic update
     setMessages((prev) => prev.map((m) => {
@@ -497,9 +500,12 @@ export default function ChatScreen() {
 
               return (
                 <Pressable
+                  ref={(r) => { msgRefs.current[msgId] = r }}
                   onLongPress={() => {
                     if (msg.pending || isSelecting) return
-                    setActionMsg(msg)
+                    msgRefs.current[msgId]?.measure((_x: number, _y: number, w: number, h: number, pageX: number, pageY: number) => {
+                      setActionState({ msg, anchor: { pageX, pageY, width: w, height: h } })
+                    })
                   }}
                   onPress={() => {
                     if (isSelecting && msg.id) toggleSelect(msgId)
@@ -643,111 +649,43 @@ export default function ChatScreen() {
         )}
       </KeyboardAvoidingView>
 
-      {/* Message action bottom sheet */}
-      <Modal
-        visible={!!actionMsg}
-        transparent
-        animationType="fade"
-        onRequestClose={() => { setActionMsg(null); setEmojiPickerOpen(false) }}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
-          onPress={() => { setActionMsg(null); setEmojiPickerOpen(false) }}
-        >
-          <Pressable onPress={() => {}}>
-            <View style={{ backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: insets.bottom + 8, paddingTop: 8 }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 12 }} />
-
-              {/* Quick-react bar */}
-              <View style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                marginHorizontal: 20,
-                marginBottom: 12,
-                backgroundColor: C.bg,
-                borderRadius: 32,
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderWidth: 1,
-                borderColor: C.border,
-              }}>
-                {QUICK_EMOJIS.map((emoji) => {
-                  const alreadyReacted = actionMsg?.reactions?.some((r) => r.userId === myId && r.emoji === emoji)
-                  return (
-                    <TouchableOpacity
-                      key={emoji}
-                      onPress={() => actionMsg && toggleReaction(actionMsg, emoji)}
-                      style={{
-                        width: 40, height: 40, borderRadius: 20,
-                        alignItems: "center", justifyContent: "center",
-                        backgroundColor: alreadyReacted ? "rgba(99,102,241,0.2)" : "transparent",
-                        borderWidth: alreadyReacted ? 1.5 : 0,
-                        borderColor: "#6366f1",
-                      }}
-                    >
-                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
-                    </TouchableOpacity>
-                  )
-                })}
-                {/* + button */}
-                <TouchableOpacity
-                  onPress={() => setEmojiPickerOpen(true)}
-                  style={{
-                    width: 40, height: 40, borderRadius: 20,
-                    alignItems: "center", justifyContent: "center",
-                    backgroundColor: C.iconBg,
-                  }}
-                >
-                  <Ionicons name="add" size={22} color={C.textSub} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ height: 1, backgroundColor: C.border, marginHorizontal: 20, marginBottom: 4 }} />
-
-              {/* Copy */}
-              <TouchableOpacity
-                onPress={async () => {
-                  if (!actionMsg) return
-                  await Clipboard.setStringAsync(actionMsg.content)
-                  setActionMsg(null)
-                  Toast.show({ type: "success", text1: "Copied to clipboard" })
-                }}
-                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 14, gap: 16 }}
-              >
-                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="copy-outline" size={20} color="#a5b4fc" />
-                </View>
-                <Text style={{ color: C.text, fontSize: 16, fontWeight: "500" }}>Copy Text</Text>
-              </TouchableOpacity>
-
-              <View style={{ height: 1, backgroundColor: C.border, marginHorizontal: 24 }} />
-
-              {/* Delete */}
-              <TouchableOpacity
-                onPress={() => {
-                  if (!actionMsg?.id) return
-                  const msgId = actionMsg.id
-                  setActionMsg(null)
-                  setSelectedIds(new Set([msgId]))
-                }}
-                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingVertical: 14, gap: 16 }}
-              >
-                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="trash-outline" size={20} color="#f87171" />
-                </View>
-                <Text style={{ color: "#f87171", fontSize: 16, fontWeight: "500" }}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {/* Message action — floating context menu */}
+      <FloatingContextMenu
+        visible={!!actionState}
+        anchor={actionState?.anchor ?? null}
+        emojis={QUICK_EMOJIS}
+        reactedEmojis={(actionMsg?.reactions ?? []).filter((r) => r.userId === myId).map((r) => r.emoji)}
+        onEmojiPress={(emoji) => actionMsg && toggleReaction(actionMsg, emoji)}
+        onMoreEmoji={() => setEmojiPickerOpen(true)}
+        actions={[
+          {
+            label: "Copy Text",
+            icon: "copy-outline",
+            onPress: async () => {
+              if (!actionMsg) return
+              await Clipboard.setStringAsync(actionMsg.content)
+              Toast.show({ type: "success", text1: "Copied to clipboard" })
+            },
+          },
+          ...(actionMsg?.id ? [{
+            label: "Delete",
+            icon: "trash-outline",
+            color: "#f87171",
+            bgColor: "rgba(239,68,68,0.15)",
+            onPress: () => {
+              if (!actionMsg?.id) return
+              const id = actionMsg.id
+              setSelectedIds(new Set([id]))
+            },
+          }] : []),
+        ]}
+        onDismiss={() => { setActionState(null); setEmojiPickerOpen(false) }}
+      />
 
       {/* Full emoji picker */}
       <EmojiKeyboard
         onEmojiSelected={(e) => {
-          if (actionMsg) toggleReaction(actionMsg, e.emoji)
+          if (actionState?.msg) toggleReaction(actionState.msg, e.emoji)
         }}
         open={emojiPickerOpen}
         onClose={() => setEmojiPickerOpen(false)}
