@@ -206,7 +206,7 @@ export default function Timeline() {
               source={{ html: buildMapHtml(visiblePins, bottomInset) }}
               style={{ flex: 1, backgroundColor: C.bg }}
               scrollEnabled={false}
-              onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
+              onLoadEnd={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
               originWhitelist={["*"]}
               javaScriptEnabled
             />
