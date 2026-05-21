@@ -48,6 +48,15 @@ const MORE_ITEMS = [
     subtitle: "Your year in money — shareable recap",
     route: "/scrapbook",
   },
+  {
+    key: "spend-diary",
+    icon: "journal-outline" as const,
+    color: "#06b6d4",
+    bg: "rgba(6,182,212,0.12)",
+    title: "Spend Diary",
+    subtitle: "Track your personal expenses privately",
+    route: "/spend-diary",
+  },
 ]
 
 export default function TabsLayout() {

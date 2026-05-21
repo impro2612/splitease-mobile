@@ -244,6 +244,17 @@ export const borrowBookApi = {
     api.post(`/api/borrow-book/${id}/payments`, data),
 }
 
+export const spendDiaryApi = {
+  list: () => api.get("/api/spend-diary"),
+  create: (title: string) => api.post("/api/spend-diary", { title }),
+  delete: (id: string) => api.delete(`/api/spend-diary/${id}`),
+  entries: (id: string) => api.get(`/api/spend-diary/${id}/entries`),
+  addEntry: (id: string, data: { title: string; amount: number; currency?: string; date?: string }) =>
+    api.post(`/api/spend-diary/${id}/entries`, data),
+  deleteEntry: (id: string, entryId: string) =>
+    api.delete(`/api/spend-diary/${id}/entries/${entryId}`),
+}
+
 export const tripsApi = {
   list: () => api.get("/api/trips"),
   get: (id: string) => api.get(`/api/trips/${id}`),
