@@ -51,52 +51,61 @@ function BottomSheet({
   const { bottom } = useSafeAreaInsets()
   const C = useTheme()
   const { height } = useWindowDimensions()
-  const slideAnim = useRef(new Animated.Value(height)).current
-  const overlayAnim = useRef(new Animated.Value(0)).current
+  const hiddenTranslateY = Math.max(300, height)
+  const [mounted, setMounted] = useState(visible)
+  const slideAnim = useRef(new Animated.Value(hiddenTranslateY)).current
   const panY = useRef(new Animated.Value(0)).current
+  const overlayAnim = useRef(new Animated.Value(0)).current
 
   const translateY = Animated.add(slideAnim, panY.interpolate({
     inputRange: [-9999, 0, 9999], outputRange: [0, 0, 9999],
   }))
 
-  const open = () => {
-    panY.setValue(0); slideAnim.setValue(height)
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      panY.setValue(0)
+      slideAnim.setValue(hiddenTranslateY)
+      overlayAnim.setValue(0)
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
+        Animated.timing(overlayAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start()
+    } else {
+      setMounted(false)
+      panY.setValue(0)
+      slideAnim.setValue(hiddenTranslateY)
+      overlayAnim.setValue(0)
+    }
+  }, [visible])
+
+  function closeSheet() {
     Animated.parallel([
-      Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
-      Animated.timing(overlayAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start()
-  }
-  const close = (cb?: () => void) => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: height, duration: 220, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: hiddenTranslateY, duration: 220, useNativeDriver: true }),
       Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start(() => { panY.setValue(0); cb?.() })
+    ]).start(() => { panY.setValue(0); setMounted(false); onClose() })
   }
 
+  const shouldStartDrag = (_: any, g: { dy: number; dx: number }) => g.dy > 8 && g.dy > Math.abs(g.dx)
+
   const panResponder = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_: any, g: any) => g.dy > 8 && g.dy > Math.abs(g.dx),
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: shouldStartDrag,
+    onMoveShouldSetPanResponderCapture: shouldStartDrag,
     onPanResponderMove: (_: any, g: any) => { if (g.dy > 0) panY.setValue(g.dy) },
+    onPanResponderTerminationRequest: () => false,
     onPanResponderRelease: (_: any, g: any) => {
-      if (g.dy > 80 || g.vy > 0.5) { slideAnim.setValue(Math.max(0, g.dy)); panY.setValue(0); close(onClose) }
+      if (g.dy > 80 || g.vy > 0.5) { slideAnim.setValue(Math.max(0, g.dy)); panY.setValue(0); closeSheet() }
       else Animated.spring(panY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
     },
   })).current
 
-  // trigger open animation when visible changes
-  useState(() => { if (visible) open() })
-  const prevVisible = useRef(false)
-  if (visible !== prevVisible.current) {
-    prevVisible.current = visible
-    if (visible) open()
-  }
-
-  if (!visible) return null
+  if (!mounted) return null
 
   return (
-    <Modal transparent visible animationType="none" onRequestClose={() => close(onClose)}>
+    <Modal transparent visible={mounted} animationType="none" onRequestClose={closeSheet}>
       <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", opacity: overlayAnim }}>
-        <Pressable style={{ flex: 1 }} onPress={() => close(onClose)} />
+        <Pressable style={{ flex: 1 }} onPress={closeSheet} />
       </Animated.View>
       <Animated.View
         {...panResponder.panHandlers}
