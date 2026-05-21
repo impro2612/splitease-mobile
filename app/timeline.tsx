@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from "react"
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, ScrollView } from "react-native"
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -129,6 +129,9 @@ else if (pins.length > 1) {
   const bounds = L.latLngBounds(pins.map(p => [p.lat, p.lng]));
   map.fitBounds(bounds.pad(0.3));
 }
+
+// Force Leaflet to recalculate container size after layout settles
+setTimeout(() => { map.invalidateSize(); }, 200);
 </script>
 </body>
 </html>`
@@ -137,7 +140,7 @@ else if (pins.length > 1) {
 export default function Timeline() {
   const C = useTheme()
   const { bottom: bottomInset } = useSafeAreaInsets()
-  const fadeAnim = useRef(new Animated.Value(0)).current
+  const [mapReady, setMapReady] = useState(false)
 
   const { data: pins = [], isLoading, isError } = useQuery<Pin[]>({
     queryKey: ["timeline-pins"],
@@ -159,7 +162,7 @@ export default function Timeline() {
   }, [pins, activeYear])
 
   const handleYearSelect = (year: number) => {
-    fadeAnim.setValue(0)
+    setMapReady(false)
     setSelectedYear(year)
   }
 
@@ -200,17 +203,24 @@ export default function Timeline() {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-            <WebView
-              key={activeYear ?? "all"}
-              source={{ html: buildMapHtml(visiblePins, bottomInset) }}
-              style={{ flex: 1, backgroundColor: C.bg }}
-              scrollEnabled={false}
-              onLoadEnd={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
-              originWhitelist={["*"]}
-              javaScriptEnabled
-            />
-          </Animated.View>
+          {/* WebView always at full opacity — opacity:0 on Android blocks tile loading */}
+          <WebView
+            key={activeYear ?? "all"}
+            source={{ html: buildMapHtml(visiblePins, bottomInset), baseUrl: "https://splitwithease.vercel.app" }}
+            style={{ flex: 1 }}
+            scrollEnabled={false}
+            onLoadEnd={() => setMapReady(true)}
+            originWhitelist={["*"]}
+            javaScriptEnabled
+            domStorageEnabled
+            thirdPartyCookiesEnabled
+          />
+          {/* Opaque overlay hides blank map until tiles render */}
+          {!mapReady && (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }]}>
+              <ActivityIndicator color={PURPLE} size="large" />
+            </View>
+          )}
 
           {/* Floating year filter over map */}
           {availableYears.length > 0 && (
