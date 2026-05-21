@@ -1,8 +1,8 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, Pressable, RefreshControl,
-  Platform, Animated, PanResponder, useWindowDimensions, Alert,
+  Platform, Animated, PanResponder, useWindowDimensions,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -137,13 +137,19 @@ export default function SpendDiary() {
   const [showCreateDiary, setShowCreateDiary] = useState(false)
   const [newDiaryTitle, setNewDiaryTitle] = useState("")
 
-  // ── Add entry sheet ───────────────────────────────────────────────────────────
+  // ── Add / Edit entry sheet ────────────────────────────────────────────────────
   const [showAddEntry, setShowAddEntry] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
   const [entryTitle, setEntryTitle] = useState("")
   const [entryAmount, setEntryAmount] = useState("")
   const [entryCurrency, setEntryCurrency] = useState("INR")
   const [entryDate, setEntryDate] = useState(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
+
+  // ── Confirm dialog ────────────────────────────────────────────────────────────
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string; message: string; confirmText: string; danger?: boolean; onConfirm: () => void
+  } | null>(null)
 
   // ── Queries ───────────────────────────────────────────────────────────────────
   const { data: diaries = [], isLoading, refetch } = useQuery<Diary[]>({
@@ -200,6 +206,24 @@ export default function SpendDiary() {
     onError: () => Toast.show({ type: "error", text1: "Failed to add expense" }),
   })
 
+  const editEntry = useMutation({
+    mutationFn: () => spendDiaryApi.editEntry(activeDiary!.id, editingEntry!.id, {
+      title: entryTitle.trim(),
+      amount: parseFloat(entryAmount),
+      currency: entryCurrency,
+      date: entryDate.toISOString(),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["spend-diary-entries", activeDiary?.id] })
+      qc.invalidateQueries({ queryKey: ["spend-diary"] })
+      setShowAddEntry(false)
+      setEditingEntry(null)
+      resetEntryForm()
+      Toast.show({ type: "success", text1: "Expense updated ✓" })
+    },
+    onError: () => Toast.show({ type: "error", text1: "Failed to update expense" }),
+  })
+
   const deleteEntry = useMutation({
     mutationFn: (entryId: string) => spendDiaryApi.deleteEntry(activeDiary!.id, entryId),
     onSuccess: () => {
@@ -213,6 +237,22 @@ export default function SpendDiary() {
     setEntryTitle(""); setEntryAmount(""); setEntryCurrency("INR"); setEntryDate(new Date())
   }
 
+  function openEditEntry(entry: Entry) {
+    setEditingEntry(entry)
+    setEntryTitle(entry.title)
+    setEntryAmount(String(entry.amount))
+    setEntryCurrency(entry.currency)
+    setEntryDate(new Date(entry.date))
+    setShowAddEntry(true)
+  }
+
+  function closeEntrySheet() {
+    setShowAddEntry(false)
+    setEditingEntry(null)
+    resetEntryForm()
+  }
+
+  const isEditMode = !!editingEntry
   const totalSpent = entries.reduce((s, e) => s + e.amount, 0)
   const entryCurrencySymbol = { INR: "₹", USD: "$", EUR: "€", GBP: "£" }[entryCurrency] ?? entryCurrency
 
@@ -232,10 +272,13 @@ export default function SpendDiary() {
             {activeDiary.title}
           </Text>
           <TouchableOpacity
-            onPress={() => Alert.alert("Delete Diary", `Delete "${activeDiary.title}" and all its expenses?`, [
-              { text: "Cancel", style: "cancel" },
-              { text: "Delete", style: "destructive", onPress: () => deleteDiary.mutate(activeDiary.id) },
-            ])}
+            onPress={() => setConfirmDialog({
+              title: "Delete Diary",
+              message: `Delete "${activeDiary.title}" and all its expenses? This cannot be undone.`,
+              confirmText: "Delete",
+              danger: true,
+              onConfirm: () => deleteDiary.mutate(activeDiary.id),
+            })}
             style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center" }}
           >
             <Ionicons name="trash-outline" size={17} color="#f87171" />
@@ -286,35 +329,43 @@ export default function SpendDiary() {
             refreshControl={<RefreshControl refreshing={false} onRefresh={refetchEntries} tintColor={ACCENT} />}
           >
             {entries.map((entry) => (
-              <View
+              <TouchableOpacity
                 key={entry.id}
+                onPress={() => openEditEntry(entry)}
+                activeOpacity={0.75}
                 style={{
                   backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border,
                   paddingHorizontal: 16, paddingVertical: 14,
                   flexDirection: "row", alignItems: "center", gap: 12,
                 }}
               >
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="receipt-outline" size={16} color={ACCENT} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>{entry.title}</Text>
                   <Text style={{ color: C.textSub, fontSize: 12, marginTop: 3 }}>{fmtDate(entry.date)}</Text>
                 </View>
                 <Text style={{ color: ACCENT, fontWeight: "800", fontSize: 15 }}>{fmt(entry.amount, entry.currency)}</Text>
                 <TouchableOpacity
-                  onPress={() => Alert.alert("Delete Expense", `Delete "${entry.title}"?`, [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Delete", style: "destructive", onPress: () => deleteEntry.mutate(entry.id) },
-                  ])}
+                  onPress={() => setConfirmDialog({
+                    title: "Delete Expense",
+                    message: `Delete "${entry.title}"?`,
+                    confirmText: "Delete",
+                    danger: true,
+                    onConfirm: () => deleteEntry.mutate(entry.id),
+                  })}
                   style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center" }}
                 >
                   <Ionicons name="trash-outline" size={15} color="#f87171" />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         )}
 
-        {/* Add Entry Sheet */}
-        <BottomSheet visible={showAddEntry} onClose={() => { setShowAddEntry(false); resetEntryForm() }} title="Add Expense">
+        {/* Add / Edit Entry Sheet */}
+        <BottomSheet visible={showAddEntry} onClose={closeEntrySheet} title={isEditMode ? "Edit Expense" : "Add Expense"}>
           <View style={{ gap: 14 }}>
             <View>
               <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Title</Text>
@@ -378,20 +429,47 @@ export default function SpendDiary() {
             </View>
 
             <TouchableOpacity
-              onPress={() => addEntry.mutate()}
-              disabled={!entryTitle.trim() || !entryAmount || parseFloat(entryAmount || "0") <= 0 || addEntry.isPending}
+              onPress={() => isEditMode ? editEntry.mutate() : addEntry.mutate()}
+              disabled={!entryTitle.trim() || !entryAmount || parseFloat(entryAmount || "0") <= 0 || addEntry.isPending || editEntry.isPending}
               style={{
                 height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: 4,
                 backgroundColor: (!entryTitle.trim() || !entryAmount || parseFloat(entryAmount || "0") <= 0) ? `${ACCENT}55` : ACCENT,
               }}
             >
-              {addEntry.isPending
+              {(addEntry.isPending || editEntry.isPending)
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save Expense</Text>
+                : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>{isEditMode ? "Update Expense" : "Save Expense"}</Text>
               }
             </TouchableOpacity>
           </View>
         </BottomSheet>
+
+        {/* Custom Confirm Dialog */}
+        <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 28 }}>
+            <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+              <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+                <Ionicons name="warning-outline" size={26} color="#f87171" />
+              </View>
+              <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
+              <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => setConfirmDialog(null)}
+                  style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
+                  style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     )
   }

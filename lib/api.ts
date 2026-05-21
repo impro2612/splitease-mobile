@@ -251,6 +251,8 @@ export const spendDiaryApi = {
   entries: (id: string) => api.get(`/api/spend-diary/${id}/entries`),
   addEntry: (id: string, data: { title: string; amount: number; currency?: string; date?: string }) =>
     api.post(`/api/spend-diary/${id}/entries`, data),
+  editEntry: (id: string, entryId: string, data: { title: string; amount: number; currency?: string; date?: string }) =>
+    api.patch(`/api/spend-diary/${id}/entries/${entryId}`, data),
   deleteEntry: (id: string, entryId: string) =>
     api.delete(`/api/spend-diary/${id}/entries/${entryId}`),
 }
