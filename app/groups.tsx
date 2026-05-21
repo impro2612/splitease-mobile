@@ -91,15 +91,38 @@ export default function Groups() {
 
   function handleLocationChange(text: string) {
     setLocation(text)
-    setLocationLat(null); setLocationLng(null) // clear confirmed coords when text changes
+    setLocationLat(null); setLocationLng(null)
     if (locationDebounce.current) clearTimeout(locationDebounce.current)
     if (!text.trim() || text.trim().length < 2) { setLocationResults([]); return }
     locationDebounce.current = setTimeout(async () => {
       setLocationSearching(true)
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text.trim())}&format=json&limit=5`, { headers: { "User-Agent": "SplitEase/1.0" } })
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text.trim())}&format=json&addressdetails=1&limit=10&dedupe=1`
+        const res = await fetch(url, { headers: { "User-Agent": "SplitEase/1.0" } })
         const data = await res.json()
-        setLocationResults(Array.isArray(data) ? data : [])
+        if (!Array.isArray(data)) { setLocationResults([]); return }
+
+        const seen = new Set<string>()
+        const results = data
+          .sort((a: any, b: any) => (b.importance ?? 0) - (a.importance ?? 0))
+          .map((item: any) => {
+            const addr = item.address ?? {}
+            const city = addr.city ?? addr.town ?? addr.village ?? addr.municipality ?? addr.county ?? addr.state_district
+            const state = addr.state ?? addr.region
+            const country = addr.country ?? ""
+            const parts = [city, state, country].filter(Boolean)
+            // remove consecutive duplicates (e.g. "London, London, UK")
+            const label = parts.filter((p, i) => i === 0 || p.toLowerCase() !== parts[i - 1].toLowerCase()).join(", ")
+            return { display_name: label || item.display_name.split(",").slice(0, 3).join(",").trim(), lat: item.lat, lon: item.lon }
+          })
+          .filter((r: any) => {
+            if (seen.has(r.display_name)) return false
+            seen.add(r.display_name)
+            return true
+          })
+          .slice(0, 5)
+
+        setLocationResults(results)
       } catch { setLocationResults([]) }
       finally { setLocationSearching(false) }
     }, 400)
