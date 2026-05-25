@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -45,7 +45,16 @@ function buildMapHtml(pins: Pin[], bottomInset: number = 0) {
 <style>${LEAFLET_CSS}</style>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  html, body, #map { width:100%; height:100%; background:#e8edf2; }
+  html, body {
+    width:100%; height:100%; min-height:100vh;
+    overflow:hidden; background:#e8edf2;
+  }
+  #map {
+    position:fixed; inset:0;
+    width:100vw; height:100vh; min-height:100vh;
+    background:#e8edf2;
+  }
+  .leaflet-container { width:100vw !important; height:100vh !important; background:#e8edf2 !important; }
   .leaflet-control-zoom { border:none !important; }
   .leaflet-control-zoom a {
     background:#ffffff !important; color:#334155 !important;
@@ -91,21 +100,49 @@ function buildMapHtml(pins: Pin[], bottomInset: number = 0) {
 <script>
 const pins = ${pinsJson};
 
+function post(type, payload) {
+  try {
+    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(Object.assign({ type }, payload || {})));
+  } catch (_) {}
+}
+
+window.onerror = function(message, source, line, column) {
+  post('map-error', { message: String(message || ''), line: line || 0, column: column || 0 });
+};
+
 function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-const map = L.map('map', {
+const mapEl = document.getElementById('map');
+let map;
+function sizeMap() {
+  const h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0, 320);
+  const w = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0, 320);
+  mapEl.style.height = h + 'px';
+  mapEl.style.width = w + 'px';
+}
+sizeMap();
+window.addEventListener('resize', function() {
+  sizeMap();
+  setTimeout(function() { if (map) map.invalidateSize(); }, 50);
+});
+
+map = L.map('map', {
   center: [20, 10], zoom: 2, minZoom: 2, maxZoom: 16,
   zoomControl: false,
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   maxZoom: 19,
   subdomains: 'abcd',
-}).addTo(map);
+});
+tiles.on('tileerror', function(e) {
+  post('tile-error', { url: e && e.tile ? e.tile.src : '' });
+});
+tiles.addTo(map);
 
 pins.forEach(p => {
   const iconHtml = \`<div class="pin-wrap">
@@ -131,7 +168,11 @@ else if (pins.length > 1) {
 }
 
 // Force Leaflet to recalculate container size after layout settles
-setTimeout(() => { map.invalidateSize(); }, 200);
+setTimeout(() => {
+  sizeMap();
+  map.invalidateSize();
+  post('map-ready', { pins: pins.length });
+}, 250);
 </script>
 </body>
 </html>`
@@ -209,11 +250,20 @@ export default function Timeline() {
             source={{ html: buildMapHtml(visiblePins, bottomInset), baseUrl: "https://splitwithease.vercel.app" }}
             style={{ flex: 1 }}
             scrollEnabled={false}
-            onLoadEnd={() => setMapReady(true)}
+            onLoadEnd={() => setTimeout(() => setMapReady(true), 1200)}
+            onMessage={(event) => {
+              try {
+                const msg = JSON.parse(event.nativeEvent.data)
+                if (msg?.type === "map-ready") setMapReady(true)
+              } catch {
+                // Ignore non-JSON WebView messages.
+              }
+            }}
             originWhitelist={["*"]}
             javaScriptEnabled
             domStorageEnabled
             thirdPartyCookiesEnabled
+            mixedContentMode="always"
           />
           {/* Opaque overlay hides blank map until tiles render */}
           {!mapReady && (
