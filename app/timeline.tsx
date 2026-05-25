@@ -1,6 +1,6 @@
-import { useRef, useState } from "react"
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { useMemo, useRef, useState } from "react"
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, ScrollView } from "react-native"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
@@ -28,12 +28,36 @@ function fmtRange(start: string | null, end: string | null) {
   return `${s.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${e.toLocaleDateString("en-IN", opts)}`
 }
 
-function buildMapHtml(pins: Pin[]) {
+function escHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function buildMapHtml(pins: Pin[], bottomInset: number, isDark: boolean) {
   const pinsJson = JSON.stringify(pins.map(p => ({
     lat: p.lat, lng: p.lng,
-    name: p.name, emoji: p.emoji,
+    name: escHtml(p.name),
+    emoji: escHtml(p.emoji),
     dateRange: fmtRange(p.startDate, p.endDate),
-  })))
+    location: p.location ? escHtml(p.location) : "",
+  }))).replace(/<\//g, "<\\/")
+
+  const pageBg = isDark ? "#0a0a1a" : "#e8edf2"
+  const controlBg = isDark ? "#1e293b" : "#ffffff"
+  const controlText = isDark ? "#e2e8f0" : "#334155"
+  const controlBorder = isDark ? "#334155" : "#cbd5e1"
+  const controlHover = isDark ? "#334155" : "#f1f5f9"
+  const popupBg = isDark ? "#1e293b" : "#ffffff"
+  const popupBorder = isDark ? "#334155" : "#e2e8f0"
+  const popupTitle = isDark ? "#f1f5f9" : "#1e293b"
+  const popupSub = isDark ? "#94a3b8" : "#64748b"
+  const tileLayer = isDark
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
 
   return `<!DOCTYPE html>
 <html>
@@ -42,15 +66,19 @@ function buildMapHtml(pins: Pin[]) {
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  html, body, #map { width:100%; height:100%; background:#0f172a; }
+  html, body, #map { width:100%; height:100%; overflow:hidden; background:${pageBg}; }
+  .leaflet-container { background:${pageBg} !important; }
   .leaflet-control-zoom { border:none !important; }
   .leaflet-control-zoom a {
-    background:#1e293b !important; color:#e2e8f0 !important;
-    border:1px solid #334155 !important; width:32px !important; height:32px !important;
+    background:${controlBg} !important; color:${controlText} !important;
+    border:1px solid ${controlBorder} !important; width:36px !important; height:36px !important;
     line-height:32px !important; font-size:18px !important; border-radius:8px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
   }
-  .leaflet-control-zoom a:hover { background:#334155 !important; }
+  .leaflet-control-zoom a:hover { background:${controlHover} !important; }
   .leaflet-control-attribution { display:none !important; }
+  .leaflet-bottom { bottom:${bottomInset + 14}px !important; }
+  .leaflet-right { right:14px !important; }
   .pin-wrap { position:relative; width:36px; height:44px; }
   .pin-bubble {
     position:absolute; top:0; left:50%; transform:translateX(-50%);
@@ -67,12 +95,13 @@ function buildMapHtml(pins: Pin[]) {
     border-radius:0 0 4px 4px;
   }
   .popup-box {
-    background:#1e293b; border:1px solid #334155; border-radius:12px;
+    background:${popupBg}; border:1px solid ${popupBorder}; border-radius:12px;
     padding:10px 14px; min-width:160px;
     font-family: -apple-system, sans-serif;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }
-  .popup-title { font-size:14px; font-weight:700; color:#f1f5f9; margin-bottom:3px; }
-  .popup-date { font-size:11px; color:#94a3b8; }
+  .popup-title { font-size:14px; font-weight:700; color:${popupTitle}; margin-bottom:3px; }
+  .popup-date, .popup-location { font-size:11px; color:${popupSub}; margin-top:2px; }
   .leaflet-popup-content-wrapper { background:transparent; box-shadow:none; padding:0; }
   .leaflet-popup-content { margin:0 !important; }
   .leaflet-popup-tip-container { display:none; }
@@ -83,14 +112,21 @@ function buildMapHtml(pins: Pin[]) {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const pins = ${pinsJson};
+const worldBounds = L.latLngBounds([[-85, -180], [85, 180]]);
 
 const map = L.map('map', {
   center: [20, 10], zoom: 2, minZoom: 2, maxZoom: 16,
-  zoomControl: true,
+  zoomControl: false,
+  maxBounds: worldBounds,
+  maxBoundsViscosity: 1.0,
+  worldCopyJump: false,
 });
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+L.tileLayer('${tileLayer}', {
   maxZoom: 19,
+  noWrap: true,
+  bounds: worldBounds,
   subdomains: 'abcd',
 }).addTo(map);
 
@@ -105,6 +141,7 @@ pins.forEach(p => {
   const popupContent = \`<div class="popup-box">
     <div class="popup-title">\${p.emoji} \${p.name}</div>
     \${p.dateRange ? '<div class="popup-date">' + p.dateRange + '</div>' : ''}
+    \${p.location ? '<div class="popup-location">📍 ' + p.location + '</div>' : ''}
   </div>\`;
   marker.bindPopup(popupContent, { closeButton: false, autoPan: true });
   marker.on('click', () => marker.openPopup());
@@ -113,8 +150,10 @@ pins.forEach(p => {
 if (pins.length === 1) map.setView([pins[0].lat, pins[0].lng], 6);
 else if (pins.length > 1) {
   const bounds = L.latLngBounds(pins.map(p => [p.lat, p.lng]));
-  map.fitBounds(bounds.pad(0.3));
+  map.fitBounds(bounds.pad(0.3), { paddingTopLeft: [20, 72], paddingBottomRight: [20, ${bottomInset + 72}] });
 }
+map.setMaxBounds(worldBounds);
+setTimeout(() => map.invalidateSize(), 250);
 </script>
 </body>
 </html>`
@@ -122,17 +161,36 @@ else if (pins.length > 1) {
 
 export default function Timeline() {
   const C = useTheme()
+  const { bottom: bottomInset } = useSafeAreaInsets()
   const fadeAnim = useRef(new Animated.Value(0)).current
+  const [selectedYear, setSelectedYear] = useState<number | null>(null)
 
   const { data: pins = [], isLoading, isError } = useQuery<Pin[]>({
     queryKey: ["timeline-pins"],
     queryFn: async () => { const r = await timelineApi.pins(); return r.data },
   })
 
-  const hasMap = pins.length > 0
+  const availableYears = useMemo(() => {
+    const years = new Set<number>()
+    pins.forEach(p => { if (p.startDate) years.add(new Date(p.startDate).getFullYear()) })
+    return Array.from(years).sort((a, b) => b - a)
+  }, [pins])
+
+  const activeYear = selectedYear ?? availableYears[0] ?? null
+  const visiblePins = useMemo(() => {
+    if (!activeYear) return pins
+    return pins.filter(p => p.startDate && new Date(p.startDate).getFullYear() === activeYear)
+  }, [pins, activeYear])
+
+  const hasMap = visiblePins.length > 0
+
+  const handleYearSelect = (year: number) => {
+    fadeAnim.setValue(0)
+    setSelectedYear(year)
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0f172a" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
         <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
@@ -141,10 +199,10 @@ export default function Timeline() {
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="earth-outline" size={20} color={PURPLE} />
         </View>
-        <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", flex: 1 }}>Your Timeline</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>Your Timeline</Text>
         {!isLoading && (
           <View style={{ backgroundColor: PURPLE_BG, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: PURPLE, fontSize: 12, fontWeight: "700" }}>{pins.length} place{pins.length !== 1 ? "s" : ""}</Text>
+            <Text style={{ color: PURPLE, fontSize: 12, fontWeight: "700" }}>{visiblePins.length} place{visiblePins.length !== 1 ? "s" : ""}</Text>
           </View>
         )}
       </View>
@@ -152,28 +210,71 @@ export default function Timeline() {
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={PURPLE} size="large" />
-          <Text style={{ color: "#94a3b8", marginTop: 12, fontSize: 13 }}>Loading your map…</Text>
+          <Text style={{ color: C.textSub, marginTop: 12, fontSize: 13 }}>Loading your map…</Text>
         </View>
       ) : !hasMap ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
           <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
             <Ionicons name="earth-outline" size={40} color={PURPLE} />
           </View>
-          <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 8 }}>No places yet</Text>
-          <Text style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", lineHeight: 22 }}>
+          <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 8 }}>No places yet</Text>
+          <Text style={{ color: C.textSub, fontSize: 14, textAlign: "center", lineHeight: 22 }}>
             Add a location when creating a group — it'll show up as a pin on your world map.
           </Text>
         </View>
       ) : (
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <WebView
-            source={{ html: buildMapHtml(pins) }}
-            style={{ flex: 1, backgroundColor: "#0f172a" }}
+            key={activeYear ?? "all"}
+            source={{ html: buildMapHtml(visiblePins, bottomInset, C.isDark) }}
+            style={{ flex: 1, backgroundColor: C.bg }}
             scrollEnabled={false}
             onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
             originWhitelist={["*"]}
             javaScriptEnabled
+            domStorageEnabled
+            overScrollMode="never"
           />
+          {availableYears.length > 0 && (
+            <View style={{ position: "absolute", top: 16, left: 0, right: 0, pointerEvents: "box-none" }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+                style={{ flexGrow: 0 }}
+              >
+                {availableYears.map(year => {
+                  const isActive = year === activeYear
+                  return (
+                    <TouchableOpacity
+                      key={year}
+                      onPress={() => handleYearSelect(year)}
+                      activeOpacity={0.8}
+                      style={{
+                        paddingHorizontal: 20, paddingVertical: 9,
+                        borderRadius: 24,
+                        backgroundColor: isActive ? "rgba(124,58,237,0.92)" : "rgba(15,23,42,0.72)",
+                        borderWidth: 1,
+                        borderColor: isActive ? "#a78bfa" : "rgba(255,255,255,0.18)",
+                        shadowColor: isActive ? "#7c3aed" : "#000",
+                        shadowOffset: { width: 0, height: isActive ? 6 : 3 },
+                        shadowOpacity: isActive ? 0.55 : 0.25,
+                        shadowRadius: isActive ? 12 : 5,
+                        elevation: isActive ? 10 : 4,
+                      }}
+                    >
+                      <Text style={{
+                        color: isActive ? "#ffffff" : "rgba(203,213,225,0.85)",
+                        fontSize: 14, fontWeight: "700", letterSpacing: 0.8,
+                      }}>
+                        {year}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            </View>
+          )}
         </Animated.View>
       )}
     </SafeAreaView>
