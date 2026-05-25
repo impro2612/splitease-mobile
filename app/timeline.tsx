@@ -37,7 +37,7 @@ function escHtml(value: unknown) {
     .replace(/'/g, "&#39;")
 }
 
-function buildMapHtml(pins: Pin[], bottomInset: number, isDark: boolean) {
+function buildMapHtml(pins: Pin[], bottomInset: number) {
   const pinsJson = JSON.stringify(pins.map(p => ({
     lat: p.lat, lng: p.lng,
     name: escHtml(p.name),
@@ -46,18 +46,16 @@ function buildMapHtml(pins: Pin[], bottomInset: number, isDark: boolean) {
     location: p.location ? escHtml(p.location) : "",
   }))).replace(/<\//g, "<\\/")
 
-  const pageBg = isDark ? "#0a0a1a" : "#e8edf2"
-  const controlBg = isDark ? "#1e293b" : "#ffffff"
-  const controlText = isDark ? "#e2e8f0" : "#334155"
-  const controlBorder = isDark ? "#334155" : "#cbd5e1"
-  const controlHover = isDark ? "#334155" : "#f1f5f9"
-  const popupBg = isDark ? "#1e293b" : "#ffffff"
-  const popupBorder = isDark ? "#334155" : "#e2e8f0"
-  const popupTitle = isDark ? "#f1f5f9" : "#1e293b"
-  const popupSub = isDark ? "#94a3b8" : "#64748b"
-  const tileLayer = isDark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+  const pageBg = "#e8edf2"
+  const controlBg = "#ffffff"
+  const controlText = "#334155"
+  const controlBorder = "#cbd5e1"
+  const controlHover = "#f1f5f9"
+  const popupBg = "#ffffff"
+  const popupBorder = "#e2e8f0"
+  const popupTitle = "#1e293b"
+  const popupSub = "#64748b"
+  const tileLayer = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
 
   return `<!DOCTYPE html>
 <html>
@@ -226,8 +224,8 @@ export default function Timeline() {
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <WebView
             key={activeYear ?? "all"}
-            source={{ html: buildMapHtml(visiblePins, bottomInset, C.isDark) }}
-            style={{ flex: 1, backgroundColor: C.bg }}
+            source={{ html: buildMapHtml(visiblePins, bottomInset) }}
+            style={{ flex: 1, backgroundColor: "#e8edf2" }}
             scrollEnabled={false}
             onLoad={() => Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
             originWhitelist={["*"]}
