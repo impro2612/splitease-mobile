@@ -13,7 +13,7 @@ export type PendingExpense = {
     paidById: string
     splitType: string
     splits: { userId: string; amount: number }[]
-    category?: string
+    category: string
     date?: string
   }
 }
