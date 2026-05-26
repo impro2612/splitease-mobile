@@ -122,12 +122,12 @@ export default function FloatingContextMenu({
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: 23,
-                    backgroundColor: isReacted ? "rgba(99,102,241,0.3)" : "transparent",
-                    borderWidth: isReacted ? 1.5 : 0,
-                    borderColor: "#6366f1",
+                    backgroundColor: isReacted ? "#f5f3ff" : "rgba(255,255,255,0.08)",
+                    borderWidth: 1.5,
+                    borderColor: isReacted ? "#6366f1" : "rgba(255,255,255,0.12)",
                   }}
                 >
-                  <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                  <Text style={{ fontSize: 28, lineHeight: 34 }}>{emoji}</Text>
                 </TouchableOpacity>
               )
             })}

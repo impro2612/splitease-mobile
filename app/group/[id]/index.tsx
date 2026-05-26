@@ -1087,22 +1087,38 @@ export default function GroupDetail() {
                                   key={emoji}
                                   onPress={() => toggleReaction(exp.id, emoji)}
                                   style={{
-                                    flexDirection: "row", alignItems: "center", gap: 4,
-                                    backgroundColor: C.iconBg,
-                                    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
-                                    borderWidth: isMine ? 1.5 : 1, borderColor: isMine ? "#6366f1" : C.border,
+                                    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5,
+                                    minWidth: 54, minHeight: 34,
+                                    backgroundColor: isMine ? "#f5f3ff" : "#ffffff",
+                                    borderRadius: 18, paddingHorizontal: 10, paddingVertical: 5,
+                                    borderWidth: 1.5, borderColor: isMine ? "#6366f1" : "#c7d2fe",
+                                    shadowColor: "#6366f1",
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: isMine ? 0.22 : 0.12,
+                                    shadowRadius: 4,
+                                    elevation: isMine ? 3 : 2,
                                   }}
                                 >
-                                  <Text style={{ fontSize: 14 }}>{emoji}</Text>
-                                  <Text style={{ color: isMine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "700" }}>{userIds.length}</Text>
+                                  <Text style={{ fontSize: 18, lineHeight: 22 }}>{emoji}</Text>
+                                  <Text style={{ color: isMine ? "#4f46e5" : "#475569", fontSize: 13, fontWeight: "800", lineHeight: 18 }}>{userIds.length}</Text>
                                 </TouchableOpacity>
                               )
                             })}
                             <TouchableOpacity
                               onPress={() => openReactionPicker(exp)}
-                              style={{ backgroundColor: C.iconBg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
+                              style={{
+                                minWidth: 34, minHeight: 34,
+                                backgroundColor: "#f8fafc",
+                                borderRadius: 17,
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderWidth: 1,
+                                borderColor: "#e2e8f0",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
                             >
-                              <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 18 }}>+</Text>
+                              <Text style={{ color: "#334155", fontSize: 16, lineHeight: 20, fontWeight: "800" }}>+</Text>
                             </TouchableOpacity>
                           </View>
                         )}

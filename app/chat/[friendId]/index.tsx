@@ -572,17 +572,25 @@ export default function ChatScreen() {
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 4,
-                            backgroundColor: C.card,
-                            borderRadius: 20,
+                            justifyContent: "center",
+                            gap: 5,
+                            minWidth: count > 1 ? 54 : 42,
+                            minHeight: 32,
+                            backgroundColor: mine ? "#f5f3ff" : "#ffffff",
+                            borderRadius: 18,
                             paddingHorizontal: 10,
                             paddingVertical: 5,
-                            borderWidth: mine ? 1.5 : 1,
-                            borderColor: mine ? "#6366f1" : C.border,
+                            borderWidth: 1.5,
+                            borderColor: mine ? "#6366f1" : "#c7d2fe",
+                            shadowColor: "#6366f1",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: mine ? 0.22 : 0.12,
+                            shadowRadius: 4,
+                            elevation: mine ? 3 : 2,
                           }}
                         >
-                          <Text style={{ fontSize: 14 }}>{emoji}</Text>
-                          {count > 1 && <Text style={{ color: mine ? "#a5b4fc" : C.textSub, fontSize: 12, fontWeight: "600" }}>{count}</Text>}
+                          <Text style={{ fontSize: 18, lineHeight: 22 }}>{emoji}</Text>
+                          {count > 1 && <Text style={{ color: mine ? "#4f46e5" : "#475569", fontSize: 13, fontWeight: "800", lineHeight: 18 }}>{count}</Text>}
                         </TouchableOpacity>
                       ))}
                     </View>
