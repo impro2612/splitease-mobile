@@ -1,6 +1,6 @@
 import "../global.css"
-import { useEffect, useRef, useState } from "react"
-import { Platform, View, Text, useColorScheme, AppState, AppStateStatus } from "react-native"
+import React, { useEffect, useRef, useState } from "react"
+import { Platform, View, Text, TouchableOpacity, useColorScheme, AppState, AppStateStatus } from "react-native"
 import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
@@ -263,6 +263,39 @@ function handleAppUrl(url?: string) {
   }
 }
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[ErrorBoundary]", error, info.componentStack)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: "#0a0a1a", alignItems: "center", justifyContent: "center", padding: 32 }}>
+          <Ionicons name="warning-outline" size={48} color="#f87171" />
+          <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", marginTop: 16, textAlign: "center" }}>
+            Something went wrong
+          </Text>
+          <Text style={{ color: "#94a3b8", fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
+            An unexpected error occurred. Please try again.
+          </Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ hasError: false })}
+            style={{ marginTop: 24, backgroundColor: "#6366f1", paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12 }}
+          >
+            <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 15 }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   const scheme = useColorScheme()
@@ -316,6 +349,7 @@ export default function RootLayout() {
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
       <OfflineProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
+          <ErrorBoundary>
           {loading ? null : (
             <View style={{ flex: 1 }}>
               <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
@@ -336,6 +370,7 @@ export default function RootLayout() {
               <Toast config={toastConfig} visibilityTime={3000} topOffset={56} />
             </View>
           )}
+          </ErrorBoundary>
         </GestureHandlerRootView>
       </OfflineProvider>
     </PersistQueryClientProvider>

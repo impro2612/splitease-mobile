@@ -24,6 +24,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [pendingCount, setPendingCount] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
   const prevOnlineRef = useRef<boolean | null>(null)
+  const isFlushingRef = useRef(false)
 
   const refreshCount = useCallback(async () => {
     const q = await offlineQueue.getAll()
@@ -31,29 +32,35 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const flushQueue = useCallback(async () => {
-    const items = await offlineQueue.getAll()
-    if (items.length === 0) return
-    setIsSyncing(true)
-    for (const item of items) {
-      try {
-        await expensesApi.add(item.groupId, item.payload)
-        await offlineQueue.remove(item.id)
-        // Invalidate so the optimistic card is replaced by real server data
-        queryClient.invalidateQueries({ queryKey: ["group", item.groupId] })
-        queryClient.invalidateQueries({ queryKey: ["balances", item.groupId] })
-        queryClient.invalidateQueries({ queryKey: ["groups"] })
-        queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
-        queryClient.invalidateQueries({ queryKey: ["activity"] })
-      } catch (err: any) {
-        // 4xx = bad data, never going to succeed — drop it
-        if (err?.response?.status >= 400 && err?.response?.status < 500) {
+    if (isFlushingRef.current) return
+    isFlushingRef.current = true
+    try {
+      const items = await offlineQueue.getAll()
+      if (items.length === 0) return
+      setIsSyncing(true)
+      for (const item of items) {
+        try {
+          await expensesApi.add(item.groupId, item.payload)
           await offlineQueue.remove(item.id)
+          // Invalidate so the optimistic card is replaced by real server data
+          queryClient.invalidateQueries({ queryKey: ["group", item.groupId] })
+          queryClient.invalidateQueries({ queryKey: ["balances", item.groupId] })
+          queryClient.invalidateQueries({ queryKey: ["groups"] })
+          queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+          queryClient.invalidateQueries({ queryKey: ["activity"] })
+        } catch (err: any) {
+          // 4xx = bad data, never going to succeed — drop it
+          if (err?.response?.status >= 400 && err?.response?.status < 500) {
+            await offlineQueue.remove(item.id)
+          }
+          // 5xx / network error — leave in queue, retry next reconnect
         }
-        // 5xx / network error — leave in queue, retry next reconnect
       }
+      await refreshCount()
+      setIsSyncing(false)
+    } finally {
+      isFlushingRef.current = false
     }
-    await refreshCount()
-    setIsSyncing(false)
   }, [refreshCount])
 
   const enqueueExpense = useCallback(async (expense: PendingExpense) => {
