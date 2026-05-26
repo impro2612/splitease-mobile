@@ -56,22 +56,16 @@ export default function FloatingContextMenu({
   const ACTIONS_W = 210
   const ACTIONS_H = actions.length * 50 + (actions.length > 1 ? (actions.length - 1) * 1 : 0) + 16
 
-  const itemMidY = anchor.pageY + anchor.height / 2
-  const isLowerHalf = itemMidY > SCREEN_H * 0.52
+  // Actions always above the message, emojis always below
+  let actionsTop = anchor.pageY - ACTIONS_H - GAP
+  let emojiTop = anchor.pageY + anchor.height + GAP
 
-  let emojiTop: number
-  let actionsTop: number
+  // Not enough room above for actions → clamp to safe area
+  if (actionsTop < 60) actionsTop = 60
 
-  if (isLowerHalf) {
-    emojiTop = anchor.pageY - EMOJI_BAR_H - GAP
-    actionsTop = emojiTop - ACTIONS_H - GAP
-    if (actionsTop < 60) {
-      emojiTop = anchor.pageY + anchor.height + GAP
-      actionsTop = emojiTop + EMOJI_BAR_H + GAP
-    }
-  } else {
-    emojiTop = anchor.pageY + anchor.height + GAP
-    actionsTop = emojiTop + EMOJI_BAR_H + GAP
+  // Not enough room below for emojis → clamp above screen bottom
+  if (emojiTop + EMOJI_BAR_H > SCREEN_H - 20) {
+    emojiTop = SCREEN_H - EMOJI_BAR_H - 20
   }
 
   // Clamp horizontal: center on item
@@ -200,7 +194,7 @@ export default function FloatingContextMenu({
                     }}>
                       <Ionicons name={action.icon as any} size={17} color={action.color ?? "#a5b4fc"} />
                     </View>
-                    <Text style={{ color: action.color ?? C.text, fontSize: 15, fontWeight: "600" }}>
+                    <Text style={{ color: action.color ?? "#f1f5f9", fontSize: 15, fontWeight: "600" }}>
                       {action.label}
                     </Text>
                   </TouchableOpacity>
