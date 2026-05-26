@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal,
   ScrollView, Animated, PanResponder,
 } from "react-native"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
@@ -112,7 +112,11 @@ export default function ChatScreen() {
   const [deleting, setDeleting] = useState(false)
   const [actionState, setActionState] = useState<{ msg: Message; anchor: MenuAnchor } | null>(null)
   const actionMsg = actionState?.msg ?? null
+  const reactionTargetRef = useRef<Message | null>(null)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string; message: string; confirmText: string; onConfirm: () => void
+  } | null>(null)
   const isSelecting = selectedIds.size > 0
 
   // ── Emoji sheet animation ────────────────────────────────────────────────────
@@ -666,10 +670,12 @@ export default function ChatScreen() {
             <TouchableOpacity
               onPress={() => {
                 const count = selectedIds.size
-                Alert.alert("Delete Messages", `Delete ${count} message${count > 1 ? "s" : ""}? This cannot be undone.`, [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Delete", style: "destructive", onPress: deleteSelected },
-                ])
+                setConfirmDialog({
+                  title: "Delete Messages",
+                  message: `Delete ${count} message${count > 1 ? "s" : ""}? This cannot be undone.`,
+                  confirmText: "Delete",
+                  onConfirm: deleteSelected,
+                })
               }}
               disabled={deleting}
               style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
@@ -717,7 +723,7 @@ export default function ChatScreen() {
         emojis={QUICK_EMOJIS}
         reactedEmojis={(actionMsg?.reactions ?? []).filter((r) => r.userId === myId).map((r) => r.emoji)}
         onEmojiPress={(emoji) => actionMsg && toggleReaction(actionMsg, emoji)}
-        onMoreEmoji={() => setEmojiPickerOpen(true)}
+        onMoreEmoji={() => { reactionTargetRef.current = actionMsg; setActionState(null); setEmojiPickerOpen(true) }}
         actions={[
           {
             label: "Copy Text",
@@ -763,7 +769,8 @@ export default function ChatScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 2 }} />
             <EmojiKeyboard
               onEmojiSelected={(e) => {
-                if (actionState?.msg) toggleReaction(actionState.msg, e.emoji)
+                const target = reactionTargetRef.current ?? actionState?.msg
+              if (target) toggleReaction(target, e.emoji)
               }}
               theme={{
                 knob: C.border,
@@ -788,6 +795,32 @@ export default function ChatScreen() {
           </Animated.View>
         </Modal>
       )}
+      {/* Delete confirmation dialog */}
+      <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Ionicons name="warning-outline" size={26} color="#f87171" />
+            </View>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setConfirmDialog(null)}
+                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
