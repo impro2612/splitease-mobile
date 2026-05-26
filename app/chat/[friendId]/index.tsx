@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Alert,
-  ScrollView,
+  ScrollView, Animated, PanResponder,
 } from "react-native"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import * as Clipboard from "expo-clipboard"
@@ -16,7 +16,7 @@ import CryptoJS from "crypto-js"
 import * as ExpoCrypto from "expo-crypto"
 import * as SecureStore from "expo-secure-store"
 import { useAuthStore } from "@/store/auth"
-import EmojiKeyboard from "rn-emoji-keyboard"
+import { EmojiKeyboard } from "rn-emoji-keyboard"
 
 function uuidv4() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -114,6 +114,52 @@ export default function ChatScreen() {
   const actionMsg = actionState?.msg ?? null
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const isSelecting = selectedIds.size > 0
+
+  // ── Emoji sheet animation ────────────────────────────────────────────────────
+  const [emojiMounted, setEmojiMounted] = useState(false)
+  const emojiSlideAnim = useRef(new Animated.Value(600)).current
+  const emojiPanY = useRef(new Animated.Value(0)).current
+  const emojiOverlayAnim = useRef(new Animated.Value(0)).current
+  const emojiTranslateY = Animated.add(
+    emojiSlideAnim,
+    emojiPanY.interpolate({ inputRange: [-9999, 0, 9999], outputRange: [0, 0, 9999] }),
+  )
+
+  const emojiPanResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && g.dy > Math.abs(g.dx),
+    onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 8 && g.dy > Math.abs(g.dx),
+    onPanResponderMove: (_, g) => { if (g.dy > 0) emojiPanY.setValue(g.dy) },
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderRelease: (_, g) => {
+      if (g.dy > 80 || g.vy > 0.5) {
+        Animated.parallel([
+          Animated.timing(emojiSlideAnim, { toValue: 600, duration: 200, useNativeDriver: true }),
+          Animated.timing(emojiOverlayAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        ]).start(() => { emojiPanY.setValue(0); setEmojiMounted(false); setEmojiPickerOpen(false) })
+      } else {
+        Animated.spring(emojiPanY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
+      }
+    },
+  })).current
+
+  useEffect(() => {
+    if (emojiPickerOpen) {
+      setEmojiMounted(true)
+      emojiPanY.setValue(0)
+      emojiSlideAnim.setValue(600)
+      emojiOverlayAnim.setValue(0)
+      Animated.parallel([
+        Animated.spring(emojiSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
+        Animated.timing(emojiOverlayAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(emojiSlideAnim, { toValue: 600, duration: 220, useNativeDriver: true }),
+        Animated.timing(emojiOverlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start(() => { emojiPanY.setValue(0); setEmojiMounted(false) })
+    }
+  }, [emojiPickerOpen])
 
   const flatListRef = useRef<FlatList>(null)
   const msgRefs = useRef<Record<string, any>>({})
@@ -690,34 +736,51 @@ export default function ChatScreen() {
         onDismiss={() => { setActionState(null); setEmojiPickerOpen(false) }}
       />
 
-      {/* Full emoji picker */}
-      <EmojiKeyboard
-        onEmojiSelected={(e) => {
-          if (actionState?.msg) toggleReaction(actionState.msg, e.emoji)
-        }}
-        open={emojiPickerOpen}
-        onClose={() => setEmojiPickerOpen(false)}
-        theme={{
-          backdrop: "rgba(0,0,0,0.5)",
-          knob: C.border,
-          container: C.card,
-          header: C.text,
-          skinTonesContainer: C.card,
-          category: {
-            icon: C.textSub,
-            iconActive: "#6366f1",
-            container: C.card,
-            containerActive: "rgba(99,102,241,0.15)",
-          },
-          search: {
-            text: C.text,
-            placeholder: C.textMuted,
-            icon: C.textSub,
-            background: C.bg,
-          },
-          emoji: { selected: "rgba(99,102,241,0.2)" },
-        }}
-      />
+      {/* Full emoji picker — swipe-down-to-close bottom sheet */}
+      {emojiMounted && (
+        <Modal transparent visible={emojiMounted} animationType="none" onRequestClose={() => setEmojiPickerOpen(false)} statusBarTranslucent>
+          <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", opacity: emojiOverlayAnim }}>
+            <Pressable style={{ flex: 1 }} onPress={() => setEmojiPickerOpen(false)} />
+          </Animated.View>
+          <Animated.View
+            {...emojiPanResponder.panHandlers}
+            style={{
+              position: "absolute", bottom: 0, left: 0, right: 0,
+              backgroundColor: C.card,
+              borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              overflow: "hidden",
+              transform: [{ translateY: emojiTranslateY }],
+            }}
+          >
+            {/* Drag handle */}
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 2 }} />
+            <EmojiKeyboard
+              onEmojiSelected={(e) => {
+                if (actionState?.msg) toggleReaction(actionState.msg, e.emoji)
+              }}
+              theme={{
+                knob: C.border,
+                container: C.card,
+                header: C.text,
+                skinTonesContainer: C.card,
+                category: {
+                  icon: C.textSub,
+                  iconActive: "#6366f1",
+                  container: C.card,
+                  containerActive: "rgba(99,102,241,0.15)",
+                },
+                search: {
+                  text: C.text,
+                  placeholder: C.textMuted,
+                  icon: C.textSub,
+                  background: C.bg,
+                },
+                emoji: { selected: "rgba(99,102,241,0.2)" },
+              }}
+            />
+          </Animated.View>
+        </Modal>
+      )}
     </SafeAreaView>
   )
 }
