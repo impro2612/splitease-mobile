@@ -28,7 +28,8 @@
       },
       "package": "com.splitit.app",
       "versionCode": 12,
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "adjustNothing"
     },
     "plugins": [
       "expo-router",
