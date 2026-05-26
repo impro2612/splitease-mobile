@@ -756,7 +756,6 @@ export default function ChatScreen() {
             <Pressable style={{ flex: 1 }} onPress={() => setEmojiPickerOpen(false)} />
           </Animated.View>
           <Animated.View
-            {...emojiPanResponder.panHandlers}
             style={{
               position: "absolute", bottom: 0, left: 0, right: 0,
               backgroundColor: C.card,
@@ -765,12 +764,17 @@ export default function ChatScreen() {
               transform: [{ translateY: emojiTranslateY }],
             }}
           >
-            {/* Drag handle */}
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 2 }} />
+            {/* Drag handle — pan responder lives only here so EmojiKeyboard scrolls freely */}
+            <View
+              {...emojiPanResponder.panHandlers}
+              style={{ width: "100%", alignItems: "center", paddingTop: 10, paddingBottom: 10 }}
+            >
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border }} />
+            </View>
             <EmojiKeyboard
               onEmojiSelected={(e) => {
                 const target = reactionTargetRef.current ?? actionState?.msg
-              if (target) toggleReaction(target, e.emoji)
+                if (target) toggleReaction(target, e.emoji)
               }}
               theme={{
                 knob: C.border,
