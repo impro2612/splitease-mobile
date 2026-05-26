@@ -244,8 +244,8 @@ export default function ChatScreen() {
       const cached = await loadCache(ck)
       if (mounted && cached.length > 0) {
         setMessages(cached)
-        const newest = cached[cached.length - 1]
-        lastFetchRef.current = newest.createdAt
+        // Don't set lastFetchRef from cache — always do a fresh fetch so
+        // reactions on existing messages are up-to-date from the server.
       }
       await fetchDelta()
       if (mounted) setLoading(false)
@@ -301,17 +301,20 @@ export default function ChatScreen() {
       if (data.senderId === friendId) fetchDelta()
     })
     channel.bind("message-reaction", (data: { messageId: string; emoji: string; userId: string; action: "added" | "removed" }) => {
-      setMessages((prev) => prev.map((m) => {
-        if (m.id !== data.messageId) return m
-        const reactions = m.reactions ?? []
-        if (data.action === "removed") {
-          return { ...m, reactions: reactions.filter((r) => !(r.userId === data.userId && r.emoji === data.emoji)) }
-        }
-        // added — avoid duplicates
-        const exists = reactions.some((r) => r.userId === data.userId && r.emoji === data.emoji)
-        if (exists) return m
-        return { ...m, reactions: [...reactions, { id: `${data.userId}-${data.emoji}`, userId: data.userId, emoji: data.emoji }] }
-      }))
+      setMessages((prev) => {
+        const updated = prev.map((m) => {
+          if (m.id !== data.messageId) return m
+          const reactions = m.reactions ?? []
+          if (data.action === "removed") {
+            return { ...m, reactions: reactions.filter((r) => !(r.userId === data.userId && r.emoji === data.emoji)) }
+          }
+          const exists = reactions.some((r) => r.userId === data.userId && r.emoji === data.emoji)
+          if (exists) return m
+          return { ...m, reactions: [...reactions, { id: `${data.userId}-${data.emoji}`, userId: data.userId, emoji: data.emoji }] }
+        })
+        saveCache(ck, updated)
+        return updated
+      })
     })
 
     return () => {
@@ -369,18 +372,22 @@ export default function ChatScreen() {
     if (!msg.id) return
     setActionState(null)
     setEmojiPickerOpen(false)
-    // Optimistic update
-    setMessages((prev) => prev.map((m) => {
-      if (m.id !== msg.id) return m
-      const reactions = m.reactions ?? []
-      const exists = reactions.some((r) => r.userId === myId && r.emoji === emoji)
-      return {
-        ...m,
-        reactions: exists
-          ? reactions.filter((r) => !(r.userId === myId && r.emoji === emoji))
-          : [...reactions, { id: `opt-${myId}-${emoji}`, userId: myId, emoji }],
-      }
-    }))
+    // Optimistic update — persist to cache immediately so reactions survive navigation
+    setMessages((prev) => {
+      const updated = prev.map((m) => {
+        if (m.id !== msg.id) return m
+        const reactions = m.reactions ?? []
+        const exists = reactions.some((r) => r.userId === myId && r.emoji === emoji)
+        return {
+          ...m,
+          reactions: exists
+            ? reactions.filter((r) => !(r.userId === myId && r.emoji === emoji))
+            : [...reactions, { id: `opt-${myId}-${emoji}`, userId: myId, emoji }],
+        }
+      })
+      saveCache(ck, updated)
+      return updated
+    })
     try {
       await messageReactionsApi.toggle(msg.id, emoji)
     } catch {
