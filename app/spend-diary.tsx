@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, Pressable, RefreshControl,
-  Platform, Animated, PanResponder, useWindowDimensions,
+  Platform, Animated, PanResponder, useWindowDimensions, KeyboardAvoidingView,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -107,20 +107,21 @@ function BottomSheet({
       <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={closeSheet} />
       </Animated.View>
-      <Animated.View
-        {...panResponder.panHandlers}
-        style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          backgroundColor: C.card,
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          paddingHorizontal: 20, paddingTop: 16, paddingBottom: bottom + 24,
-          transform: [{ translateY }],
-        }}
-      >
-        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 16 }} />
-        <Text style={{ color: C.text, fontSize: 17, fontWeight: "800", marginBottom: 20 }}>{title}</Text>
-        {children}
-      </Animated.View>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={{
+            backgroundColor: C.card,
+            borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            paddingHorizontal: 20, paddingTop: 16, paddingBottom: bottom + 24,
+            transform: [{ translateY }],
+          }}
+        >
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginBottom: 16 }} />
+          <Text style={{ color: C.text, fontSize: 17, fontWeight: "800", marginBottom: 20 }}>{title}</Text>
+          {children}
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, Pressable, RefreshControl, Platform,
-  Animated, PanResponder, useWindowDimensions,
+  Animated, PanResponder, useWindowDimensions, KeyboardAvoidingView,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -112,12 +112,14 @@ function SwipeSheet({
   if (!mounted) return null
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={close}>
-      <Animated.View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", opacity: overlayAnim }}>
+      <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={close} />
       </Animated.View>
-      <Animated.View {...pan.panHandlers} style={[{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY }] }, sheetStyle]}>
-        {children}
-      </Animated.View>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+        <Animated.View {...pan.panHandlers} style={[{ transform: [{ translateY }] }, sheetStyle]}>
+          {children}
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
