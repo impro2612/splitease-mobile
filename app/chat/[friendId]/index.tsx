@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Keyboard,
-  ScrollView, Animated,
+  ScrollView, Animated, PanResponder, useWindowDimensions,
 } from "react-native"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import * as Clipboard from "expo-clipboard"
@@ -16,7 +16,7 @@ import CryptoJS from "crypto-js"
 import * as ExpoCrypto from "expo-crypto"
 import * as SecureStore from "expo-secure-store"
 import { useAuthStore } from "@/store/auth"
-import EmojiKeyboard from "rn-emoji-keyboard"
+import { EmojiKeyboard } from "rn-emoji-keyboard"
 
 function uuidv4() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -44,6 +44,106 @@ const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 
 // Quick-react emojis shown in the action sheet bar
 const QUICK_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
+
+function SwipeDownSheet({
+  visible,
+  onClose,
+  children,
+  sheetStyle,
+}: {
+  visible: boolean
+  onClose: () => void
+  children: ReactNode
+  sheetStyle?: object
+}) {
+  const { height } = useWindowDimensions()
+  const hiddenTranslateY = Math.max(320, height)
+  const [mounted, setMounted] = useState(visible)
+  const slideAnim = useRef(new Animated.Value(hiddenTranslateY)).current
+  const panY = useRef(new Animated.Value(0)).current
+  const overlayAnim = useRef(new Animated.Value(0)).current
+
+  const translateY = Animated.add(
+    slideAnim,
+    panY.interpolate({
+      inputRange: [-9999, 0, 9999],
+      outputRange: [0, 0, 9999],
+    })
+  )
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      panY.setValue(0)
+      slideAnim.setValue(hiddenTranslateY)
+      overlayAnim.setValue(0)
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
+        Animated.timing(overlayAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start()
+    } else {
+      setMounted(false)
+      panY.setValue(0)
+      slideAnim.setValue(hiddenTranslateY)
+      overlayAnim.setValue(0)
+    }
+  }, [hiddenTranslateY, overlayAnim, panY, slideAnim, visible])
+
+  function closeSheet() {
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: hiddenTranslateY, duration: 220, useNativeDriver: true }),
+      Animated.timing(overlayAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+    ]).start(() => {
+      panY.setValue(0)
+      setMounted(false)
+      onClose()
+    })
+  }
+
+  const shouldStartDrag = (_: any, g: { dy: number; dx: number }) => g.dy > 8 && g.dy > Math.abs(g.dx)
+  const handleDragMove = (_: any, g: { dy: number }) => {
+    if (g.dy > 0) panY.setValue(g.dy)
+  }
+  const handleDragRelease = (_: any, g: { dy: number; vy: number }) => {
+    if (g.dy > 80 || g.vy > 0.5) {
+      slideAnim.setValue(Math.max(0, g.dy))
+      panY.setValue(0)
+      closeSheet()
+    } else {
+      Animated.spring(panY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
+    }
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: shouldStartDrag,
+      onMoveShouldSetPanResponderCapture: shouldStartDrag,
+      onPanResponderMove: handleDragMove,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderRelease: handleDragRelease,
+    })
+  ).current
+
+  if (!mounted) return null
+
+  return (
+    <Modal transparent visible={mounted} animationType="none" onRequestClose={closeSheet} statusBarTranslucent>
+      <Animated.View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.58)", opacity: overlayAnim }}>
+        <Pressable style={{ flex: 1 }} onPress={closeSheet} />
+      </Animated.View>
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          { position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY }] },
+          sheetStyle,
+        ]}
+      >
+        {children}
+      </Animated.View>
+    </Modal>
+  )
+}
 
 // ─── Encryption helpers ───────────────────────────────────────────────────────
 function sharedKey(idA: string, idB: string) {
@@ -729,40 +829,50 @@ export default function ChatScreen() {
         onDismiss={() => { setActionState(null); setEmojiPickerOpen(false) }}
       />
 
-      {/* Full emoji picker — package bottom sheet */}
-      <EmojiKeyboard
-        open={emojiPickerOpen}
+      {/* Full emoji picker — app-controlled bottom sheet */}
+      <SwipeDownSheet
+        visible={emojiPickerOpen}
         onClose={() => setEmojiPickerOpen(false)}
-        onEmojiSelected={(e) => {
-          const target = reactionTargetRef.current ?? actionState?.msg
-          if (target) toggleReaction(target, e.emoji)
+        sheetStyle={{
+          height: "58%",
+          backgroundColor: C.card,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          overflow: "hidden",
         }}
-        defaultHeight="58%"
-        expandedHeight="88%"
-        expandable
-        enableSearchBar
-        onRequestClose={() => setEmojiPickerOpen(false)}
-        theme={{
-          backdrop: "rgba(0,0,0,0.58)",
-          knob: C.border,
-          container: C.card,
-          header: C.text,
-          skinTonesContainer: C.card,
-          category: {
-            icon: C.textSub,
-            iconActive: "#6366f1",
+      >
+        <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 8, backgroundColor: C.card }}>
+          <View style={{ width: 48, height: 5, borderRadius: 999, backgroundColor: C.border }} />
+        </View>
+        <EmojiKeyboard
+          onEmojiSelected={(e) => {
+            const target = reactionTargetRef.current ?? actionState?.msg
+            if (target) toggleReaction(target, e.emoji)
+            setEmojiPickerOpen(false)
+          }}
+          enableSearchBar
+          disableSafeArea
+          theme={{
+            knob: C.border,
             container: C.card,
-            containerActive: "rgba(99,102,241,0.15)",
-          },
-          search: {
-            text: C.text,
-            placeholder: C.textMuted,
-            icon: C.textSub,
-            background: C.bg,
-          },
-          emoji: { selected: "rgba(99,102,241,0.2)" },
-        }}
-      />
+            header: C.text,
+            skinTonesContainer: C.card,
+            category: {
+              icon: C.textSub,
+              iconActive: "#6366f1",
+              container: C.card,
+              containerActive: "rgba(99,102,241,0.15)",
+            },
+            search: {
+              text: C.text,
+              placeholder: C.textMuted,
+              icon: C.textSub,
+              background: C.bg,
+            },
+            emoji: { selected: "rgba(99,102,241,0.2)" },
+          }}
+        />
+      </SwipeDownSheet>
       {/* Delete confirmation dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 28 }}>
