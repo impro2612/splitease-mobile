@@ -89,11 +89,10 @@ function SwipeDownSheet({
 }: {
   visible: boolean
   onClose: () => void
-  children: ((bottomInset: number) => React.ReactNode) | React.ReactNode
+  children: React.ReactNode
   sheetStyle?: object
 }) {
   const { height } = useWindowDimensions()
-  const { bottom: safeBottom } = useSafeAreaInsets()
   const hiddenTranslateY = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
   const [kbHeight, setKbHeight] = useState(0)
@@ -184,7 +183,7 @@ function SwipeDownSheet({
           {...panResponder.panHandlers}
           style={[{ transform: [{ translateY }] }, sheetStyle]}
         >
-          {typeof children === "function" ? children(safeBottom) : children}
+          {children}
         </Animated.View>
       </View>
     </Modal>
@@ -194,6 +193,7 @@ function SwipeDownSheet({
 export default function BorrowBook() {
   const C = useTheme()
   const insets = useSafeAreaInsets()
+  const { height: windowH } = useWindowDimensions()
   const { user } = useAuthStore()
   const qc = useQueryClient()
 
@@ -455,13 +455,13 @@ export default function BorrowBook() {
       <SwipeDownSheet
         visible={!!selectedFriend}
         onClose={() => setSelectedFriend(null)}
-        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "88%" }}
+        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: windowH * 0.75 }}
       >
-        {(bottomInset) => (
-        <View>
+        <View style={{ flex: 1 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 16 }} />
             {liveFriend && (
               <>
+                {/* Pinned header */}
                 <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, gap: 12, marginBottom: 16 }}>
                   <Avatar name={liveFriend.friend.name ?? liveFriend.friend.email} size={46} />
                   <View style={{ flex: 1 }}>
@@ -477,7 +477,7 @@ export default function BorrowBook() {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottomInset + 16 }}>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
                   {pendingEntries.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
                       <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 8 }}>PENDING</Text>
@@ -598,17 +598,15 @@ export default function BorrowBook() {
               </>
             )}
         </View>
-        )}
       </SwipeDownSheet>
 
       {/* ── Part Payment Sheet ──────────────────────────────────────────────── */}
       <SwipeDownSheet
         visible={!!payingEntry}
         onClose={() => setPayingEntry(null)}
-        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20 }}
+        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20, paddingHorizontal: 20 }}
       >
-        {(bottomInset) => (
-        <View style={{ paddingBottom: bottomInset + 20 }}>
+        <View>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 4 }}>Record Part Payment</Text>
             {payingEntry && (
@@ -664,17 +662,15 @@ export default function BorrowBook() {
               }
             </TouchableOpacity>
         </View>
-        )}
       </SwipeDownSheet>
 
       {/* ── Add IOU Sheet ───────────────────────────────────────────────────── */}
       <SwipeDownSheet
         visible={showAdd}
         onClose={() => { setShowAdd(false); resetAddForm() }}
-        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20 }}
+        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20, paddingHorizontal: 20 }}
       >
-        {(bottomInset) => (
-        <View style={{ paddingBottom: bottomInset + 20 }}>
+        <View>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 20 }}>Record an IOU</Text>
 
@@ -764,7 +760,6 @@ export default function BorrowBook() {
               }
             </TouchableOpacity>
         </View>
-        )}
       </SwipeDownSheet>
       {/* Custom Confirm Dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
