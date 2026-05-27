@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, type ReactNode } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Keyboard,
@@ -51,6 +51,10 @@ type EmojiItem = {
   keywords?: string[]
 }
 
+type EmojiListRow =
+  | { type: "header"; id: string; title: string }
+  | { type: "emojis"; id: string; emojis: EmojiItem[] }
+
 const EMOJI_CATEGORY_LABELS: Record<string, string> = {
   smileys_emotion: "Smileys & Emotion",
   people_body: "People & Body",
@@ -64,6 +68,8 @@ const EMOJI_CATEGORY_LABELS: Record<string, string> = {
   recently_used: "Recent",
   search: "Search",
 }
+const EMOJI_COLUMNS = 7
+const EMOJI_SOURCE = (emojisByCategory as { title: string; data: EmojiItem[] }[])
 
 function SwipeDownSheet({
   visible,
@@ -180,19 +186,29 @@ function EmojiReactionSheet({
   const scrollY = useRef(0)
   const touchStartY = useRef<number | null>(null)
   const normalizedSearch = search.trim().toLowerCase()
-  const categories = (emojisByCategory as { title: string; data: EmojiItem[] }[])
-    .map((category) => ({
-      title: category.title,
-      data: normalizedSearch
+  const rows = useMemo<EmojiListRow[]>(() => {
+    const nextRows: EmojiListRow[] = []
+    for (const category of EMOJI_SOURCE) {
+      const data = normalizedSearch
         ? category.data.filter((emoji) => {
           const keywords = emoji.keywords ?? []
           return emoji.name.toLowerCase().includes(normalizedSearch)
             || keywords.some((keyword) => keyword.toLowerCase().includes(normalizedSearch))
             || emoji.emoji.includes(search)
         })
-        : category.data,
-    }))
-    .filter((category) => category.data.length > 0)
+        : category.data
+      if (data.length === 0) continue
+      nextRows.push({ type: "header", id: `${category.title}-header`, title: category.title })
+      for (let index = 0; index < data.length; index += EMOJI_COLUMNS) {
+        nextRows.push({
+          type: "emojis",
+          id: `${category.title}-${index}`,
+          emojis: data.slice(index, index + EMOJI_COLUMNS),
+        })
+      }
+    }
+    return nextRows
+  }, [normalizedSearch, search])
 
   useEffect(() => {
     if (!visible) setSearch("")
@@ -201,8 +217,42 @@ function EmojiReactionSheet({
   function maybeCloseFromEmojiArea(pageY: number) {
     if (touchStartY.current == null) return
     const pulledDown = pageY - touchStartY.current
-    if (scrollY.current <= 2 && pulledDown > 90) onClose()
+    if (scrollY.current <= 2 && pulledDown > 110) {
+      touchStartY.current = null
+      onClose()
+    }
+  }
+
+  function clearEmojiTouch() {
     touchStartY.current = null
+  }
+
+  function renderEmojiRow({ item }: { item: EmojiListRow }) {
+    if (item.type === "header") {
+      return (
+        <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginTop: 18, marginBottom: 14 }}>
+          {EMOJI_CATEGORY_LABELS[item.title] ?? item.title}
+        </Text>
+      )
+    }
+
+    return (
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 20 }}>
+        {item.emojis.map((emoji, index) => (
+          <TouchableOpacity
+            key={`${item.id}-${emoji.emoji}-${index}`}
+            activeOpacity={0.7}
+            onPress={() => onSelect(emoji.emoji)}
+            style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ fontSize: 34, lineHeight: 40 }}>{emoji.emoji}</Text>
+          </TouchableOpacity>
+        ))}
+        {Array.from({ length: EMOJI_COLUMNS - item.emojis.length }).map((_, index) => (
+          <View key={`spacer-${item.id}-${index}`} style={{ width: 44, height: 44 }} />
+        ))}
+      </View>
+    )
   }
 
   return (
@@ -232,42 +282,29 @@ function EmojiReactionSheet({
           />
         </View>
       </View>
-      <ScrollView
+      <FlatList
+        data={rows}
+        keyExtractor={(item) => item.id}
+        renderItem={renderEmojiRow}
         style={{ flex: 1, backgroundColor: C.card }}
-        contentContainerStyle={{ paddingHorizontal: 28, paddingBottom: 24 + insetsBottomFallback(), gap: 18 }}
+        contentContainerStyle={{ paddingHorizontal: 28, paddingBottom: 24 + insetsBottomFallback() }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={(event) => { scrollY.current = event.nativeEvent.contentOffset.y }}
         onTouchStart={(event) => { touchStartY.current = event.nativeEvent.pageY }}
         onTouchMove={(event) => maybeCloseFromEmojiArea(event.nativeEvent.pageY)}
-        onTouchEnd={(event) => maybeCloseFromEmojiArea(event.nativeEvent.pageY)}
-        onTouchCancel={() => { touchStartY.current = null }}
+        onTouchEnd={clearEmojiTouch}
+        onTouchCancel={clearEmojiTouch}
+        initialNumToRender={18}
+        maxToRenderPerBatch={14}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === "android"}
         overScrollMode="never"
-      >
-        {categories.map((category) => (
-          <View key={category.title}>
-            <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 18 }}>
-              {EMOJI_CATEGORY_LABELS[category.title] ?? category.title}
-            </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 24 }}>
-              {category.data.map((emoji, index) => (
-                <TouchableOpacity
-                  key={`${category.title}-${emoji.emoji}-${index}`}
-                  activeOpacity={0.7}
-                  onPress={() => onSelect(emoji.emoji)}
-                  style={{ width: "13.2%", minWidth: 40, height: 44, alignItems: "center", justifyContent: "center" }}
-                >
-                  <Text style={{ fontSize: 34, lineHeight: 40 }}>{emoji.emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        ))}
-        {categories.length === 0 && (
+        ListEmptyComponent={(
           <Text style={{ color: C.textSub, textAlign: "center", paddingTop: 40, fontSize: 16 }}>No emoji found</Text>
         )}
-      </ScrollView>
+      />
     </SwipeDownSheet>
   )
 }
