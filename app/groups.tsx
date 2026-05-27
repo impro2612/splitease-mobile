@@ -45,6 +45,7 @@ export default function Groups() {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [currencySearch, setCurrencySearch] = useState("")
   const [search, setSearch] = useState("")
+  const createModalFooterBottomPadding = Platform.OS === "android" ? 16 : Math.max(28, insets.bottom + 16)
 
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
@@ -401,7 +402,7 @@ export default function Groups() {
               </View>
             </ScrollView>
 
-            <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(28, insets.bottom + 16), paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border }}>
+            <View style={{ paddingHorizontal: 20, paddingBottom: createModalFooterBottomPadding, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border }}>
               <TouchableOpacity onPress={() => createMutation.mutate()} disabled={!name.trim() || createMutation.isPending} style={{ backgroundColor: !name.trim() ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}>
                 {createMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Create Group</Text>}
               </TouchableOpacity>
