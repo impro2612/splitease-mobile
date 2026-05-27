@@ -264,7 +264,7 @@ export default function GroupDetail() {
   const [editCategory, setEditCategory] = useState("general")
   const [editPaidBy, setEditPaidBy] = useState("")
   const [editDate, setEditDate] = useState(new Date())
-  const editOriginal = useRef<{ desc: string; amount: string; currency: string; category: string; paidBy: string; date: string } | null>(null)
+  const editOriginal = useRef<{ desc: string; amount: string; currency: string; category: string; paidBy: string; date: string; splitType: string; equallyIncluded: string[]; percentageSplits: Record<string, string>; customSplits: Record<string, string> } | null>(null)
 
   // Add Member modal — friends picker
   const [showAddMember, setShowAddMember] = useState(false)
@@ -763,7 +763,8 @@ export default function GroupDetail() {
     const origCategory = exp.category ?? "general"
     const origPaidBy = exp.paidById
     const origDate = new Date(exp.date ?? exp.createdAt).toISOString()
-    editOriginal.current = { desc: origDesc, amount: origAmount, currency: origCurrency, category: origCategory, paidBy: origPaidBy, date: origDate }
+    // split fields are resolved below — patched into editOriginal after the split block
+    editOriginal.current = { desc: origDesc, amount: origAmount, currency: origCurrency, category: origCategory, paidBy: origPaidBy, date: origDate, splitType: "", equallyIncluded: [], percentageSplits: {}, customSplits: {} }
     setEditDesc(origDesc)
     setEditAmount(origAmount)
     setEditCurrency(origCurrency)
@@ -784,6 +785,10 @@ export default function GroupDetail() {
       }
       setPercentageSplits(pct)
       setCustomSplits({})
+      editOriginal.current!.splitType = "PERCENTAGE"
+      editOriginal.current!.equallyIncluded = []
+      editOriginal.current!.percentageSplits = { ...pct }
+      editOriginal.current!.customSplits = {}
     } else {
       // "EXACT" covers both EQUAL and CUSTOM UI modes. Distinguish by whether
       // all included members have (approximately) the same share.
@@ -797,6 +802,10 @@ export default function GroupDetail() {
         setEquallyIncluded(splitUserIds)
         setPercentageSplits({})
         setCustomSplits({})
+        editOriginal.current!.splitType = "EQUAL"
+        editOriginal.current!.equallyIncluded = [...splitUserIds]
+        editOriginal.current!.percentageSplits = {}
+        editOriginal.current!.customSplits = {}
       } else {
         setSplitType("CUSTOM")
         setEquallyIncluded([])
@@ -804,6 +813,10 @@ export default function GroupDetail() {
         const custom: Record<string, string> = {}
         for (const s of splits) custom[s.userId] = String(s.amount)
         setCustomSplits(custom)
+        editOriginal.current!.splitType = "CUSTOM"
+        editOriginal.current!.equallyIncluded = []
+        editOriginal.current!.percentageSplits = {}
+        editOriginal.current!.customSplits = { ...custom }
       }
     }
 
@@ -2079,13 +2092,20 @@ export default function GroupDetail() {
           <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(28, insets.bottom + 16), borderTopWidth: 1, borderTopColor: C.border }}>
             {(() => {
               const orig = editOriginal.current
+              const splitChanged = !orig ? false : (
+                splitType !== orig.splitType ||
+                JSON.stringify([...equallyIncluded].sort()) !== JSON.stringify([...orig.equallyIncluded].sort()) ||
+                JSON.stringify(percentageSplits) !== JSON.stringify(orig.percentageSplits) ||
+                JSON.stringify(customSplits) !== JSON.stringify(orig.customSplits)
+              )
               const isDirty = !orig ? false : (
                 editDesc.trim() !== orig.desc.trim() ||
                 editAmount !== orig.amount ||
                 editCurrency !== orig.currency ||
                 editCategory !== orig.category ||
                 editPaidBy !== orig.paidBy ||
-                editDate.toISOString().slice(0, 10) !== orig.date.slice(0, 10)
+                editDate.toISOString().slice(0, 10) !== orig.date.slice(0, 10) ||
+                splitChanged
               )
               const canSave = isDirty && !!editDesc.trim() && !!editAmount && !isNaN(parseFloat(editAmount)) && !editExpenseMutation.isPending
               return (
