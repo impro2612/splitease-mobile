@@ -290,7 +290,7 @@ export default function Groups() {
         {/* Create Group Modal */}
         <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeCreate}>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
+          <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
             <View style={{ paddingHorizontal: 20 }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Create Group</Text>
