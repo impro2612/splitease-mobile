@@ -46,6 +46,7 @@ export default function Groups() {
   const [currencySearch, setCurrencySearch] = useState("")
   const [search, setSearch] = useState("")
   const createModalFooterBottomPadding = Platform.OS === "android" ? 16 : Math.max(28, insets.bottom + 16)
+  const createModalBottomInset = Platform.OS === "android" ? insets.bottom : 0
 
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
@@ -291,7 +292,7 @@ export default function Groups() {
         {/* Create Group Modal */}
         <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeCreate}>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
+          <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16, paddingBottom: createModalBottomInset }}>
             <View style={{ paddingHorizontal: 20 }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Create Group</Text>
