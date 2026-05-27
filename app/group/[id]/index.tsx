@@ -264,6 +264,7 @@ export default function GroupDetail() {
   const [editCategory, setEditCategory] = useState("general")
   const [editPaidBy, setEditPaidBy] = useState("")
   const [editDate, setEditDate] = useState(new Date())
+  const editOriginal = useRef<{ desc: string; amount: string; currency: string; category: string; paidBy: string; date: string } | null>(null)
 
   // Add Member modal — friends picker
   const [showAddMember, setShowAddMember] = useState(false)
@@ -756,11 +757,18 @@ export default function GroupDetail() {
 
   function openEdit(exp: any) {
     setEditTarget(exp)
-    setEditDesc(exp.description)
-    setEditAmount(String(exp.amount))
-    setEditCurrency(exp.currency ?? gc.code)
-    setEditCategory(exp.category ?? "general")
-    setEditPaidBy(exp.paidById)
+    const origDesc = exp.description
+    const origAmount = String(exp.amount)
+    const origCurrency = exp.currency ?? gc.code
+    const origCategory = exp.category ?? "general"
+    const origPaidBy = exp.paidById
+    const origDate = new Date(exp.date ?? exp.createdAt).toISOString()
+    editOriginal.current = { desc: origDesc, amount: origAmount, currency: origCurrency, category: origCategory, paidBy: origPaidBy, date: origDate }
+    setEditDesc(origDesc)
+    setEditAmount(origAmount)
+    setEditCurrency(origCurrency)
+    setEditCategory(origCategory)
+    setEditPaidBy(origPaidBy)
     setEditDate(new Date(exp.date ?? exp.createdAt))
 
     const splits: any[] = exp.splits ?? []
@@ -2069,13 +2077,27 @@ export default function GroupDetail() {
             />
           </View>
           <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(28, insets.bottom + 16), borderTopWidth: 1, borderTopColor: C.border }}>
-            <TouchableOpacity
-              onPress={() => editExpenseMutation.mutate()}
-              disabled={!editDesc.trim() || !editAmount || isNaN(parseFloat(editAmount)) || editExpenseMutation.isPending}
-              style={{ backgroundColor: (!editDesc.trim() || !editAmount) ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
-            >
-              {editExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Save Changes</Text>}
-            </TouchableOpacity>
+            {(() => {
+              const orig = editOriginal.current
+              const isDirty = !orig ? false : (
+                editDesc.trim() !== orig.desc.trim() ||
+                editAmount !== orig.amount ||
+                editCurrency !== orig.currency ||
+                editCategory !== orig.category ||
+                editPaidBy !== orig.paidBy ||
+                editDate.toISOString().slice(0, 10) !== orig.date.slice(0, 10)
+              )
+              const canSave = isDirty && !!editDesc.trim() && !!editAmount && !isNaN(parseFloat(editAmount)) && !editExpenseMutation.isPending
+              return (
+                <TouchableOpacity
+                  onPress={() => editExpenseMutation.mutate()}
+                  disabled={!canSave}
+                  style={{ backgroundColor: canSave ? "#6366f1" : "#374151", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center", opacity: canSave ? 1 : 0.5 }}
+                >
+                  {editExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Save Changes</Text>}
+                </TouchableOpacity>
+              )
+            })()}
           </View>
         </View>
       </InAppFullScreenModal>
