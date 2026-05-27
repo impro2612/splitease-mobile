@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, Pressable, RefreshControl, Platform,
-  Animated, PanResponder, useWindowDimensions,
+  Animated, PanResponder, useWindowDimensions, AppState, AppStateStatus,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -221,6 +221,15 @@ export default function BorrowBook() {
     queryKey: ["borrow-book"],
     queryFn: async () => { const res = await borrowBookApi.list(); return res.data as { entries: Entry[]; friends: FriendSummary[] } },
   })
+
+  // Refetch whenever the app comes back to the foreground so the other
+  // party's changes (new IOU, settlement) are visible without a manual pull.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (next === "active") refetch()
+    })
+    return () => sub.remove()
+  }, [refetch])
 
   const { data: friendsData } = useQuery({
     queryKey: ["friends"],
