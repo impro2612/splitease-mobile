@@ -180,9 +180,12 @@ function SwipeDownSheet({
       </Animated.View>
       <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: kbHeight }} pointerEvents="box-none">
         <Animated.View
-          {...panResponder.panHandlers}
           style={[{ transform: [{ translateY }] }, sheetStyle]}
         >
+          {/* Drag handle — only this area triggers sheet dismiss */}
+          <View {...panResponder.panHandlers} style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(156,163,175,0.4)" }} />
+          </View>
           {children}
         </Animated.View>
       </View>
@@ -455,14 +458,13 @@ export default function BorrowBook() {
       <SwipeDownSheet
         visible={!!selectedFriend}
         onClose={() => setSelectedFriend(null)}
-        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: windowH * 0.75 }}
+        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: windowH * 0.85 }}
       >
         <View style={{ flex: 1 }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 16 }} />
             {liveFriend && (
               <>
                 {/* Pinned header */}
-                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, gap: 12, marginBottom: 16 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 4, gap: 12, marginBottom: 16 }}>
                   <Avatar name={liveFriend.friend.name ?? liveFriend.friend.email} size={46} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontSize: 17, fontWeight: "800" }}>{liveFriend.friend.name ?? liveFriend.friend.email}</Text>
@@ -607,7 +609,6 @@ export default function BorrowBook() {
         sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20, paddingHorizontal: 20 }}
       >
         <View>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 4 }}>Record Part Payment</Text>
             {payingEntry && (
               <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 20 }}>
@@ -671,7 +672,6 @@ export default function BorrowBook() {
         sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20, paddingHorizontal: 20 }}
       >
         <View>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 20 }}>Record an IOU</Text>
 
             {/* Friend picker */}
