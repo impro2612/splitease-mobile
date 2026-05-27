@@ -89,7 +89,7 @@ function SwipeDownSheet({
 }: {
   visible: boolean
   onClose: () => void
-  children: React.ReactNode
+  children: ((dragHandlers: Record<string, unknown>) => React.ReactNode) | React.ReactNode
   sheetStyle?: object
 }) {
   const { height } = useWindowDimensions()
@@ -182,11 +182,17 @@ function SwipeDownSheet({
         <Animated.View
           style={[{ transform: [{ translateY }] }, sheetStyle]}
         >
-          {/* Drag handle — only this area triggers sheet dismiss */}
-          <View {...panResponder.panHandlers} style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(156,163,175,0.4)" }} />
-          </View>
-          {children}
+          {typeof children === "function"
+            ? children(panResponder.panHandlers as Record<string, unknown>)
+            : (
+              <>
+                <View {...panResponder.panHandlers} style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
+                  <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(156,163,175,0.4)" }} />
+                </View>
+                {children}
+              </>
+            )
+          }
         </Animated.View>
       </View>
     </Modal>
@@ -460,11 +466,15 @@ export default function BorrowBook() {
         onClose={() => setSelectedFriend(null)}
         sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: windowH * 0.85 }}
       >
+        {(dragHandlers) => (
         <View style={{ flex: 1 }}>
+            {/* Drag zone: pill + header — swiping anywhere here dismisses the sheet */}
+            <View {...dragHandlers}>
+              <View style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 8 }}>
+                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(156,163,175,0.4)" }} />
+              </View>
             {liveFriend && (
-              <>
-                {/* Pinned header */}
-                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 4, gap: 12, marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingBottom: 12, gap: 12 }}>
                   <Avatar name={liveFriend.friend.name ?? liveFriend.friend.email} size={46} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontSize: 17, fontWeight: "800" }}>{liveFriend.friend.name ?? liveFriend.friend.email}</Text>
@@ -478,7 +488,10 @@ export default function BorrowBook() {
                     <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Add Amount</Text>
                   </TouchableOpacity>
                 </View>
+            )}
+            </View>{/* end drag zone */}
 
+            {liveFriend && (
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
                   {pendingEntries.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
@@ -597,9 +610,9 @@ export default function BorrowBook() {
                     <Text style={{ color: C.textSub, textAlign: "center", marginTop: 40 }}>No entries yet</Text>
                   )}
                 </ScrollView>
-              </>
             )}
         </View>
+        )}
       </SwipeDownSheet>
 
       {/* ── Part Payment Sheet ──────────────────────────────────────────────── */}
