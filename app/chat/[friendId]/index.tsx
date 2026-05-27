@@ -16,7 +16,7 @@ import CryptoJS from "crypto-js"
 import * as ExpoCrypto from "expo-crypto"
 import * as SecureStore from "expo-secure-store"
 import { useAuthStore } from "@/store/auth"
-import { EmojiKeyboard } from "rn-emoji-keyboard"
+import { emojisByCategory } from "rn-emoji-keyboard"
 
 function uuidv4() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -44,6 +44,26 @@ const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 
 // Quick-react emojis shown in the action sheet bar
 const QUICK_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
+
+type EmojiItem = {
+  emoji: string
+  name: string
+  keywords?: string[]
+}
+
+const EMOJI_CATEGORY_LABELS: Record<string, string> = {
+  smileys_emotion: "Smileys & Emotion",
+  people_body: "People & Body",
+  animals_nature: "Animals & Nature",
+  food_drink: "Food & Drink",
+  travel_places: "Travel & Places",
+  activities: "Activities",
+  objects: "Objects",
+  symbols: "Symbols",
+  flags: "Flags",
+  recently_used: "Recent",
+  search: "Search",
+}
 
 function SwipeDownSheet({
   visible,
@@ -143,6 +163,117 @@ function SwipeDownSheet({
       </Animated.View>
     </Modal>
   )
+}
+
+function EmojiReactionSheet({
+  visible,
+  onClose,
+  onSelect,
+  C,
+}: {
+  visible: boolean
+  onClose: () => void
+  onSelect: (emoji: string) => void
+  C: ReturnType<typeof useTheme>
+}) {
+  const [search, setSearch] = useState("")
+  const scrollY = useRef(0)
+  const touchStartY = useRef<number | null>(null)
+  const normalizedSearch = search.trim().toLowerCase()
+  const categories = (emojisByCategory as { title: string; data: EmojiItem[] }[])
+    .map((category) => ({
+      title: category.title,
+      data: normalizedSearch
+        ? category.data.filter((emoji) => {
+          const keywords = emoji.keywords ?? []
+          return emoji.name.toLowerCase().includes(normalizedSearch)
+            || keywords.some((keyword) => keyword.toLowerCase().includes(normalizedSearch))
+            || emoji.emoji.includes(search)
+        })
+        : category.data,
+    }))
+    .filter((category) => category.data.length > 0)
+
+  useEffect(() => {
+    if (!visible) setSearch("")
+  }, [visible])
+
+  function maybeCloseFromEmojiArea(pageY: number) {
+    if (touchStartY.current == null) return
+    const pulledDown = pageY - touchStartY.current
+    if (scrollY.current <= 2 && pulledDown > 90) onClose()
+    touchStartY.current = null
+  }
+
+  return (
+    <SwipeDownSheet
+      visible={visible}
+      onClose={onClose}
+      sheetStyle={{
+        height: "58%",
+        backgroundColor: C.card,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        overflow: "hidden",
+      }}
+    >
+      <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 12, backgroundColor: C.card }}>
+        <View style={{ width: 48, height: 5, borderRadius: 999, backgroundColor: C.border }} />
+      </View>
+      <View style={{ paddingHorizontal: 28, paddingBottom: 12, backgroundColor: C.card }}>
+        <View style={{ height: 56, borderRadius: 28, backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, justifyContent: "center", paddingHorizontal: 22 }}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search"
+            placeholderTextColor={C.textMuted}
+            style={{ color: C.text, fontSize: 18, padding: 0 }}
+            returnKeyType="search"
+          />
+        </View>
+      </View>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: C.card }}
+        contentContainerStyle={{ paddingHorizontal: 28, paddingBottom: 24 + insetsBottomFallback(), gap: 18 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(event) => { scrollY.current = event.nativeEvent.contentOffset.y }}
+        onTouchStart={(event) => { touchStartY.current = event.nativeEvent.pageY }}
+        onTouchMove={(event) => maybeCloseFromEmojiArea(event.nativeEvent.pageY)}
+        onTouchEnd={(event) => maybeCloseFromEmojiArea(event.nativeEvent.pageY)}
+        onTouchCancel={() => { touchStartY.current = null }}
+        overScrollMode="never"
+      >
+        {categories.map((category) => (
+          <View key={category.title}>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 18 }}>
+              {EMOJI_CATEGORY_LABELS[category.title] ?? category.title}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 24 }}>
+              {category.data.map((emoji, index) => (
+                <TouchableOpacity
+                  key={`${category.title}-${emoji.emoji}-${index}`}
+                  activeOpacity={0.7}
+                  onPress={() => onSelect(emoji.emoji)}
+                  style={{ width: "13.2%", minWidth: 40, height: 44, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ fontSize: 34, lineHeight: 40 }}>{emoji.emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
+        {categories.length === 0 && (
+          <Text style={{ color: C.textSub, textAlign: "center", paddingTop: 40, fontSize: 16 }}>No emoji found</Text>
+        )}
+      </ScrollView>
+    </SwipeDownSheet>
+  )
+}
+
+function insetsBottomFallback() {
+  return Platform.OS === "android" ? 12 : 0
 }
 
 // ─── Encryption helpers ───────────────────────────────────────────────────────
@@ -830,49 +961,16 @@ export default function ChatScreen() {
       />
 
       {/* Full emoji picker — app-controlled bottom sheet */}
-      <SwipeDownSheet
+      <EmojiReactionSheet
         visible={emojiPickerOpen}
         onClose={() => setEmojiPickerOpen(false)}
-        sheetStyle={{
-          height: "58%",
-          backgroundColor: C.card,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          overflow: "hidden",
+        C={C}
+        onSelect={(emoji) => {
+          const target = reactionTargetRef.current ?? actionState?.msg
+          if (target) toggleReaction(target, emoji)
+          setEmojiPickerOpen(false)
         }}
-      >
-        <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 8, backgroundColor: C.card }}>
-          <View style={{ width: 48, height: 5, borderRadius: 999, backgroundColor: C.border }} />
-        </View>
-        <EmojiKeyboard
-          onEmojiSelected={(e) => {
-            const target = reactionTargetRef.current ?? actionState?.msg
-            if (target) toggleReaction(target, e.emoji)
-            setEmojiPickerOpen(false)
-          }}
-          enableSearchBar
-          disableSafeArea
-          theme={{
-            knob: C.border,
-            container: C.card,
-            header: C.text,
-            skinTonesContainer: C.card,
-            category: {
-              icon: C.textSub,
-              iconActive: "#6366f1",
-              container: C.card,
-              containerActive: "rgba(99,102,241,0.15)",
-            },
-            search: {
-              text: C.text,
-              placeholder: C.textMuted,
-              icon: C.textSub,
-              background: C.bg,
-            },
-            emoji: { selected: "rgba(99,102,241,0.2)" },
-          }}
-        />
-      </SwipeDownSheet>
+      />
       {/* Delete confirmation dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 28 }}>
