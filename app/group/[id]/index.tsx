@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi, reactionsApi, API_BASE_URL } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
-import { formatCurrency, formatDate, GROUP_EMOJIS, GROUP_COLORS, guessCategory, getExpenseEmoji } from "@/lib/utils"
+import { formatCurrency, formatDate, guessCategory, getExpenseEmoji } from "@/lib/utils"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
@@ -237,16 +237,6 @@ export default function GroupDetail() {
   const queryClient = useQueryClient()
   const { isOnline, enqueueExpense } = useOffline()
   const [tab, setTab] = useState<Tab>("expenses")
-
-  // Edit Group modal
-  const [showEditGroup, setShowEditGroup] = useState(false)
-  const [editGroupName, setEditGroupName] = useState("")
-  const [editGroupDesc, setEditGroupDesc] = useState("")
-  const [editGroupEmoji, setEditGroupEmoji] = useState("💰")
-  const [editGroupColor, setEditGroupColor] = useState("#6366f1")
-  const [editGroupCurrency, setEditGroupCurrency] = useState("INR")
-  const [showEditCurrencyPicker, setShowEditCurrencyPicker] = useState(false)
-  const [editCurrencySearch, setEditCurrencySearch] = useState("")
 
   // Add Expense modal
   const [showAddExpense, setShowAddExpense] = useState(false)
@@ -736,54 +726,8 @@ export default function GroupDetail() {
     onError: () => Toast.show({ type: "error", text1: "Failed to record settlement" }),
   })
 
-  const updateGroupMutation = useMutation({
-    mutationFn: () => groupsApi.update(id, {
-      name: editGroupName.trim(),
-      description: editGroupDesc.trim(),
-      emoji: editGroupEmoji,
-      color: editGroupColor,
-      currency: editGroupCurrency,
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["group", id] })
-      queryClient.invalidateQueries({ queryKey: ["groups"] })
-      queryClient.invalidateQueries({ queryKey: ["activity"] })
-      setShowEditGroup(false)
-      Toast.show({ type: "success", text1: "Group updated!" })
-    },
-    onError: () => Toast.show({ type: "error", text1: "Failed to update group" }),
-  })
-
-  const deleteGroupMutation = useMutation({
-    mutationFn: () => groupsApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["groups"] })
-      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
-      queryClient.invalidateQueries({ queryKey: ["activity"] })
-      setShowEditGroup(false)
-      router.replace("/groups")
-      Toast.show({ type: "success", text1: "Group deleted" })
-    },
-    onError: () => Toast.show({ type: "error", text1: "Failed to delete group" }),
-  })
-
   function openEditGroup() {
-    setEditGroupName(group?.name ?? "")
-    setEditGroupDesc(group?.description ?? "")
-    setEditGroupEmoji(group?.emoji ?? "💰")
-    setEditGroupColor(group?.color ?? "#6366f1")
-    setEditGroupCurrency(group?.currency ?? "INR")
-    setShowEditGroup(true)
-  }
-
-  function confirmDeleteGroup() {
-    showConfirm({
-      title: "Delete Group",
-      message: `Delete "${group?.name}"? All expenses and data will be permanently removed.`,
-      confirmText: "Delete",
-      danger: true,
-      onConfirm: () => deleteGroupMutation.mutate(),
-    })
+    router.push(`/group/${id}/edit` as any)
   }
 
   function resetAddForm() {
@@ -2224,148 +2168,6 @@ export default function GroupDetail() {
               />
             )
           })()}
-        </View>
-      </Modal>
-
-      {/* Edit Group Modal */}
-      <Modal visible={showEditGroup} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEditGroup(false)}>
-        <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
-
-          {/* Static top */}
-          <View style={{ paddingHorizontal: 20 }}>
-            {/* Header */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Edit Group</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <TouchableOpacity
-                  onPress={confirmDeleteGroup}
-                  style={{ backgroundColor: "rgba(244,63,94,0.15)", borderRadius: 20, padding: 8 }}
-                >
-                  <Ionicons name="trash-outline" size={18} color="#f87171" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowEditGroup(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-                  <Ionicons name="close" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Preview card */}
-            <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
-              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: editGroupColor + "33", alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 22 }}>{editGroupEmoji}</Text>
-              </View>
-              <View>
-                <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>{editGroupName || "Group name"}</Text>
-                <Text style={{ color: C.textMuted, fontSize: 12 }}>{editGroupDesc || "No description"}</Text>
-              </View>
-            </View>
-
-            {/* Group name */}
-            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group name *</Text>
-            <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
-              <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="e.g. NYC Trip, Apartment" placeholderTextColor={C.textMuted} value={editGroupName} onChangeText={setEditGroupName} />
-            </View>
-
-            {/* Description */}
-            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Description (optional)</Text>
-            <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: 10 }}>
-              <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="What's this group for?" placeholderTextColor={C.textMuted} value={editGroupDesc} onChangeText={setEditGroupDesc} />
-            </View>
-
-            {/* Currency */}
-            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6 }}>Group Currency</Text>
-            <TouchableOpacity
-              onPress={() => setShowEditCurrencyPicker(true)}
-              style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <Text style={{ fontSize: 18 }}>{CURRENCIES.find(c => c.code === editGroupCurrency)?.flag}</Text>
-                <Text style={{ color: C.text, fontSize: 15 }}>{editGroupCurrency} — {CURRENCIES.find(c => c.code === editGroupCurrency)?.name}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
-            </TouchableOpacity>
-
-            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 6, marginTop: 2 }}>Icon</Text>
-          </View>
-
-          {/* Scrollable: icons + colors */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {GROUP_EMOJIS.map((e) => (
-                <TouchableOpacity
-                  key={e}
-                  onPress={() => setEditGroupEmoji(e)}
-                  style={{ width: 46, height: 46, borderRadius: 13, backgroundColor: editGroupEmoji === e ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.05)", borderWidth: editGroupEmoji === e ? 2 : 1, borderColor: editGroupEmoji === e ? "#6366f1" : "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" }}
-                >
-                  <Text style={{ fontSize: 21 }}>{e}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Color</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {GROUP_COLORS.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => setEditGroupColor(c)}
-                  style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c, borderWidth: editGroupColor === c ? 3 : 0, borderColor: "rgba(255,255,255,0.6)" }}
-                />
-              ))}
-            </View>
-          </ScrollView>
-
-          {/* Static bottom: Save button */}
-          <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(28, insets.bottom + 16), paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border }}>
-            <TouchableOpacity
-              onPress={() => updateGroupMutation.mutate()}
-              disabled={!editGroupName.trim() || updateGroupMutation.isPending}
-              style={{ backgroundColor: !editGroupName.trim() ? "#374151" : "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
-            >
-              {updateGroupMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Save Changes</Text>}
-            </TouchableOpacity>
-          </View>
-
-        </View>
-      </Modal>
-
-      {/* Edit Group Currency Picker */}
-      <Modal visible={showEditCurrencyPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEditCurrencyPicker(false)}>
-        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
-            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Group Currency</Text>
-            <TouchableOpacity onPress={() => { setShowEditCurrencyPicker(false); setEditCurrencySearch("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>
-            <Ionicons name="search" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
-            <TextInput style={{ color: C.text, flex: 1, fontSize: 15 }} placeholder="Search currency..." placeholderTextColor={C.textMuted} value={editCurrencySearch} onChangeText={setEditCurrencySearch} autoCapitalize="none" />
-            {editCurrencySearch.length > 0 && <TouchableOpacity onPress={() => setEditCurrencySearch("")}><Ionicons name="close-circle" size={16} color={C.textMuted} /></TouchableOpacity>}
-          </View>
-          <FlatList
-            data={CURRENCIES.filter(c => c.code.toLowerCase().includes(editCurrencySearch.toLowerCase()) || c.name.toLowerCase().includes(editCurrencySearch.toLowerCase()))}
-            keyExtractor={item => item.code}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(40, insets.bottom + 20) }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => { setEditGroupCurrency(item.code); setShowEditCurrencyPicker(false); setEditCurrencySearch("") }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
-              >
-                <Text style={{ fontSize: 24 }}>{item.flag}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: C.text, fontWeight: "600" }}>{item.code}</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 12 }}>{item.name}</Text>
-                </View>
-                {editGroupCurrency === item.code && <Ionicons name="checkmark-circle" size={20} color="#6366f1" />}
-              </TouchableOpacity>
-            )}
-          />
         </View>
       </Modal>
 
