@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Keyboard,
   ScrollView, Animated, PanResponder,
 } from "react-native"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
@@ -114,6 +114,7 @@ export default function ChatScreen() {
   const actionMsg = actionState?.msg ?? null
   const reactionTargetRef = useRef<Message | null>(null)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const composerTranslateY = useRef(new Animated.Value(0)).current
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string; message: string; confirmText: string; onConfirm: () => void
   } | null>(null)
@@ -335,6 +336,31 @@ export default function ChatScreen() {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+
+    const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
+      const keyboardHeight = Math.max(0, event.endCoordinates?.height ?? 0)
+      Animated.timing(composerTranslateY, {
+        toValue: -keyboardHeight,
+        duration: 180,
+        useNativeDriver: true,
+      }).start()
+    })
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      Animated.timing(composerTranslateY, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }).start()
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [composerTranslateY])
 
   // ── Send message ─────────────────────────────────────────────────────────────
   async function sendMessage() {
@@ -660,7 +686,7 @@ export default function ChatScreen() {
 
         {/* Input / Selection action bar */}
         {isSelecting ? (
-          <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 12, borderTopWidth: 1, borderTopColor: C.border }}>
+          <Animated.View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 12, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg, transform: Platform.OS === "android" ? [{ translateY: composerTranslateY }] : undefined }}>
             <TouchableOpacity
               onPress={cancelSelection}
               style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
@@ -685,9 +711,9 @@ export default function ChatScreen() {
                 : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Delete ({selectedIds.size})</Text>
               }
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         ) : (
-          <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10, borderTopWidth: 1, borderTopColor: C.border }}>
+          <Animated.View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg, transform: Platform.OS === "android" ? [{ translateY: composerTranslateY }] : undefined }}>
             <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 24, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 16, paddingVertical: 10, minHeight: 46, maxHeight: 120, justifyContent: "center" }}>
               <TextInput
                 style={{ color: C.text, fontSize: 15, lineHeight: 20 }}
@@ -712,7 +738,7 @@ export default function ChatScreen() {
                 ? <ActivityIndicator color="#fff" size="small" />
                 : <Ionicons name="send" size={18} color={input.trim() ? "#fff" : C.textMuted} />}
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
       </KeyboardAvoidingView>
 
