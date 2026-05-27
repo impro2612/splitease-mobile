@@ -10,9 +10,11 @@ import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
-import { borrowBookApi, friendsApi } from "@/lib/api"
+import { borrowBookApi, friendsApi, API_BASE_URL } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
+import Pusher from "pusher-js/react-native"
+const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 
 const ACCENT = "#f59e0b"
 const ACCENT_BG = "rgba(245,158,11,0.12)"
@@ -220,17 +222,44 @@ export default function BorrowBook() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["borrow-book"],
     queryFn: async () => { const res = await borrowBookApi.list(); return res.data as { entries: Entry[]; friends: FriendSummary[] } },
-    refetchInterval: 15_000,
   })
 
-  // Refetch whenever the app comes back to the foreground so the other
-  // party's changes (new IOU, settlement) are visible without a manual pull.
+  // Refetch whenever the app comes back to the foreground
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
       if (next === "active") refetch()
     })
     return () => sub.remove()
   }, [refetch])
+
+  // Real-time: subscribe to Pusher and invalidate on any IOU change
+  useEffect(() => {
+    if (!user?.id) return
+    const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
+      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
+      channelAuthorization: {
+        customHandler: async ({ socketId, channelName }, callback) => {
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${useAuthStore.getState().token}` },
+              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
+            })
+            if (!res.ok) { callback(new Error("Pusher auth failed"), null); return }
+            const data = await res.json()
+            callback(null, data)
+          } catch (e) { callback(e as Error, null) }
+        },
+      },
+    })
+    const channel = pusher.subscribe(`private-user-${user.id}`)
+    channel.bind("iou-updated", () => { qc.invalidateQueries({ queryKey: ["borrow-book"] }) })
+    return () => {
+      channel.unbind_all()
+      pusher.unsubscribe(`private-user-${user.id}`)
+      pusher.disconnect()
+    }
+  }, [user?.id])
 
   const { data: friendsData } = useQuery({
     queryKey: ["friends"],
