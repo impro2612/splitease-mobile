@@ -739,7 +739,9 @@ export default function ChatScreen() {
         }}
         defaultHeight="58%"
         expandedHeight="88%"
+        expandable
         enableSearchBar
+        onRequestClose={() => setEmojiPickerOpen(false)}
         theme={{
           backdrop: "rgba(0,0,0,0.58)",
           knob: C.border,
