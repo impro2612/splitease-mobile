@@ -5,6 +5,7 @@ import {
   useWindowDimensions, Animated, Pressable,
 } from "react-native"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
+import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 import Pusher from "pusher-js/react-native"
 import * as SecureStore from "expo-secure-store"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -1958,7 +1959,7 @@ export default function GroupDetail() {
       </Modal>
 
       {/* Notes Modal */}
-      <Modal visible={showNotes} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowNotes(false)}>
+      <InAppFullScreenModal visible={showNotes} onRequestClose={() => setShowNotes(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 20 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>Group Notes</Text>
@@ -1984,10 +1985,10 @@ export default function GroupDetail() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* Add Expense Modal */}
-      <Modal visible={showAddExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddExpense(false)}>
+      <InAppFullScreenModal visible={showAddExpense} onRequestClose={() => setShowAddExpense(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingHorizontal: 20 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Add Expense</Text>
@@ -2033,10 +2034,10 @@ export default function GroupDetail() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* Edit Expense Modal */}
-      <Modal visible={showEditExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEditExpense(false)}>
+      <InAppFullScreenModal visible={showEditExpense} onRequestClose={() => setShowEditExpense(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingHorizontal: 20 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Edit Expense</Text>
@@ -2077,10 +2078,10 @@ export default function GroupDetail() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* Add Member Modal — Friends Picker */}
-      <Modal visible={showAddMember} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowAddMember(false); setFriendSearch("") }}>
+      <InAppFullScreenModal visible={showAddMember} onRequestClose={() => { setShowAddMember(false); setFriendSearch("") }}>
         <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           {/* Header */}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
@@ -2185,10 +2186,10 @@ export default function GroupDetail() {
             )
           })()}
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* Settle Up Modal */}
-      <Modal visible={showSettle} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSettle(false)}>
+      <InAppFullScreenModal visible={showSettle} onRequestClose={() => setShowSettle(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 8 }}>
           <View className="flex-row items-center justify-between mb-6">
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Settle Up</Text>
@@ -2222,7 +2223,7 @@ export default function GroupDetail() {
             </>
           )}
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       <BottomTabBar activeTab="Groups" />
     </SafeAreaView>
@@ -2288,7 +2289,7 @@ function ExpenseFormFields({
       </View>
 
       {/* Currency picker modal (inline within form fields component) */}
-      <Modal visible={showCurrencyPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}>
+      <InAppFullScreenModal visible={showCurrencyPicker} onRequestClose={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: 32 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Expense Currency</Text>
@@ -2342,7 +2343,7 @@ function ExpenseFormFields({
             )}
           />
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* Date */}
       <Text className="text-slate-300 text-sm font-medium mb-2">Date</Text>

@@ -2,7 +2,7 @@ import { useState } from "react"
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, ActivityIndicator,
-  Image, Platform, Modal, FlatList,
+  Image, Platform, FlatList,
 } from "react-native"
 import { router } from "expo-router"
 import { useQueryClient } from "@tanstack/react-query"
@@ -12,6 +12,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin"
 import { useAuthStore } from "@/store/auth"
 import { useTheme } from "@/lib/theme"
 import { GoogleLogo } from "@/components/ui/GoogleLogo"
+import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 
 const signInLogo = require("@/assets/Photoroom.png")
 
@@ -251,7 +252,7 @@ export default function SignUp() {
       </KeyboardAvoidingView>
 
       {/* Country code picker modal */}
-      <Modal visible={showCountryPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCountryPicker(false)}>
+      <InAppFullScreenModal visible={showCountryPicker} onRequestClose={() => setShowCountryPicker(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: 24 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "700" }}>Select Country Code</Text>
@@ -277,7 +278,7 @@ export default function SignUp() {
             )}
           />
         </View>
-      </Modal>
+      </InAppFullScreenModal>
     </SafeAreaView>
   )
 }

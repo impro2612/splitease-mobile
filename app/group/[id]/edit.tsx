@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   Keyboard,
-  Modal,
   Platform,
   ScrollView,
   Text,
@@ -22,6 +21,7 @@ import { groupsApi } from "@/lib/api"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
 import { GROUP_COLORS, GROUP_EMOJIS } from "@/lib/utils"
+import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 
 type GroupFormSnapshot = {
   name: string
@@ -339,7 +339,7 @@ export default function EditGroup() {
           </View>
         </SafeAreaView>
 
-        <Modal visible={showCurrencyPicker} animationType="slide" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <InAppFullScreenModal visible={showCurrencyPicker} onRequestClose={() => setShowCurrencyPicker(false)}>
           <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
               <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Group Currency</Text>
@@ -373,7 +373,7 @@ export default function EditGroup() {
               )}
             />
           </View>
-        </Modal>
+        </InAppFullScreenModal>
       </View>
     </TouchableWithoutFeedback>
   )

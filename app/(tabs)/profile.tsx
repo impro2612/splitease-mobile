@@ -15,6 +15,7 @@ import { router } from "expo-router"
 import { useAuthStore, type ThemePref } from "@/store/auth"
 import { api, authApi, pushApi } from "@/lib/api"
 import { Avatar } from "@/components/ui/Avatar"
+import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 import Toast from "react-native-toast-message"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
@@ -401,7 +402,7 @@ export default function Profile() {
       </ScrollView>
 
       {/* ── Edit Profile Modal ──────────────────────────────────────────────────── */}
-      <Modal visible={showEdit} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEdit(false)}>
+      <InAppFullScreenModal visible={showEdit} onRequestClose={() => setShowEdit(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 24 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Edit Profile</Text>
@@ -485,7 +486,7 @@ export default function Profile() {
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* ── Appearance Picker Modal ──────────────────────────────────────────────── */}
       <Modal visible={showAppearance} transparent animationType="fade" onRequestClose={() => setShowAppearance(false)}>
@@ -521,7 +522,7 @@ export default function Profile() {
       </Modal>
 
       {/* ── Currency Picker Modal ────────────────────────────────────────────────── */}
-      <Modal visible={showCurrencyPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCurrencyPicker(false)}>
+      <InAppFullScreenModal visible={showCurrencyPicker} onRequestClose={() => setShowCurrencyPicker(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Select Currency</Text>
@@ -558,10 +559,10 @@ export default function Profile() {
             )}
           />
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* ── Privacy Policy Modal ─────────────────────────────────────────────────── */}
-      <Modal visible={showPrivacy} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPrivacy(false)}>
+      <InAppFullScreenModal visible={showPrivacy} onRequestClose={() => setShowPrivacy(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Privacy Policy</Text>
@@ -573,7 +574,7 @@ export default function Profile() {
             <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 22 }}>{PRIVACY_POLICY}</Text>
           </ScrollView>
         </View>
-      </Modal>
+      </InAppFullScreenModal>
 
       {/* ── Support Modal ───────────────────────────────────────────────────────── */}
       <Modal visible={showSupport} transparent animationType="fade" onRequestClose={() => setShowSupport(false)}>

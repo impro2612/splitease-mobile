@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Modal, FlatList } from "react-native"
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, FlatList } from "react-native"
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
@@ -12,6 +12,7 @@ import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { formatDate } from "@/lib/utils"
 import { getNativePendingSuggestionById, clearNativePendingSuggestionById } from "@/lib/nativeTrackExpense"
 import Toast from "react-native-toast-message"
+import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 
 export default function ConfirmExpense() {
   const C = useTheme()
@@ -287,12 +288,7 @@ export default function ConfirmExpense() {
       </View>
 
       {/* Currency picker modal */}
-      <Modal
-        visible={showCurrencyPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}
-      >
+      <InAppFullScreenModal visible={showCurrencyPicker} onRequestClose={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: 32 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Expense Currency</Text>
@@ -366,7 +362,7 @@ export default function ConfirmExpense() {
             )}
           />
         </View>
-      </Modal>
+      </InAppFullScreenModal>
     </SafeAreaView>
   )
 }

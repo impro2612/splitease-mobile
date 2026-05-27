@@ -1,13 +1,14 @@
 import { useState } from "react"
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  Modal, ActivityIndicator, KeyboardAvoidingView, Platform, Image,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Image,
 } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useTheme } from "@/lib/theme"
 import { authApi } from "@/lib/api"
+import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 
 const signInLogo = require("@/assets/Photoroom.png")
 
@@ -130,7 +131,7 @@ export default function CompleteProfile() {
       </KeyboardAvoidingView>
 
       {/* Country code picker modal */}
-      <Modal visible={showPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPicker(false)}>
+      <InAppFullScreenModal visible={showPicker} onRequestClose={() => setShowPicker(false)}>
         <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: 24 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "700" }}>Select Country Code</Text>
@@ -156,7 +157,7 @@ export default function CompleteProfile() {
             )}
           />
         </View>
-      </Modal>
+      </InAppFullScreenModal>
     </SafeAreaView>
   )
 }
