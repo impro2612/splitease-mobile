@@ -454,7 +454,7 @@ export default function BorrowBook() {
       <SwipeDownSheet
         visible={!!selectedFriend}
         onClose={() => setSelectedFriend(null)}
-        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "88%", paddingBottom: insets.bottom + 16 }}
+        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "88%" }}
       >
         <View>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: "center", marginTop: 12, marginBottom: 16 }} />
@@ -475,7 +475,7 @@ export default function BorrowBook() {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16 }}>
                   {pendingEntries.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
                       <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 8 }}>PENDING</Text>
