@@ -220,6 +220,7 @@ export default function BorrowBook() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["borrow-book"],
     queryFn: async () => { const res = await borrowBookApi.list(); return res.data as { entries: Entry[]; friends: FriendSummary[] } },
+    refetchInterval: 15_000,
   })
 
   // Refetch whenever the app comes back to the foreground so the other
