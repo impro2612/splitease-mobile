@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, Pressable, RefreshControl,
-  Platform, Animated, PanResponder, useWindowDimensions, KeyboardAvoidingView,
+  Platform, Animated, PanResponder, useWindowDimensions, Keyboard,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -53,9 +53,16 @@ function BottomSheet({
   const { height } = useWindowDimensions()
   const hiddenTranslateY = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
+  const [kbHeight, setKbHeight] = useState(0)
   const slideAnim = useRef(new Animated.Value(hiddenTranslateY)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height))
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
+    return () => { show.remove(); hide.remove() }
+  }, [])
 
   const translateY = Animated.add(slideAnim, panY.interpolate({
     inputRange: [-9999, 0, 9999], outputRange: [0, 0, 9999],
@@ -107,7 +114,7 @@ function BottomSheet({
       <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={closeSheet} />
       </Animated.View>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+      <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: kbHeight }} pointerEvents="box-none">
         <Animated.View
           {...panResponder.panHandlers}
           style={{
@@ -121,7 +128,7 @@ function BottomSheet({
           <Text style={{ color: C.text, fontSize: 17, fontWeight: "800", marginBottom: 20 }}>{title}</Text>
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, Pressable, RefreshControl, Platform,
-  Animated, PanResponder, useWindowDimensions, KeyboardAvoidingView,
+  Animated, PanResponder, useWindowDimensions, Keyboard,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -68,6 +68,13 @@ function SwipeSheet({
   const { height } = useWindowDimensions()
   const hidden = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
+  const [kbHeight, setKbHeight] = useState(0)
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height))
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
+    return () => { show.remove(); hide.remove() }
+  }, [])
   const slideAnim = useRef(new Animated.Value(hidden)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
@@ -115,11 +122,11 @@ function SwipeSheet({
       <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={close} />
       </Animated.View>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+      <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: kbHeight }} pointerEvents="box-none">
         <Animated.View {...pan.panHandlers} style={[{ transform: [{ translateY }] }, sheetStyle]}>
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   )
 }
