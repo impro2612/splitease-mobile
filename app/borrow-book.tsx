@@ -14,6 +14,7 @@ import { borrowBookApi, friendsApi, API_BASE_URL } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
 import Pusher from "pusher-js/react-native"
+import { BlurView } from "expo-blur"
 const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 
 const ACCENT = "#f59e0b"
@@ -86,11 +87,13 @@ function SwipeDownSheet({
   onClose,
   children,
   sheetStyle,
+  scrollAtTop,
 }: {
   visible: boolean
   onClose: () => void
   children: ((dragHandlers: Record<string, unknown>) => React.ReactNode) | React.ReactNode
   sheetStyle?: object
+  scrollAtTop?: React.MutableRefObject<boolean>
 }) {
   const { height } = useWindowDimensions()
   const hiddenTranslateY = Math.max(300, height)
@@ -159,12 +162,12 @@ function SwipeDownSheet({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Return true so blank-area drags are claimed immediately.
-      // In RN's bubble phase, deeper views (TextInput, buttons) still win
-      // over this parent — so taps on interactive children are unaffected.
+      // Blank-area drags claimed on start; buttons/inputs deeper in the tree still win.
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: shouldStartDrag,
-      onMoveShouldSetPanResponderCapture: shouldStartDrag,
+      // Capture from ScrollView only when it is scrolled to the top
+      onMoveShouldSetPanResponderCapture: (_, g) =>
+        shouldStartDrag(_, g) && (scrollAtTop?.current ?? true),
       onPanResponderMove: handleDragMove,
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: handleDragRelease,
@@ -175,18 +178,19 @@ function SwipeDownSheet({
 
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={closeSheet}>
-      <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", opacity: overlayAnim }}>
+      <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.2)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={closeSheet} />
       </Animated.View>
       <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: kbHeight }} pointerEvents="box-none">
         <Animated.View
+          {...panResponder.panHandlers}
           style={[{ transform: [{ translateY }] }, sheetStyle]}
         >
           {typeof children === "function"
-            ? children(panResponder.panHandlers as Record<string, unknown>)
+            ? children({} as Record<string, unknown>)
             : (
               <>
-                <View {...panResponder.panHandlers} style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
+                <View style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
                   <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(156,163,175,0.4)" }} />
                 </View>
                 {children}
@@ -208,6 +212,11 @@ export default function BorrowBook() {
 
   const [selectedFriend, setSelectedFriend] = useState<FriendSummary | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+
+  // Blur overlay: fades in when any sheet is open
+  const blurAnim = useRef(new Animated.Value(0)).current
+  // Tracks whether Friend Detail ScrollView is scrolled to top (gates swipe-to-dismiss)
+  const friendDetailAtTop = useRef(true)
 
   // Add IOU form
   const [addFriendId, setAddFriendId] = useState("")
@@ -271,6 +280,15 @@ export default function BorrowBook() {
     }
   }, [user?.id])
 
+  // Animate blur in when any sheet is open
+  useEffect(() => {
+    Animated.timing(blurAnim, {
+      toValue: (!!selectedFriend || !!payingEntry || showAdd) ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [selectedFriend, payingEntry, showAdd])
+
   const { data: friendsData } = useQuery({
     queryKey: ["friends"],
     queryFn: async () => { const res = await friendsApi.list(); return res.data },
@@ -317,6 +335,16 @@ export default function BorrowBook() {
       Toast.show({ type: "success", text1: "Payment recorded" })
     },
     onError: (e: any) => Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Failed to record payment" }),
+  })
+
+  const fullPaymentMutation = useMutation({
+    mutationFn: (entry: Entry) => borrowBookApi.addPayment(entry.id, {
+      amount: entry.remainingAmount,
+      date: new Date().toISOString(),
+      note: "Full payment",
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["borrow-book"] }); Toast.show({ type: "success", text1: "Full payment recorded ✓" }) },
+    onError: (e: any) => Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Failed" }),
   })
 
   function resetAddForm() {
@@ -460,11 +488,20 @@ export default function BorrowBook() {
         </ScrollView>
       )}
 
+      {/* Blur overlay — covers the borrow book content while any sheet is open */}
+      <Animated.View
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: blurAnim }}
+      >
+        <BlurView intensity={100} tint="dark" style={{ flex: 1 }} />
+      </Animated.View>
+
       {/* ── Friend Detail Sheet ─────────────────────────────────────────────── */}
       <SwipeDownSheet
         visible={!!selectedFriend}
         onClose={() => setSelectedFriend(null)}
         sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: windowH * 0.85 }}
+        scrollAtTop={friendDetailAtTop}
       >
         {(dragHandlers) => (
         <View style={{ flex: 1 }}>
@@ -492,7 +529,12 @@ export default function BorrowBook() {
             </View>{/* end drag zone */}
 
             {liveFriend && (
-                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+                <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            onScroll={(e) => { friendDetailAtTop.current = e.nativeEvent.contentOffset.y <= 0 }}
+            scrollEventThrottle={16}
+          >
                   {pendingEntries.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
                       <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 8 }}>PENDING</Text>
@@ -538,42 +580,73 @@ export default function BorrowBook() {
                               </View>
 
                               {/* Action buttons */}
-                              <View style={{ flexDirection: "row", gap: 8 }}>
-                                {/* Add Amount (part payment) */}
-                                <TouchableOpacity
-                                  onPress={() => { setPayingEntry(e); setPayDate(new Date()) }}
-                                  style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: ACCENT_BG, borderWidth: 1, borderColor: ACCENT_BORDER, alignItems: "center", justifyContent: "center" }}>
-                                  <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Part Payment</Text>
-                                </TouchableOpacity>
-                                {iAmLender && (
-                                  <>
-                                    {/* Mark Settled */}
-                                    <TouchableOpacity
-                                      onPress={() => setConfirmDialog({
-                                        title: "Mark as Settled",
-                                        message: "Confirm this amount has been fully paid back?",
-                                        confirmText: "Yes, Settle",
-                                        danger: false,
-                                        onConfirm: () => settleMutation.mutate(e.id),
-                                      })}
-                                      style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
-                                      <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>✓ Mark Settled</Text>
-                                    </TouchableOpacity>
-                                    {/* Delete */}
-                                    <TouchableOpacity
-                                      onPress={() => setConfirmDialog({
-                                        title: "Delete Entry",
-                                        message: "Remove this IOU record permanently?",
-                                        confirmText: "Delete",
-                                        danger: true,
-                                        onConfirm: () => deleteMutation.mutate(e.id),
-                                      })}
-                                      style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)", alignItems: "center", justifyContent: "center" }}>
-                                      <Ionicons name="trash-outline" size={15} color="#f87171" />
-                                    </TouchableOpacity>
-                                  </>
-                                )}
-                              </View>
+                              {!iAmLender && e.remainingAmount === 0 ? (
+                                /* Borrower paid in full — waiting for lender confirmation */
+                                <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(99,102,241,0.25)", alignItems: "center" }}>
+                                  <Text style={{ color: "#a5b4fc", fontSize: 13, fontWeight: "600", textAlign: "center" }}>
+                                    ⏳ Waiting for {e.lender.name ?? e.lender.email}'s approval
+                                  </Text>
+                                </View>
+                              ) : (
+                                <View style={{ flexDirection: "row", gap: 8 }}>
+                                  {!iAmLender ? (
+                                    /* Borrower actions */
+                                    <>
+                                      <TouchableOpacity
+                                        onPress={() => { setPayingEntry(e); setPayDate(new Date()) }}
+                                        style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: ACCENT_BG, borderWidth: 1, borderColor: ACCENT_BORDER, alignItems: "center", justifyContent: "center" }}>
+                                        <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Part Payment</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        onPress={() => setConfirmDialog({
+                                          title: "Confirm Full Payment",
+                                          message: `Pay ${fmt(e.remainingAmount, e.currency)} in full? The lender will be notified to confirm.`,
+                                          confirmText: "Pay in Full",
+                                          danger: false,
+                                          onConfirm: () => fullPaymentMutation.mutate(e),
+                                        })}
+                                        style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
+                                        <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>Full Payment</Text>
+                                      </TouchableOpacity>
+                                    </>
+                                  ) : (
+                                    /* Lender actions */
+                                    <>
+                                      <TouchableOpacity
+                                        onPress={() => { setPayingEntry(e); setPayDate(new Date()) }}
+                                        style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: ACCENT_BG, borderWidth: 1, borderColor: ACCENT_BORDER, alignItems: "center", justifyContent: "center" }}>
+                                        <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Part Payment</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        onPress={() => setConfirmDialog({
+                                          title: e.remainingAmount === 0 ? "Confirm Full Payment" : "Mark as Settled",
+                                          message: e.remainingAmount === 0
+                                            ? `${e.borrower.name ?? e.borrower.email} claims to have paid in full. Confirm to settle this IOU?`
+                                            : "Confirm this amount has been fully paid back?",
+                                          confirmText: "Yes, Settle",
+                                          danger: false,
+                                          onConfirm: () => settleMutation.mutate(e.id),
+                                        })}
+                                        style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
+                                        <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>
+                                          {e.remainingAmount === 0 ? "✓ Confirm Payment" : "✓ Mark Settled"}
+                                        </Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        onPress={() => setConfirmDialog({
+                                          title: "Delete Entry",
+                                          message: "Remove this IOU record permanently?",
+                                          confirmText: "Delete",
+                                          danger: true,
+                                          onConfirm: () => deleteMutation.mutate(e.id),
+                                        })}
+                                        style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)", alignItems: "center", justifyContent: "center" }}>
+                                        <Ionicons name="trash-outline" size={15} color="#f87171" />
+                                      </TouchableOpacity>
+                                    </>
+                                  )}
+                                </View>
+                              )}
                             </View>
                           )
                         })}
@@ -619,15 +692,20 @@ export default function BorrowBook() {
       <SwipeDownSheet
         visible={!!payingEntry}
         onClose={() => setPayingEntry(null)}
-        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20, paddingHorizontal: 20 }}
+        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20 }}
       >
-        <View>
+        {(dragHandlers) => (
+        <View {...dragHandlers} style={{ paddingHorizontal: 20 }}>
+            <View style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 8 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(156,163,175,0.4)" }} />
+            </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 4 }}>Record Part Payment</Text>
             {payingEntry && (
               <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 20 }}>
                 Balance remaining: {fmt(payingEntry.remainingAmount, payingEntry.currency)}
               </Text>
             )}
+            <View>
 
             {/* Amount */}
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>AMOUNT PAID</Text>
@@ -675,17 +753,24 @@ export default function BorrowBook() {
                 : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save Payment</Text>
               }
             </TouchableOpacity>
+            </View>
         </View>
+        )}
       </SwipeDownSheet>
 
       {/* ── Add IOU Sheet ───────────────────────────────────────────────────── */}
       <SwipeDownSheet
         visible={showAdd}
         onClose={() => { setShowAdd(false); resetAddForm() }}
-        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20, paddingHorizontal: 20 }}
+        sheetStyle={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 20 }}
       >
-        <View>
+        {(dragHandlers) => (
+        <View {...dragHandlers} style={{ paddingHorizontal: 20 }}>
+            <View style={{ width: "100%", alignItems: "center", paddingTop: 12, paddingBottom: 8 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(156,163,175,0.4)" }} />
+            </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 20 }}>Record an IOU</Text>
+            <View>
 
             {/* Friend picker */}
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>WITH FRIEND</Text>
@@ -772,7 +857,9 @@ export default function BorrowBook() {
                 : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save IOU</Text>
               }
             </TouchableOpacity>
+            </View>
         </View>
+        )}
       </SwipeDownSheet>
       {/* Custom Confirm Dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
