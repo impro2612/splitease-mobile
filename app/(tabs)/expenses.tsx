@@ -5,7 +5,7 @@ import {
   KeyboardAvoidingView, Platform, Animated, Keyboard,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
@@ -85,7 +85,7 @@ export default function Expenses() {
   const now = new Date()
   const initialMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-  const earliestMonthDate = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+  const earliestMonthDate = new Date(now.getFullYear(), now.getMonth() - 24, 1)
   const earliestMonthKey = `${earliestMonthDate.getFullYear()}-${String(earliestMonthDate.getMonth() + 1).padStart(2, "0")}`
   const [selectedMonth, setSelectedMonth] = useState(
     `${initialMonth.getFullYear()}-${String(initialMonth.getMonth() + 1).padStart(2, "0")}`
@@ -179,9 +179,13 @@ export default function Expenses() {
     enabled: !!user?.id,
   })
 
-  const { data: txData, isLoading: txLoading } = useQuery({
+  // Paged: the API returns 50 per page — keep fetching on demand instead of stopping at page 1
+  const {
+    data: txPages, isLoading: txLoading, fetchNextPage, hasNextPage, isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["transactions", user?.id, selectedMonth, selectedCategory, selectedDirection],
-    queryFn: () => transactionsApi.list({
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => transactionsApi.list({
       month: selectedMonth,
       category: selectedCategory ?? undefined,
       type:
@@ -190,7 +194,9 @@ export default function Expenses() {
           : selectedDirection === "outgoing"
             ? "debit"
             : undefined,
-    }).then((r) => r.data),
+      page: pageParam,
+    }).then((r) => r.data as { page: number; pages: number; transactions: any[] }),
+    getNextPageParam: (last: { page: number; pages: number; transactions: any[] }) => (last.page < last.pages ? last.page + 1 : undefined),
     enabled: !!user?.id,
   })
 
@@ -324,7 +330,7 @@ export default function Expenses() {
     }
   })
 
-  const transactions = txData?.transactions ?? []
+  const transactions = (txPages?.pages ?? []).flatMap((p: { transactions: any[] }) => p.transactions ?? [])
   const grouped = transactions.reduce((acc: Record<string, typeof transactions>, t: { date: string; [key: string]: unknown }) => {
     const day = new Date(t.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", weekday: "short" })
     if (!acc[day]) acc[day] = []
@@ -426,6 +432,7 @@ export default function Expenses() {
             {activeTab === "transactions" && (
               <TransactionsTab
                 grouped={grouped} txLoading={txLoading}
+                hasMore={!!hasNextPage} loadingMore={isFetchingNextPage} onLoadMore={() => fetchNextPage()}
                 categories={CATEGORIES} selectedCategory={selectedCategory}
                 setSelectedCategory={setSelectedCategory}
                 selectedDirection={selectedDirection}
@@ -784,9 +791,12 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   )
 }
 
-function TransactionsTab({ grouped, txLoading, categories, selectedCategory, setSelectedCategory, selectedDirection, setSelectedDirection, onDelete, C }: {
+function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore, categories, selectedCategory, setSelectedCategory, selectedDirection, setSelectedDirection, onDelete, C }: {
   grouped: Record<string, { id: string; date: string; description: string; amount: number; type: string; category: string; bank?: string }[]>;
   txLoading: boolean;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
   categories: readonly string[];
   selectedCategory: string | null;
   setSelectedCategory: (c: string | null) => void;
@@ -898,6 +908,18 @@ function TransactionsTab({ grouped, txLoading, categories, selectedCategory, set
             </View>
           </View>
         ))
+      )}
+
+      {!txLoading && hasMore && (
+        <TouchableOpacity
+          onPress={onLoadMore}
+          disabled={loadingMore}
+          style={{ alignSelf: "center", backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 20 }}
+        >
+          {loadingMore
+            ? <ActivityIndicator size="small" color="#6366f1" />
+            : <Text style={{ color: "#6366f1", fontWeight: "700", fontSize: 13 }}>Load more</Text>}
+        </TouchableOpacity>
       )}
     </View>
   )

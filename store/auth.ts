@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store"
 import { Appearance } from "react-native"
 import axios from "axios"
 import { API_BASE_URL, authApi } from "@/lib/api"
+import queryClient from "@/lib/query-client"
 
 export type ThemePref = "light" | "dark" | "system"
 
@@ -94,6 +95,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.deleteItemAsync("session_token")
     await SecureStore.deleteItemAsync("refresh_token")
     await SecureStore.deleteItemAsync("user_data")
+    queryClient.clear()
     set({ user: null, token: null })
   },
 

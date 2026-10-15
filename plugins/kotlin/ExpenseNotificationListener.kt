@@ -143,7 +143,10 @@ class ExpenseNotificationListener : NotificationListenerService() {
         val excludePatterns = listOf(
             Regex("\\botp\\b", RegexOption.IGNORE_CASE),
             Regex("\\bone.?time.?pass", RegexOption.IGNORE_CASE),
-            Regex("\\bcredit(ed)?\\b", RegexOption.IGNORE_CASE),
+            // "credited" means money came IN. Don't exclude the bare word "credit" — that
+            // dropped every "Spent Rs.500 on your HDFC Credit Card" alert.
+            Regex("\\bcredited\\b", RegexOption.IGNORE_CASE),
+            Regex("\\bcr\\.?\\s+to\\s+(your\\s+)?a/?c\\b", RegexOption.IGNORE_CASE),
             Regex("\\bcash.?back\\b", RegexOption.IGNORE_CASE),
             Regex("\\brefund\\b", RegexOption.IGNORE_CASE),
             Regex("\\breversed?\\b", RegexOption.IGNORE_CASE),

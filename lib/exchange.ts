@@ -11,24 +11,34 @@ async function fetchDirectRates(fromCurrency: string): Promise<Record<string, nu
     return cached.rates
   }
 
-  try {
-    const res = await fetch(
-      `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${from}.min.json`
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    const rates: Record<string, number> = data[from]
-    if (!rates) return null
-    rateCache[from] = { rates, cachedAt: Date.now() }
-    return rates
-  } catch {
-    return null
+  // Primary CDN, then the project's documented fallback mirror
+  const sources = [
+    `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${from}.min.json`,
+    `https://latest.currency-api.pages.dev/v1/currencies/${from}.min.json`,
+  ]
+  for (const url of sources) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 6000)
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(timer)
+      if (!res.ok) continue
+      const data = await res.json()
+      const rates: Record<string, number> = data[from]
+      if (!rates) continue
+      rateCache[from] = { rates, cachedAt: Date.now() }
+      return rates
+    } catch {
+      // try the next source
+    }
   }
+  // Both sources down: a stale rate is better than none for display conversions
+  return cached?.rates ?? null
 }
 
 /** Returns the direct exchange rate from → to. Returns null if unavailable. */
 export async function getRate(fromCurrency: string, toCurrency: string): Promise<number | null> {
-  if (fromCurrency === toCurrency) return 1
+  if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) return 1
   const rates = await fetchDirectRates(fromCurrency)
   return rates?.[toCurrency.toLowerCase()] ?? null
 }
@@ -39,7 +49,7 @@ export async function convertAmount(
   fromCurrency: string,
   toCurrency: string
 ): Promise<number | null> {
-  if (fromCurrency === toCurrency) return amount
+  if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) return amount
   const rate = await getRate(fromCurrency, toCurrency)
   return rate !== null ? amount * rate : null
 }

@@ -10,12 +10,12 @@ import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
-import { borrowBookApi, friendsApi, API_BASE_URL } from "@/lib/api"
+import { borrowBookApi, friendsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
-import Pusher from "pusher-js/react-native"
+import { CURRENCIES } from "@/lib/currencies"
+import { createPusher } from "@/lib/pusher"
 import { BlurView } from "expo-blur"
-const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 
 const ACCENT = "#f59e0b"
 const ACCENT_BG = "rgba(245,158,11,0.12)"
@@ -41,8 +41,19 @@ type Entry = {
 }
 type FriendSummary = {
   friend: { id: string; name?: string; email: string }
+  nets?: Record<string, number> // per currency: + they owe you, - you owe them
   net: number
   pendingCount: number
+}
+
+/** Per-currency nets; falls back to the legacy single `net` (INR) from older API versions. */
+function netsOf(f: FriendSummary): Record<string, number> {
+  return f.nets ?? (f.net ? { INR: f.net } : {})
+}
+
+/** "₹500 + $20" — amounts in different currencies are listed, never added together. */
+function fmtNets(nets: Record<string, number>, pick: (v: number) => boolean) {
+  return Object.entries(nets).filter(([, v]) => pick(v)).map(([c, v]) => fmt(Math.abs(v), c)).join(" + ")
 }
 
 function Avatar({ name, size = 36 }: { name: string; size?: number }) {
@@ -54,8 +65,8 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
 }
 
 function fmt(amount: number, currency = "INR") {
-  const symbols: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" }
-  return `${symbols[currency] ?? currency}${Math.abs(amount).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+  const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? `${currency} `
+  return `${symbol}${Math.abs(amount).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 function fmtDate(iso?: string | null) {
@@ -254,23 +265,7 @@ export default function BorrowBook() {
   // Real-time: subscribe to Pusher and invalidate on any IOU change
   useEffect(() => {
     if (!user?.id) return
-    const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
-      channelAuthorization: {
-        customHandler: async ({ socketId, channelName }, callback) => {
-          try {
-            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${useAuthStore.getState().token}` },
-              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
-            })
-            if (!res.ok) { callback(new Error("Pusher auth failed"), null); return }
-            const data = await res.json()
-            callback(null, data)
-          } catch (e) { callback(e as Error, null) }
-        },
-      },
-    })
+    const pusher = createPusher()
     const channel = pusher.subscribe(`private-user-${user.id}`)
     channel.bind("iou-updated", () => { qc.invalidateQueries({ queryKey: ["borrow-book"] }) })
     return () => {
@@ -360,16 +355,20 @@ export default function BorrowBook() {
   const pendingEntries = friendEntries.filter((e) => e.status === "PENDING")
   const settledEntries = friendEntries.filter((e) => e.status === "SETTLED")
 
-  const totalLentRemaining = entries
-    .filter((e) => e.lenderId === user?.id && e.status === "PENDING")
-    .reduce((s, e) => s + e.remainingAmount, 0)
-  const totalBorrowedRemaining = entries
-    .filter((e) => e.borrowerId === user?.id && e.status === "PENDING")
-    .reduce((s, e) => s + e.remainingAmount, 0)
+  // Summary totals per currency
+  const lentByCur: Record<string, number> = {}
+  const borrowedByCur: Record<string, number> = {}
+  for (const e of entries) {
+    if (e.status !== "PENDING") continue
+    const bucket = e.lenderId === user?.id ? lentByCur : borrowedByCur
+    bucket[e.currency] = (bucket[e.currency] ?? 0) + e.remainingAmount
+  }
+  const fmtTotals = (m: Record<string, number>) => fmtNets(m, (v) => v > 0) || fmt(0)
 
-  const theyOweMe = friends.filter((f) => f.net > 0)
-  const iOweThem = friends.filter((f) => f.net < 0)
-  const allSettled = friends.filter((f) => f.net === 0 && f.pendingCount === 0)
+  // A friend with IOUs in both directions (in different currencies) appears in both lists
+  const theyOweMe = friends.filter((f) => Object.values(netsOf(f)).some((v) => v > 0))
+  const iOweThem = friends.filter((f) => Object.values(netsOf(f)).some((v) => v < 0))
+  const allSettled = friends.filter((f) => Object.keys(netsOf(f)).length === 0 && f.pendingCount === 0)
 
   // Sync selectedFriend net from latest data (updates after payment)
   const liveFriend = selectedFriend
@@ -403,12 +402,12 @@ export default function BorrowBook() {
           <View style={{ flexDirection: "row", gap: 12, marginTop: 8, marginBottom: 20 }}>
             <View style={{ flex: 1, backgroundColor: "rgba(74,222,128,0.08)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(74,222,128,0.25)", padding: 16 }}>
               <Text style={{ color: "#6b7280", fontSize: 11, fontWeight: "600", marginBottom: 6 }}>THEY OWE YOU</Text>
-              <Text style={{ color: "#4ade80", fontSize: 20, fontWeight: "800" }}>{fmt(totalLentRemaining)}</Text>
+              <Text style={{ color: "#4ade80", fontSize: 20, fontWeight: "800" }}>{fmtTotals(lentByCur)}</Text>
               <Text style={{ color: "#6b7280", fontSize: 11, marginTop: 2 }}>{theyOweMe.length} {theyOweMe.length === 1 ? "person" : "people"}</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: "rgba(248,113,113,0.08)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(248,113,113,0.25)", padding: 16 }}>
               <Text style={{ color: "#6b7280", fontSize: 11, fontWeight: "600", marginBottom: 6 }}>YOU OWE</Text>
-              <Text style={{ color: "#f87171", fontSize: 20, fontWeight: "800" }}>{fmt(totalBorrowedRemaining)}</Text>
+              <Text style={{ color: "#f87171", fontSize: 20, fontWeight: "800" }}>{fmtTotals(borrowedByCur)}</Text>
               <Text style={{ color: "#6b7280", fontSize: 11, marginTop: 2 }}>{iOweThem.length} {iOweThem.length === 1 ? "person" : "people"}</Text>
             </View>
           </View>
@@ -436,7 +435,7 @@ export default function BorrowBook() {
                       <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{f.pendingCount} pending {f.pendingCount === 1 ? "entry" : "entries"}</Text>
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
-                      <Text style={{ color: "#4ade80", fontWeight: "800", fontSize: 16 }}>+{fmt(f.net)}</Text>
+                      <Text style={{ color: "#4ade80", fontWeight: "800", fontSize: 16 }}>+{fmtNets(netsOf(f), (v) => v > 0)}</Text>
                       <Ionicons name="chevron-forward" size={14} color={C.textSub} />
                     </View>
                   </TouchableOpacity>
@@ -458,7 +457,7 @@ export default function BorrowBook() {
                       <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{f.pendingCount} pending {f.pendingCount === 1 ? "entry" : "entries"}</Text>
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
-                      <Text style={{ color: "#f87171", fontWeight: "800", fontSize: 16 }}>{fmt(f.net)}</Text>
+                      <Text style={{ color: "#f87171", fontWeight: "800", fontSize: 16 }}>-{fmtNets(netsOf(f), (v) => v < 0)}</Text>
                       <Ionicons name="chevron-forward" size={14} color={C.textSub} />
                     </View>
                   </TouchableOpacity>
@@ -515,9 +514,9 @@ export default function BorrowBook() {
                   <Avatar name={liveFriend.friend.name ?? liveFriend.friend.email} size={46} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontSize: 17, fontWeight: "800" }}>{liveFriend.friend.name ?? liveFriend.friend.email}</Text>
-                    {liveFriend.net > 0 && <Text style={{ color: "#4ade80", fontSize: 13, fontWeight: "600", marginTop: 2 }}>Owes you {fmt(liveFriend.net)}</Text>}
-                    {liveFriend.net < 0 && <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600", marginTop: 2 }}>You owe {fmt(Math.abs(liveFriend.net))}</Text>}
-                    {liveFriend.net === 0 && <Text style={{ color: "#4ade80", fontSize: 13, fontWeight: "600", marginTop: 2 }}>All settled ✓</Text>}
+                    {fmtNets(netsOf(liveFriend), (v) => v > 0) !== "" && <Text style={{ color: "#4ade80", fontSize: 13, fontWeight: "600", marginTop: 2 }}>Owes you {fmtNets(netsOf(liveFriend), (v) => v > 0)}</Text>}
+                    {fmtNets(netsOf(liveFriend), (v) => v < 0) !== "" && <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600", marginTop: 2 }}>You owe {fmtNets(netsOf(liveFriend), (v) => v < 0)}</Text>}
+                    {Object.keys(netsOf(liveFriend)).length === 0 && <Text style={{ color: "#4ade80", fontSize: 13, fontWeight: "600", marginTop: 2 }}>All settled ✓</Text>}
                   </View>
                   <TouchableOpacity
                     onPress={() => { setSelectedFriend(null); setAddFriendId(liveFriend.friend.id); setShowAdd(true) }}

@@ -1,6 +1,6 @@
 import "../global.css"
 import React, { useEffect, useRef, useState } from "react"
-import { Platform, View, Text, TouchableOpacity, useColorScheme, AppState, AppStateStatus } from "react-native"
+import { Platform, View, Text, TouchableOpacity, Pressable, useColorScheme, AppState, AppStateStatus } from "react-native"
 import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
@@ -187,8 +187,14 @@ Notifications.setNotificationHandler({
 
 const asyncStoragePersister = createAsyncStoragePersister({ storage: AsyncStorage })
 
+// Same key the Profile screen's notification toggle writes
+const NOTIF_PREF_KEY = "notifications_enabled"
+const INTRO_SEEN_KEY = "launch_intro_seen"
+
 async function registerForPushNotifications() {
   if (!Device.isDevice) return
+  // Respect the in-app toggle — re-registering on every foreground used to undo "off"
+  if ((await AsyncStorage.getItem(NOTIF_PREF_KEY)) === "false") return
 
   const { status: existing } = await Notifications.getPermissionsAsync()
   const { status } = existing === "granted"
@@ -299,7 +305,12 @@ class ErrorBoundary extends React.Component<
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   const scheme = useColorScheme()
+  // Full intro on the first launch after install; tap anywhere to skip
   const [showLaunchIntro, setShowLaunchIntro] = useState(true)
+  const [introSeen, setIntroSeen] = useState<boolean | null>(null)
+  useEffect(() => {
+    AsyncStorage.getItem(INTRO_SEEN_KEY).then((v) => setIntroSeen(v === "true")).catch(() => setIntroSeen(false))
+  }, [])
 
   useEffect(() => {
     loadSession()
@@ -322,39 +333,57 @@ export default function RootLayout() {
     return () => sub.remove()
   }, [user?.id])
 
-  // Handle notification tap — deep link to confirm-expense
+  // Handle notification taps — including the tap that cold-started the app, which the
+  // listener alone misses. (Plain splitit:// links are routed by Expo Router itself.)
+  // Waits until the session and navigator are ready.
+  const navReady = !loading && !showLaunchIntro && !!user
   useEffect(() => {
+    if (!navReady) return
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        const url = response?.notification.request.content.data?.url as string | undefined
+        if (url) {
+          handleAppUrl(url)
+          Notifications.clearLastNotificationResponseAsync?.().catch(() => {})
+        }
+      })
+      .catch(() => {})
+
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const url = response.notification.request.content.data?.url as string | undefined
       handleAppUrl(url)
     })
     return () => sub.remove()
-  }, [])
+  }, [navReady])
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && introSeen !== null) {
       requestAnimationFrame(() => {
         SplashScreen.hideAsync().catch(() => {})
       })
 
+      // First launch: full 4 s intro. Afterwards: a brief 1.2 s brand flash.
       const timer = setTimeout(() => {
         setShowLaunchIntro(false)
-      }, 4000)
+        if (!introSeen) AsyncStorage.setItem(INTRO_SEEN_KEY, "true").catch(() => {})
+      }, introSeen ? 1200 : 4000)
 
       return () => clearTimeout(timer)
     }
-  }, [loading])
+  }, [loading, introSeen])
 
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
       <OfflineProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ErrorBoundary>
-          {loading ? null : (
+          {loading || introSeen === null ? null : (
             <View style={{ flex: 1 }}>
               <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
               {showLaunchIntro ? (
-                <LaunchIntro />
+                <Pressable style={{ flex: 1 }} onPress={() => setShowLaunchIntro(false)} accessibilityLabel="Skip intro">
+                  <LaunchIntro />
+                </Pressable>
               ) : (
                 <>
                   <OfflineBanner />

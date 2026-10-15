@@ -30,17 +30,15 @@ export default function Groups() {
 
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
 
+  // The server returns the caller's net balance per currency (expenses AND settlements).
+  // Convert foreign-currency parts into the group's own currency for the card total.
   useEffect(() => {
     if (!groups.length) return
     const pairs: { from: string; to: string }[] = []
     for (const g of groups) {
       const defaultCode = g.currency ?? "USD"
-      for (const e of (g.expenses ?? [])) {
-        const expCur = e.currency ?? defaultCode
-        if (expCur !== defaultCode) {
-          const key = `${expCur}->${defaultCode}`
-          if (!fxRates[key]) pairs.push({ from: expCur, to: defaultCode })
-        }
+      for (const cur of Object.keys(g.myBalance ?? {})) {
+        if (cur !== defaultCode && !fxRates[`${cur}->${defaultCode}`]) pairs.push({ from: cur, to: defaultCode })
       }
     }
     const uniquePairs = pairs.filter((p, i) => pairs.findIndex(x => x.from === p.from && x.to === p.to) === i)
@@ -55,24 +53,18 @@ export default function Groups() {
         return next
       })
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groups])
 
   function getGroupBalance(group: any): number {
     const defaultCode = group.currency ?? "USD"
-    let owed = 0, owes = 0
-    for (const expense of (group.expenses ?? [])) {
-      const mySplit = expense.splits?.find((s: any) => s.userId === user?.id)
-      if (!mySplit) continue
-      const expCur = expense.currency ?? defaultCode
-      const rate = expCur === defaultCode ? 1 : (fxRates[`${expCur}->${defaultCode}`] ?? null)
+    let net = 0
+    for (const [cur, amount] of Object.entries((group.myBalance ?? {}) as Record<string, number>)) {
+      const rate = cur === defaultCode ? 1 : (fxRates[`${cur}->${defaultCode}`] ?? null)
       if (rate === null) continue
-      if (expense.paidById === user?.id) {
-        expense.splits?.forEach((s: any) => { if (s.userId !== user?.id && !s.paid) owed += s.amount * rate })
-      } else if (!mySplit.paid) {
-        owes += mySplit.amount * rate
-      }
+      net += amount * rate
     }
-    return owed - owes
+    return Math.round(net * 100) / 100
   }
 
   return (

@@ -6,14 +6,14 @@ import {
 } from "react-native"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
-import Pusher from "pusher-js/react-native"
-import * as SecureStore from "expo-secure-store"
+import { createPusher } from "@/lib/pusher"
+import * as ExpoCrypto from "expo-crypto"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi, reactionsApi, API_BASE_URL } from "@/lib/api"
+import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi, reactionsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { formatCurrency, formatDate, guessCategory, getExpenseEmoji } from "@/lib/utils"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
@@ -133,7 +133,7 @@ function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
           })}
 
           {/* Center hole */}
-          <Circle cx={cx} cy={cy} r={innerR - 2} fill="#1a1a2e" />
+          <Circle cx={cx} cy={cy} r={innerR - 2} fill={C.card} />
           {/* Subtle inner ring */}
           <Circle cx={cx} cy={cy} r={innerR - 2} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
 
@@ -144,7 +144,7 @@ function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
               <SvgText x={cx} y={cy - 10} textAnchor="middle" fill={sel.color} fontSize="9" fontWeight="bold" letterSpacing="1.5">
                 {sel.name.slice(0, 12).toUpperCase()}
               </SvgText>
-              <SvgText x={cx} y={cy + 10} textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">
+              <SvgText x={cx} y={cy + 10} textAnchor="middle" fill={C.text} fontSize="16" fontWeight="bold">
                 {`${symbol}${sel.amount.toFixed(2)}`}
               </SvgText>
             </G>
@@ -153,7 +153,7 @@ function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
               <SvgText x={cx} y={cy - 7} textAnchor="middle" fill="#64748b" fontSize="9" letterSpacing="2">
                 TOTAL
               </SvgText>
-              <SvgText x={cx} y={cy + 11} textAnchor="middle" fill="#ffffff" fontSize="15" fontWeight="bold">
+              <SvgText x={cx} y={cy + 11} textAnchor="middle" fill={C.text} fontSize="15" fontWeight="bold">
                 {`${symbol}${total.toFixed(2)}`}
               </SvgText>
             </G>
@@ -269,11 +269,6 @@ export default function GroupDetail() {
   // Add Member modal — friends picker
   const [showAddMember, setShowAddMember] = useState(false)
   const [friendSearch, setFriendSearch] = useState("")
-
-  // Settle modal
-  const [showSettle, setShowSettle] = useState(false)
-  const [settleTarget, setSettleTarget] = useState<{ userId: string; name: string; amount: number; currency?: string } | null>(null)
-  const [settleNote, setSettleNote] = useState("")
 
   // Expense reactions
   const QUICK_REACTION_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
@@ -465,24 +460,7 @@ export default function GroupDetail() {
   // Real-time reaction updates via Pusher
   useEffect(() => {
     if (!user?.id || !id) return
-    const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
-    const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
-      channelAuthorization: {
-        customHandler: async ({ socketId, channelName }, callback) => {
-          try {
-            const token = await SecureStore.getItemAsync("session_token")
-            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
-            })
-            if (!res.ok) { callback(new Error("auth failed"), null); return }
-            callback(null, await res.json())
-          } catch (e) { callback(e as Error, null) }
-        },
-      },
-    })
+    const pusher = createPusher()
     const channel = pusher.subscribe(`private-user-${user.id}`)
     channel.bind("expense-reaction", (data: { groupId: string }) => {
       if (data.groupId === id) queryClient.invalidateQueries({ queryKey: ["group", id] })
@@ -569,7 +547,10 @@ export default function GroupDetail() {
           .map((uid: string) => ({ userId: uid, amount: parseFloat(customSplits[uid] || "0") }))
       }
 
+      // Same id for the online attempt and any offline retry → the server dedupes it
+      const clientRequestId = ExpoCrypto.randomUUID()
       const payload = {
+        clientRequestId,
         description: expDesc.trim(),
         amount: numAmount,
         category: expCategory,
@@ -582,7 +563,7 @@ export default function GroupDetail() {
 
       if (!isOnline) {
         await enqueueExpense({
-          id: `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          id: clientRequestId,
           groupId: id,
           createdAt: Date.now(),
           payload,
@@ -723,27 +704,6 @@ export default function GroupDetail() {
   })
   const allFriends: any[] = (friendsData as any)?.friends ?? []
 
-  const settleMutation = useMutation({
-    mutationFn: () => balancesApi.settle(id, {
-      toUserId: settleTarget!.userId,
-      amount: settleTarget!.amount,
-      note: settleNote.trim() || undefined,
-      currency: settleTarget!.currency,
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["group", id] })
-      queryClient.invalidateQueries({ queryKey: ["balances", id] })
-      queryClient.invalidateQueries({ queryKey: ["groups"] })
-      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
-      queryClient.invalidateQueries({ queryKey: ["activity"] })
-      setShowSettle(false)
-      setSettleNote("")
-      setSettleTarget(null)
-      Toast.show({ type: "success", text1: "Settlement recorded!" })
-    },
-    onError: () => Toast.show({ type: "error", text1: "Failed to record settlement" }),
-  })
-
   function openEditGroup() {
     router.push(`/group/${id}/edit` as any)
   }
@@ -833,15 +793,6 @@ export default function GroupDetail() {
     })
   }
 
-  function openSettle(userId: string, name: string, amount: number) {
-    if (!isOnline) {
-      Toast.show({ type: "error", text1: "No connection", text2: "Settle requires internet" })
-      return
-    }
-    setSettleTarget({ userId, name, amount })
-    setShowSettle(true)
-  }
-
   const expenses: any[] = group?.expenses ?? []
   const members: any[] = group?.members ?? []
 
@@ -860,15 +811,26 @@ export default function GroupDetail() {
   for (const exp of expenses) {
     const currency = exp.currency ?? gc.code
     const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
-    if (!mySplit) continue
+    const iPaid = exp.paidById === user?.id
+    // An expense I paid counts even when I'm not one of the people it was split between
+    if (!mySplit && !iPaid) continue
     if (!myNetByCurrency[currency]) myNetByCurrency[currency] = 0
-    if (exp.paidById === user?.id) {
+    if (iPaid) {
       exp.splits?.forEach((s: any) => {
         if (s.userId !== user?.id && !s.paid) myNetByCurrency[currency] += s.amount
       })
     } else if (!mySplit.paid) {
       myNetByCurrency[currency] -= mySplit.amount
     }
+  }
+  // Settlements move money too — without them the header showed debts that were already paid
+  for (const st of (group?.settlements ?? []) as any[]) {
+    const currency = st.currency ?? gc.code
+    if (st.fromUserId === user?.id) myNetByCurrency[currency] = (myNetByCurrency[currency] ?? 0) + st.amount
+    if (st.toUserId === user?.id) myNetByCurrency[currency] = (myNetByCurrency[currency] ?? 0) - st.amount
+  }
+  for (const c of Object.keys(myNetByCurrency)) {
+    myNetByCurrency[c] = Math.round(myNetByCurrency[c] * 100) / 100
   }
   // Keep default currency first, then others sorted by code
   const balanceEntries = Object.entries(myNetByCurrency)
@@ -915,7 +877,7 @@ export default function GroupDetail() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", padding: 32 }} edges={["top"]}>
         <Ionicons name="alert-circle-outline" size={48} color="#64748b" />
-        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", marginTop: 16, textAlign: "center" }}>Group not found</Text>
+        <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginTop: 16, textAlign: "center" }}>Group not found</Text>
         <Text style={{ color: "#64748b", fontSize: 14, marginTop: 8, textAlign: "center" }}>This group may have been deleted or you may no longer be a member.</Text>
         <TouchableOpacity onPress={() => router.replace("/groups")} style={{ marginTop: 24, backgroundColor: "#6366f1", borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 }}>
           <Text style={{ color: "#fff", fontWeight: "700" }}>Back to Groups</Text>
@@ -930,7 +892,7 @@ export default function GroupDetail() {
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View className="flex-row items-center gap-3 mb-3">
           <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: C.iconBg, borderRadius: 12, padding: 8 }}>
-            <Ionicons name="arrow-back" size={18} color="#fff" />
+            <Ionicons name="arrow-back" size={18} color={C.text} />
           </TouchableOpacity>
           <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: (group?.color ?? "#6366f1") + "33", alignItems: "center", justifyContent: "center" }}>
             <Text style={{ fontSize: 22 }}>{group?.emoji}</Text>
@@ -1270,7 +1232,7 @@ export default function GroupDetail() {
                                         {formatCurrency(displayAmt, dispCi.symbol, dispCi.code)}
                                       </Text>
                                     </View>
-                                    {(isMe || isAdmin) && (
+                                    {(isMe || d.otherId === user?.id || isAdmin) && (
                                       <View style={{ flexDirection: "row", gap: 6 }}>
                                         <TouchableOpacity
                                           onPress={() => {
@@ -1311,7 +1273,7 @@ export default function GroupDetail() {
                                     )}
                                   </View>
 
-                                  {(isMe || isAdmin) && isInlineSettle && (
+                                  {(isMe || d.otherId === user?.id || isAdmin) && isInlineSettle && (
                                     <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 6 }}>
                                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 10, borderWidth: 1, borderColor: "rgba(99,102,241,0.5)", paddingHorizontal: 12, height: 40 }}>
@@ -1334,8 +1296,11 @@ export default function GroupDetail() {
                                             }
                                             const amt = parseFloat(inlineSettleAmount)
                                             if (!amt || amt <= 0) return
+                                            // Amounts shown may be FX-converted — always settle in the section's own currency
                                             const capped = Math.min(amt, d.amount)
-                                            balancesApi.settle(id, { toUserId: d.otherId, amount: capped, currency })
+                                            const payerId = d.dir === "owes" ? m.userId : d.otherId
+                                            const receiverId = d.dir === "owes" ? d.otherId : m.userId
+                                            balancesApi.settle(id, { fromUserId: payerId, toUserId: receiverId, amount: capped, currency })
                                               .then(() => {
                                                 queryClient.invalidateQueries({ queryKey: ["group", id] })
                                                 queryClient.invalidateQueries({ queryKey: ["balances", id] })
@@ -1346,7 +1311,7 @@ export default function GroupDetail() {
                                                 setInlineSettleAmount("")
                                                 Toast.show({ type: "success", text1: amt >= d.amount ? "Fully settled! 🎉" : "Partial settlement recorded!" })
                                               })
-                                              .catch(() => Toast.show({ type: "error", text1: "Failed to record settlement" }))
+                                              .catch((e: any) => Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Failed to record settlement" }))
                                           }}
                                           style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, height: 40, alignItems: "center", justifyContent: "center" }}
                                         >
@@ -1589,7 +1554,8 @@ export default function GroupDetail() {
                     for (const m of members) paidMap[m.userId] = 0
                     for (const e of expenses) {
                       const expCur = e.currency ?? gc.code
-                      const rate = expCur === gc.code ? 1 : (fxRates[expCur] ?? 1)
+                      const rate = expCur === gc.code ? 1 : (fxRates[expCur] ?? null)
+                      if (rate === null) continue
                       if (paidMap[e.paidById] !== undefined) paidMap[e.paidById] += e.amount * rate
                     }
                     const barData = members
@@ -1657,17 +1623,25 @@ export default function GroupDetail() {
               onPress={async () => {
                 setPdfLoading(true)
                 try {
-                  const totalGroupExpense = expenses.reduce((sum: number, e: any) => sum + e.amount, 0)
-                  const myShare = expenses.reduce((sum: number, e: any) => {
-                    const s = e.splits?.find((sp: any) => sp.userId === user?.id)
-                    return sum + (s?.amount ?? 0)
-                  }, 0)
+                  const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!))
+                  const sym = (code: string) => CURRENCIES.find((c) => c.code === code)?.symbol ?? `${code} `
+                  // Totals are kept per currency — mixed-currency groups must not be summed together
+                  const totals: Record<string, number> = {}
+                  const shares: Record<string, number> = {}
+                  for (const e of expenses) {
+                    const cur = e.currency ?? gc.code
+                    totals[cur] = (totals[cur] ?? 0) + e.amount
+                    const sp = e.splits?.find((x: any) => x.userId === user?.id)
+                    shares[cur] = (shares[cur] ?? 0) + (sp?.amount ?? 0)
+                  }
+                  const fmtTotals = (m: Record<string, number>) =>
+                    Object.entries(m).map(([c, v]) => `${sym(c)}${v.toFixed(2)}`).join("<br/>") || `${gc.symbol}0.00`
                   const rows = expenses.map((e: any) => `
                     <tr>
                       <td>${new Date(e.date ?? e.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td>${e.description}</td>
-                      <td>${e.paidBy?.name ?? "?"}</td>
-                      <td style="text-align:right;font-weight:600">${gc.symbol}${e.amount.toFixed(2)}</td>
+                      <td>${esc(e.description)}</td>
+                      <td>${esc(e.paidBy?.name ?? "?")}</td>
+                      <td style="text-align:right;font-weight:600">${sym(e.currency ?? gc.code)}${e.amount.toFixed(2)}</td>
                     </tr>`).join("")
                   const html = `
                     <!DOCTYPE html><html><head>
@@ -1686,17 +1660,17 @@ export default function GroupDetail() {
                       tr:nth-child(even) td { background: #f8fafc; }
                       .footer { margin-top: 24px; font-size: 11px; color: #94a3b8; text-align: center; }
                     </style></head><body>
-                    <h1>${group?.emoji ?? ""} ${group?.name ?? "Group"} — Statement</h1>
+                    <h1>${esc(group?.emoji ?? "")} ${esc(group?.name ?? "Group")} — Statement</h1>
                     <div class="subtitle">Generated on ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</div>
                     <div class="summary">
-                      <div class="card"><div class="card-label">Total Group Expense</div><div class="card-value">${gc.symbol}${totalGroupExpense.toFixed(2)}</div></div>
-                      <div class="card"><div class="card-label">Your Share</div><div class="card-value" style="color:#6366f1">${gc.symbol}${myShare.toFixed(2)}</div></div>
+                      <div class="card"><div class="card-label">Total Group Expense</div><div class="card-value">${fmtTotals(totals)}</div></div>
+                      <div class="card"><div class="card-label">Your Share</div><div class="card-value" style="color:#6366f1">${fmtTotals(shares)}</div></div>
                     </div>
                     <table>
                       <thead><tr><th>Date</th><th>Expense</th><th>Paid By</th><th style="text-align:right">Amount</th></tr></thead>
                       <tbody>${rows}</tbody>
                     </table>
-                    <div class="footer">SplitIT • All amounts in ${gc.code}</div>
+                    <div class="footer">SplitIT • Amounts shown in each expense's own currency</div>
                     </body></html>`
                   const { uri } = await Print.printToFileAsync({ html, base64: false })
                   await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: `${group?.name} Statement` })
@@ -1739,7 +1713,9 @@ export default function GroupDetail() {
                   </Text>
                 </View>
               </View>
-              {smartDebtsEnabled ? (
+              {!isAdmin ? (
+                <Text style={{ color: C.textMuted, fontSize: 12, textAlign: "center" }}>Only group admins can change Smart Debts</Text>
+              ) : smartDebtsEnabled ? (
                 <TouchableOpacity
                   onPress={async () => {
                     setSmartDebtsLoading(true)
@@ -1985,7 +1961,7 @@ export default function GroupDetail() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 20 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>Group Notes</Text>
             <TouchableOpacity onPress={() => setShowNotes(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
+              <Ionicons name="close" size={18} color={C.text} />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -2014,7 +1990,7 @@ export default function GroupDetail() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingHorizontal: 20 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Add Expense</Text>
             <TouchableOpacity onPress={() => { setShowAddExpense(false); resetAddForm() }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
+              <Ionicons name="close" size={18} color={C.text} />
             </TouchableOpacity>
           </View>
           <View style={{ flex: 1 }}>
@@ -2070,7 +2046,7 @@ export default function GroupDetail() {
                 <Ionicons name="trash-outline" size={18} color="#f87171" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowEditExpense(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-                <Ionicons name="close" size={18} color="#fff" />
+                <Ionicons name="close" size={18} color={C.text} />
               </TouchableOpacity>
             </View>
           </View>
@@ -2129,7 +2105,7 @@ export default function GroupDetail() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Add to {group?.name}</Text>
             <TouchableOpacity onPress={() => { setShowAddMember(false); setFriendSearch("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
+              <Ionicons name="close" size={18} color={C.text} />
             </TouchableOpacity>
           </View>
 
@@ -2230,43 +2206,6 @@ export default function GroupDetail() {
         </View>
       </InAppFullScreenModal>
 
-      {/* Settle Up Modal */}
-      <InAppFullScreenModal visible={showSettle} onRequestClose={() => setShowSettle(false)}>
-        <View style={{ flex: 1, backgroundColor: C.bg, paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 8 }}>
-          <View className="flex-row items-center justify-between mb-6">
-            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Settle Up</Text>
-            <TouchableOpacity onPress={() => { setShowSettle(false); setSettleNote("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          {settleTarget && (
-            <>
-              <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center", marginBottom: 20 }}>
-                <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 4 }}>You're paying</Text>
-                <Text style={{ color: C.text, fontSize: 24, fontWeight: "700", marginBottom: 4 }}>{settleTarget.name}</Text>
-                <Text style={{ color: "#6366f1", fontSize: 32, fontWeight: "800" }}>{formatCurrency(settleTarget.amount, gc.symbol, gc.code)}</Text>
-              </View>
-              <Text className="text-slate-300 text-sm font-medium mb-2">Note (optional)</Text>
-              <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 20 }}>
-                <TextInput style={{ color: C.text, fontSize: 15 }} placeholder="e.g. Venmo, Cash…" placeholderTextColor={C.textMuted} value={settleNote} onChangeText={setSettleNote} />
-              </View>
-              <TouchableOpacity
-                onPress={() => settleMutation.mutate()}
-                disabled={settleMutation.isPending}
-                style={{ backgroundColor: "#6366f1", borderRadius: 16, height: 54, alignItems: "center", justifyContent: "center" }}
-              >
-                {settleMutation.isPending ? <ActivityIndicator color="#fff" /> : (
-                  <View className="flex-row items-center gap-2">
-                    <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                    <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Confirm Settlement</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </InAppFullScreenModal>
-
       <BottomTabBar activeTab="Groups" />
     </SafeAreaView>
   )
@@ -2336,7 +2275,7 @@ function ExpenseFormFields({
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Expense Currency</Text>
             <TouchableOpacity onPress={() => { setShowCurrencyPicker(false); setCurrencySearch("") }} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color="#fff" />
+              <Ionicons name="close" size={18} color={C.text} />
             </TouchableOpacity>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, marginHorizontal: 20, paddingHorizontal: 14, height: 46, marginBottom: 12 }}>

@@ -38,7 +38,7 @@ All data is stored on secured servers. Passwords are hashed using bcrypt and nev
 With your permission, we send push notifications for new expenses, payment requests, and settlement confirmations. You can disable notifications at any time from the Profile screen or your device settings.
 
 5. CHAT & MESSAGES
-All direct messages between users are end-to-end encrypted using AES-256 encryption. SplitIT cannot read the content of your private messages.
+Direct messages are sent over TLS and stored encrypted with AES-256. They are not end-to-end encrypted: SplitIT staff do not read your messages, but our systems could technically access them, for example to comply with a lawful request.
 
 6. DATA SHARING
 We share data only with:

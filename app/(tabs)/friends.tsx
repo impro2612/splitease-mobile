@@ -10,8 +10,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, type Href, useFocusEffect } from "expo-router"
-import Pusher from "pusher-js/react-native"
-import { friendsApi, usersApi, blocksApi, API_BASE_URL } from "@/lib/api"
+import type Pusher from "pusher-js/react-native"
+import { createPusher } from "@/lib/pusher"
+import { friendsApi, usersApi, blocksApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
@@ -99,28 +100,8 @@ export default function Friends() {
   useEffect(() => {
     const myId = user?.id
     if (!myId) return
-    const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
     let isMounted = true
-    const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
-      channelAuthorization: {
-        customHandler: async ({ socketId, channelName }, callback) => {
-          try {
-            const token = await SecureStore.getItemAsync("session_token")
-            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
-            })
-            if (!res.ok) { callback(new Error("Pusher auth failed"), null); return }
-            callback(null, await res.json())
-          } catch (err) { callback(err as Error, null) }
-        },
-      },
-    })
+    const pusher = createPusher()
 
     const invalidateFriends = () => {
       queryClient.invalidateQueries({ queryKey: ["friends"] })

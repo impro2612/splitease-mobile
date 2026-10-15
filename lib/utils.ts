@@ -1,8 +1,15 @@
+/**
+ * Formats the MAGNITUDE of an amount (callers render the +/- sign themselves).
+ * INR uses Indian digit grouping (₹12,34,567.00); everything else groups by thousands.
+ */
 export function formatCurrency(amount: number, symbol = "$", code = "USD") {
   const abs = Math.abs(amount)
   const noDecimals = ["JPY", "KRW", "VND", "IDR", "HUF", "CLP", "COP"].includes(code)
-  const formatted = abs.toFixed(noDecimals ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-  return `${symbol}${formatted}`
+  const [intPart, frac] = abs.toFixed(noDecimals ? 0 : 2).split(".")
+  const grouped = code === "INR"
+    ? intPart.replace(/(\d)(?=(\d\d)+\d$)/g, "$1,")
+    : intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return `${symbol}${grouped}${frac !== undefined ? `.${frac}` : ""}`
 }
 
 export function getInitials(name?: string | null, email?: string | null): string {

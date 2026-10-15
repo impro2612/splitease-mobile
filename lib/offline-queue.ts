@@ -3,10 +3,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 const QUEUE_KEY = "splitit:offline_expenses"
 
 export type PendingExpense = {
-  id: string       // client UUID — used as optimistic key in UI
+  id: string       // client UUID — optimistic key in UI and the server-side idempotency key
   groupId: string
   createdAt: number
   payload: {
+    clientRequestId?: string
     description: string
     amount: number
     currency: string

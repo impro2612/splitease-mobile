@@ -8,6 +8,7 @@ import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useQuery } from "@tanstack/react-query"
 import { wrappedApi } from "@/lib/api"
+import { CURRENCIES } from "@/lib/currencies"
 import { LinearGradient } from "expo-linear-gradient"
 import { useTheme } from "@/lib/theme"
 
@@ -37,14 +38,17 @@ type WrappedData = {
   owedToUser?: number
   userOwes?: number
   topFriends?: Array<{ name: string; count: number }>
+  currency?: string // every amount in the recap is in this one currency
 }
 
-// Formats cents → currency string
+// Formats cents → compact currency string (lakh notation only for INR)
 function fmt(cents: number, currency = "INR") {
   const n = cents / 100
-  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`
-  if (n >= 1000) return `₹${(n / 1000).toFixed(1)}k`
-  return `₹${n.toFixed(0)}`
+  const sym = CURRENCIES.find((c) => c.code === currency)?.symbol ?? `${currency} `
+  if (currency === "INR" && n >= 100000) return `${sym}${(n / 100000).toFixed(1)}L`
+  if (n >= 1000000) return `${sym}${(n / 1000000).toFixed(1)}M`
+  if (n >= 1000) return `${sym}${(n / 1000).toFixed(1)}k`
+  return `${sym}${n.toFixed(0)}`
 }
 
 // Animated count-up number
@@ -171,7 +175,7 @@ function SlideWildest({ data }: { data: WrappedData }) {
       <Text style={{ fontSize: 72, marginBottom: 8 }}>{trip.emoji}</Text>
       <Text style={styles.label}>YOUR WILDEST TRIP</Text>
       <Text style={[styles.heroText, { marginVertical: 12 }]}>{trip.name}</Text>
-      <Text style={[styles.heroNumber, { fontSize: 52 }]}>{fmt(trip.total)}</Text>
+      <Text style={[styles.heroNumber, { fontSize: 52 }]}>{fmt(trip.total, data.currency)}</Text>
       <View style={{ flexDirection: "row", gap: 20, marginTop: 20 }}>
         {trip.days && (
           <View style={styles.statBadge}>
@@ -227,7 +231,7 @@ function SlideGenerous({ data }: { data: WrappedData }) {
         <>
           <Text style={[styles.heroText, { marginVertical: 14 }]}>{g.name}</Text>
           <Text style={styles.subtitle}>
-            Covered <Text style={{ color: "#a5b4fc", fontWeight: "800" }}>{fmt(g.total)}</Text> across your groups
+            Covered <Text style={{ color: "#a5b4fc", fontWeight: "800" }}>{fmt(g.total, data.currency)}</Text> across your groups
           </Text>
           <Text style={[styles.subtitle, { marginTop: 8, opacity: 0.7 }]}>
             Paid first {g.count} time{g.count !== 1 ? "s" : ""}
@@ -250,12 +254,12 @@ function SlideBalance({ data }: { data: WrappedData }) {
       <Text style={{ fontSize: 72, marginBottom: 8 }}>{positive ? "💚" : "💸"}</Text>
       <Text style={styles.label}>YOUR BALANCE</Text>
       <Text style={[styles.heroNumber, { fontSize: 52, color: positive ? "#4ade80" : "#f87171", marginTop: 12 }]}>
-        {positive ? "+" : "-"}{fmt(Math.abs(net) * 100)}
+        {positive ? "+" : "-"}{fmt(Math.abs(net) * 100, data.currency)}
       </Text>
       <Text style={styles.subtitle}>
         {positive
-          ? `Friends owe you ${fmt((data.owedToUser ?? 0))} overall`
-          : `You owe ${fmt((data.userOwes ?? 0))} across groups`}
+          ? `Friends owe you ${fmt(data.owedToUser ?? 0, data.currency)} overall`
+          : `You owe ${fmt(data.userOwes ?? 0, data.currency)} across groups`}
       </Text>
     </LinearGradient>
   )

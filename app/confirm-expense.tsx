@@ -9,7 +9,7 @@ import { useTheme } from "@/lib/theme"
 import { useAuthStore } from "@/store/auth"
 import { groupsApi, expensesApi } from "@/lib/api"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
-import { formatDate } from "@/lib/utils"
+import { formatDate, guessCategory } from "@/lib/utils"
 import { getNativePendingSuggestionById, clearNativePendingSuggestionById } from "@/lib/nativeTrackExpense"
 import Toast from "react-native-toast-message"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
@@ -91,7 +91,7 @@ export default function ConfirmExpense() {
         description: description.trim() || "Expense",
         amount: numAmount,
         currency: activeCurrencyCode,
-        category: "other",
+        category: guessCategory(description),
         paidById,
         splitType: "EXACT",
         splits,

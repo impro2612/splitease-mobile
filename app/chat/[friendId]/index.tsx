@@ -11,10 +11,10 @@ import { useTheme } from "@/lib/theme"
 import { Ionicons } from "@expo/vector-icons"
 import { router, useLocalSearchParams } from "expo-router"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import Pusher from "pusher-js/react-native"
+import type Pusher from "pusher-js/react-native"
+import { createPusher } from "@/lib/pusher"
 import CryptoJS from "crypto-js"
 import * as ExpoCrypto from "expo-crypto"
-import * as SecureStore from "expo-secure-store"
 import { useAuthStore } from "@/store/auth"
 import { emojisByCategory } from "rn-emoji-keyboard"
 
@@ -24,7 +24,7 @@ function uuidv4() {
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16)
   })
 }
-import { API_BASE_URL, messagesApi, messageReactionsApi } from "@/lib/api"
+import { messagesApi, messageReactionsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -40,7 +40,6 @@ type Message = {
   reactions?: MsgReaction[]
 }
 
-const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 
 // Quick-react emojis shown in the action sheet bar
 const QUICK_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"]
@@ -314,6 +313,9 @@ function insetsBottomFallback() {
 }
 
 // ─── Encryption helpers ───────────────────────────────────────────────────────
+// NOTE: the key is derived from the two user IDs, which the server also knows, so this
+// protects stored messages from casual inspection but is NOT end-to-end encryption.
+// Real E2E would need per-device key pairs (e.g. X25519) with keys never sent to the server.
 function sharedKey(idA: string, idB: string) {
   return [idA, idB].sort().join("-")
 }
@@ -485,28 +487,7 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!myId) return
 
-    const pusher = new PusherCtor(process.env.EXPO_PUBLIC_PUSHER_KEY ?? "", {
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER ?? "ap2",
-      channelAuthorization: {
-        customHandler: async ({ socketId, channelName }, callback) => {
-          try {
-            const token = await SecureStore.getItemAsync("session_token")
-            const res = await fetch(`${API_BASE_URL}/api/pusher/auth`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-              body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
-            })
-            if (!res.ok) { callback(new Error("Pusher auth failed"), null); return }
-            callback(null, await res.json())
-          } catch (error) {
-            callback(error as Error, null)
-          }
-        },
-      },
-    })
+    const pusher = createPusher()
     pusherRef.current = pusher
 
     function startPolling() {
@@ -746,7 +727,7 @@ export default function ChatScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
-              <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "500" }}>End-to-end encrypted</Text>
+              <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "500" }}>Encrypted in transit and at rest</Text>
             </View>
           </>
         )}

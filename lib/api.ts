@@ -27,8 +27,10 @@ async function tryRefresh(): Promise<string | null> {
   try {
     const res = await axios.post(`${API_BASE_URL}/api/auth/mobile-refresh`, { refreshToken })
     const { token, refreshToken: newRefresh } = res.data
-    await SecureStore.setItemAsync("session_token", token)
+    // Refresh token first: if the app dies between the two writes, the next launch still
+    // holds the NEW refresh token (an expired access token just triggers another refresh)
     await SecureStore.setItemAsync("refresh_token", newRefresh)
+    await SecureStore.setItemAsync("session_token", token)
     return token
   } catch {
     return null
@@ -68,10 +70,10 @@ api.interceptors.response.use(
         return api(original)
       }
 
-      // Refresh failed — sign out
-      await SecureStore.deleteItemAsync("session_token")
-      await SecureStore.deleteItemAsync("refresh_token")
-      await SecureStore.deleteItemAsync("user_data")
+      // Refresh failed — full sign-out (tokens, in-memory user AND the persisted query
+      // cache). Lazy require: the auth store imports this module.
+      const { useAuthStore } = require("@/store/auth") as typeof import("@/store/auth")
+      await useAuthStore.getState().signOut()
       router.replace("/(auth)/signin")
     }
     return Promise.reject(error)
@@ -127,7 +129,7 @@ export const membersApi = {
 // Expenses
 export const expensesApi = {
   add: (groupId: string, data: {
-    description: string; amount: number; category: string
+    clientRequestId?: string; description: string; amount: number; category: string
     paidById: string; splitType: string; splits?: any[]; date?: string; currency?: string
   }) => api.post(`/api/groups/${groupId}/expenses`, data),
   update: (groupId: string, expenseId: string, data: {
@@ -142,7 +144,7 @@ export const expensesApi = {
 // Balances & Settlements
 export const balancesApi = {
   get: (groupId: string) => api.get(`/api/groups/${groupId}/balances`),
-  settle: (groupId: string, data: { toUserId: string; amount: number; note?: string; currency?: string }) =>
+  settle: (groupId: string, data: { fromUserId?: string; toUserId: string; amount: number; note?: string; currency?: string }) =>
     api.post(`/api/groups/${groupId}/settle`, data),
   toggleSmartDebts: (groupId: string, enabled: boolean) =>
     api.patch(`/api/groups/${groupId}/smart-debts`, { enabled }),
