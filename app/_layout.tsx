@@ -189,7 +189,6 @@ const asyncStoragePersister = createAsyncStoragePersister({ storage: AsyncStorag
 
 // Same key the Profile screen's notification toggle writes
 const NOTIF_PREF_KEY = "notifications_enabled"
-const INTRO_SEEN_KEY = "launch_intro_seen"
 
 async function registerForPushNotifications() {
   if (!Device.isDevice) return
@@ -305,12 +304,9 @@ class ErrorBoundary extends React.Component<
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   const scheme = useColorScheme()
-  // Full intro on the first launch after install; tap anywhere to skip
+  // Full intro on every launch (the animation needs ~2.8 s to reach its last line,
+  // plus time to read it); tap anywhere to skip
   const [showLaunchIntro, setShowLaunchIntro] = useState(true)
-  const [introSeen, setIntroSeen] = useState<boolean | null>(null)
-  useEffect(() => {
-    AsyncStorage.getItem(INTRO_SEEN_KEY).then((v) => setIntroSeen(v === "true")).catch(() => setIntroSeen(false))
-  }, [])
 
   useEffect(() => {
     loadSession()
@@ -357,27 +353,25 @@ export default function RootLayout() {
   }, [navReady])
 
   useEffect(() => {
-    if (!loading && introSeen !== null) {
+    if (!loading) {
       requestAnimationFrame(() => {
         SplashScreen.hideAsync().catch(() => {})
       })
 
-      // First launch: full 4 s intro. Afterwards: a brief 1.2 s brand flash.
       const timer = setTimeout(() => {
         setShowLaunchIntro(false)
-        if (!introSeen) AsyncStorage.setItem(INTRO_SEEN_KEY, "true").catch(() => {})
-      }, introSeen ? 1200 : 4000)
+      }, 4000)
 
       return () => clearTimeout(timer)
     }
-  }, [loading, introSeen])
+  }, [loading])
 
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
       <OfflineProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ErrorBoundary>
-          {loading || introSeen === null ? null : (
+          {loading ? null : (
             <View style={{ flex: 1 }}>
               <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
               {showLaunchIntro ? (
