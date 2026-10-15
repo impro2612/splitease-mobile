@@ -359,6 +359,14 @@ export default function Profile() {
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
             </TouchableOpacity>
 
+            <TouchableOpacity onPress={() => router.push("/guide" as any)} style={{ ...rowStyle, ...divider }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="school" size={18} color={C.accentText} />
+              </View>
+              <Text style={{ color: C.text, flex: 1 }}>Features & guide</Text>
+              <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
+            </TouchableOpacity>
+
             <View style={rowStyle}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="information-circle" size={18} color={C.textSub} />
