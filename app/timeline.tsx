@@ -5,13 +5,11 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import { useTheme } from "@/lib/theme"
+import { useTheme, featureAccents, useFeatureAccent } from "@/lib/theme"
 import { useQuery } from "@tanstack/react-query"
 import { timelineApi } from "@/lib/api"
 import WebView from "react-native-webview"
 
-const PURPLE = "#818cf8" // app accent family
-const PURPLE_BG = "rgba(167,139,250,0.12)"
 
 type Pin = {
   id: string; name: string; emoji: string
@@ -57,32 +55,33 @@ function buildMapHtml(pins: Pin[], bottomInset: number) {
   const popupBorder = "#e2e8f0"
   const popupTitle = "#1e293b"
   const popupSub = "#64748b"
-  const tileLayer = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+  // OpenFreeMap: free vector tiles, no API key or usage limits (Carto's basemaps now need a key).
+  // OSM data, so the attribution must stay visible.
+  const mapStyle = "https://tiles.openfreemap.org/styles/liberty"
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body, #map { width:100%; height:100%; overflow:hidden; background:${pageBg}; }
-  .leaflet-container { background:${pageBg} !important; }
-  .leaflet-control-zoom { border:none !important; }
-  .leaflet-control-zoom a {
-    background:${controlBg} !important; color:${controlText} !important;
-    border:1px solid ${controlBorder} !important; width:36px !important; height:36px !important;
-    line-height:32px !important; font-size:18px !important; border-radius:8px !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
+  .maplibregl-ctrl-group { background:transparent !important; box-shadow:none !important; }
+  .maplibregl-ctrl-group button {
+    background:${controlBg} !important; border:1px solid ${controlBorder} !important;
+    width:36px !important; height:36px !important; border-radius:8px !important;
+    margin-top:6px; box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
   }
-  .leaflet-control-zoom a:hover { background:${controlHover} !important; }
-  .leaflet-control-attribution { display:none !important; }
-  .leaflet-bottom { bottom:${bottomInset + 14}px !important; }
-  .leaflet-right { right:14px !important; }
-  .pin-wrap { position:relative; width:36px; height:44px; }
+  .maplibregl-ctrl-group button:active { background:${controlHover} !important; }
+  .maplibregl-ctrl-group button + button { border-top:1px solid ${controlBorder} !important; }
+  .maplibregl-ctrl-bottom-right { bottom:${bottomInset + 14}px !important; right:4px; }
+  .maplibregl-ctrl-bottom-left { bottom:${bottomInset + 6}px !important; }
+  .maplibregl-ctrl-attrib { font-size:10px; color:${controlText}; }
+  .pin-wrap { position:relative; width:36px; height:44px; cursor:pointer; }
   .pin-bubble {
-    position:absolute; top:0; left:50%; transform:translateX(-50%);
-    background:#818cf8; border-radius:50% 50% 50% 0; width:32px; height:32px;
+    position:absolute; top:0; left:50%;
+    background:#8b5cf6; border-radius:50% 50% 50% 0; width:32px; height:32px;
     display:flex; align-items:center; justify-content:center; font-size:16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     transform: translateX(-50%) rotate(-45deg);
@@ -91,9 +90,11 @@ function buildMapHtml(pins: Pin[], bottomInset: number) {
   .pin-tip {
     position:absolute; bottom:0; left:50%; transform:translateX(-50%);
     width:6px; height:14px;
-    background:linear-gradient(to bottom, #818cf8, transparent);
+    background:linear-gradient(to bottom, #8b5cf6, transparent);
     border-radius:0 0 4px 4px;
   }
+  .maplibregl-popup-content { background:transparent; box-shadow:none; padding:0; }
+  .maplibregl-popup-tip { display:none; }
   .popup-box {
     background:${popupBg}; border:1px solid ${popupBorder}; border-radius:12px;
     padding:10px 14px; min-width:160px;
@@ -102,58 +103,45 @@ function buildMapHtml(pins: Pin[], bottomInset: number) {
   }
   .popup-title { font-size:14px; font-weight:700; color:${popupTitle}; margin-bottom:3px; }
   .popup-date, .popup-location { font-size:11px; color:${popupSub}; margin-top:2px; }
-  .leaflet-popup-content-wrapper { background:transparent; box-shadow:none; padding:0; }
-  .leaflet-popup-content { margin:0 !important; }
-  .leaflet-popup-tip-container { display:none; }
 </style>
 </head>
 <body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 const pins = ${pinsJson};
-const worldBounds = L.latLngBounds([[-85, -180], [85, 180]]);
 
-const map = L.map('map', {
-  center: [20, 10], zoom: 2, minZoom: 2, maxZoom: 16,
-  zoomControl: false,
-  maxBounds: worldBounds,
-  maxBoundsViscosity: 1.0,
-  worldCopyJump: false,
+const map = new maplibregl.Map({
+  container: 'map',
+  style: '${mapStyle}',
+  center: [10, 20], zoom: 1, minZoom: 0.5, maxZoom: 16,
+  renderWorldCopies: false,
+  dragRotate: false, pitchWithRotate: false, touchPitch: false,
+  attributionControl: false,
 });
-L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-L.tileLayer('${tileLayer}', {
-  maxZoom: 19,
-  noWrap: true,
-  bounds: worldBounds,
-  subdomains: 'abcd',
-}).addTo(map);
+map.touchZoomRotate.disableRotation();
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
 
 pins.forEach(p => {
-  const iconHtml = \`<div class="pin-wrap">
-    <div class="pin-bubble"><span class="pin-emoji">\${p.emoji}</span></div>
-    <div class="pin-tip"></div>
-  </div>\`;
-  const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -48] });
-  const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
-
-  const popupContent = \`<div class="popup-box">
+  const el = document.createElement('div');
+  el.className = 'pin-wrap';
+  el.innerHTML = \`<div class="pin-bubble"><span class="pin-emoji">\${p.emoji}</span></div><div class="pin-tip"></div>\`;
+  const popup = new maplibregl.Popup({ closeButton: false, offset: [0, -46], maxWidth: '260px' }).setHTML(\`<div class="popup-box">
     <div class="popup-title">\${p.emoji} \${p.name}</div>
     \${p.dateRange ? '<div class="popup-date">' + p.dateRange + '</div>' : ''}
     \${p.location ? '<div class="popup-location">📍 ' + p.location + '</div>' : ''}
-  </div>\`;
-  marker.bindPopup(popupContent, { closeButton: false, autoPan: true });
-  marker.on('click', () => marker.openPopup());
+  </div>\`);
+  new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).setPopup(popup).addTo(map);
 });
 
-if (pins.length === 1) map.setView([pins[0].lat, pins[0].lng], 6);
+const pad = { top: 80, left: 40, right: 40, bottom: ${bottomInset + 80} };
+if (pins.length === 1) map.jumpTo({ center: [pins[0].lng, pins[0].lat], zoom: 5 });
 else if (pins.length > 1) {
-  const bounds = L.latLngBounds(pins.map(p => [p.lat, p.lng]));
-  map.fitBounds(bounds.pad(0.3), { paddingTopLeft: [20, 72], paddingBottomRight: [20, ${bottomInset + 72}] });
+  const b = new maplibregl.LngLatBounds();
+  pins.forEach(p => b.extend([p.lng, p.lat]));
+  map.fitBounds(b, { padding: pad, maxZoom: 8, duration: 0 });
 }
-map.setMaxBounds(worldBounds);
-setTimeout(() => map.invalidateSize(), 250);
 </script>
 </body>
 </html>`
@@ -161,6 +149,9 @@ setTimeout(() => map.invalidateSize(), 250);
 
 export default function Timeline() {
   const C = useTheme()
+  // Violet, matching the Timeline icon in the More menu
+  const PURPLE = useFeatureAccent("timeline").text
+  const PURPLE_BG = featureAccents.timeline.soft
   const { bottom: bottomInset } = useSafeAreaInsets()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
@@ -218,6 +209,7 @@ export default function Timeline() {
             icon="map-outline"
             title="No places yet"
             subtitle="Add a location to a group and it'll appear as a pin on your map."
+            accent={featureAccents.timeline}
           />
         </View>
       ) : (
@@ -253,8 +245,8 @@ export default function Timeline() {
                         borderRadius: 24,
                         backgroundColor: isActive ? "rgba(124,58,237,0.92)" : "rgba(15,23,42,0.72)",
                         borderWidth: 1,
-                        borderColor: isActive ? "#818cf8" : "rgba(255,255,255,0.18)",
-                        shadowColor: isActive ? "#6366f1" : "#000",
+                        borderColor: isActive ? PURPLE : "rgba(255,255,255,0.18)",
+                        shadowColor: isActive ? featureAccents.timeline.solid : "#000",
                         shadowOffset: { width: 0, height: isActive ? 6 : 3 },
                         shadowOpacity: isActive ? 0.55 : 0.25,
                         shadowRadius: isActive ? 12 : 5,

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard } from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
@@ -97,9 +97,9 @@ function BottomSheet({
   const shouldStartDrag = (_: any, g: { dy: number; dx: number }) => g.dy > 8 && g.dy > Math.abs(g.dx)
 
   const panResponder = useRef(PanResponder.create({
-    // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
-    // the sheet only takes over once a downward drag is recognised.
-    onStartShouldSetPanResponder: () => false,
+    // Claim touches that land on the sheet itself (handle, header, blank space) so a
+    // downward drag anywhere on it closes the sheet. Buttons/inputs still get taps first.
+    onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: shouldStartDrag,
     onMoveShouldSetPanResponderCapture: shouldStartDrag,
     onPanResponderMove: (_: any, g: any) => { if (g.dy > 0) panY.setValue(g.dy) },
@@ -114,7 +114,7 @@ function BottomSheet({
 
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={closeSheet}>
-      <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", opacity: overlayAnim }}>
+      <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.55)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={closeSheet} />
       </Animated.View>
       <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: kbHeight }} pointerEvents="box-none">

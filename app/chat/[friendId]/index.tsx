@@ -138,12 +138,13 @@ function SwipeDownSheet({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
-      // the sheet only takes over once a downward drag is recognised.
-      onStartShouldSetPanResponder: () => false,
+      // Claim touches that land on the sheet itself (handle, header, blank space) so a
+      // downward drag anywhere on it closes the sheet. Buttons/inputs still get taps first.
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: shouldStartDrag,
       onPanResponderMove: handleDragMove,
-      onPanResponderTerminationRequest: () => false,
+      // Hand the gesture over when a list inside starts scrolling, so lists stay responsive
+      onPanResponderTerminationRequest: () => true,
       onPanResponderRelease: handleDragRelease,
     })
   ).current

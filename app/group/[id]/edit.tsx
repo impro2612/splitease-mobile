@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ActivityIndicator, FlatList, Keyboard, Platform, ScrollView, TouchableOpacity, View } from "react-native"
+import { ActivityIndicator, FlatList, Keyboard, Modal, Platform, ScrollView, TouchableOpacity, View } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { Ionicons } from "@expo/vector-icons"
@@ -12,6 +12,9 @@ import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
 import { GROUP_COLORS, GROUP_EMOJIS, toLocalDateKey } from "@/lib/utils"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
+import { useAuthStore } from "@/store/auth"
+import { tokens } from "@/lib/theme"
+import { haptic } from "@/lib/haptics"
 
 type GroupFormSnapshot = {
   name: string
@@ -55,6 +58,8 @@ export default function EditGroup() {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [currencySearch, setCurrencySearch] = useState("")
   const [initialSnapshot, setInitialSnapshot] = useState<GroupFormSnapshot | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const { user } = useAuthStore()
 
   const { data: group, isLoading } = useQuery({
     queryKey: ["group", id],
@@ -184,6 +189,29 @@ export default function EditGroup() {
       router.back()
     },
     onError: (err: any) => Toast.show({ type: "error", text1: err?.response?.data?.error ?? "Failed to update group" }),
+  })
+
+  // Only admins can delete a group (the API enforces this too)
+  const isAdmin = !!group?.members?.some((m: any) => m.userId === user?.id && m.role === "ADMIN")
+
+  const deleteMutation = useMutation({
+    mutationFn: () => groupsApi.delete(id),
+    onSuccess: () => {
+      haptic.success()
+      setConfirmDelete(false)
+      queryClient.removeQueries({ queryKey: ["group", id] })
+      queryClient.removeQueries({ queryKey: ["balances", id] })
+      queryClient.invalidateQueries({ queryKey: ["groups"] })
+      queryClient.invalidateQueries({ queryKey: ["balance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["activity"] })
+      queryClient.invalidateQueries({ queryKey: ["timeline"] })
+      Toast.show({ type: "success", text1: "Group deleted" })
+      router.replace("/(tabs)/groups" as any)
+    },
+    onError: (err: any) => {
+      haptic.error()
+      Toast.show({ type: "error", text1: err?.response?.data?.error ?? "Failed to delete group" })
+    },
   })
 
   if (isLoading || !initialSnapshot) {
@@ -317,6 +345,22 @@ export default function EditGroup() {
                 <TouchableOpacity key={c} onPress={() => setColor(c)} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c, borderWidth: color === c ? 3 : 0, borderColor: C.isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)" }} />
               ))}
             </View>
+
+            {isAdmin && (
+              <View style={{ marginTop: 32, paddingTop: 20, borderTopWidth: 1, borderTopColor: C.border }}>
+                <TouchableOpacity
+                  onPress={() => { haptic.warning(); setConfirmDelete(true) }}
+                  accessibilityLabel="Delete group"
+                  style={{ height: 50, borderRadius: tokens.radius.md, backgroundColor: tokens.negativeSoft, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={18} color={tokens.negative} />
+                  <Text style={{ color: tokens.negative, fontWeight: "700", fontSize: 15 }}>Delete group</Text>
+                </TouchableOpacity>
+                <Text style={{ color: C.textMuted, fontSize: 12, textAlign: "center", marginTop: 8 }}>
+                  Only admins can do this. It removes the group for every member.
+                </Text>
+              </View>
+            )}
           </ScrollView>
 
           <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(24, insets.bottom + 12), paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
@@ -329,6 +373,39 @@ export default function EditGroup() {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+
+        {/* Delete confirmation */}
+        <Modal transparent visible={confirmDelete} animationType="fade" onRequestClose={() => !deleteMutation.isPending && setConfirmDelete(false)}>
+          <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: 24 }}>
+            <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: 24 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: tokens.negativeSoft, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 }}>
+                <Ionicons name="trash-outline" size={24} color={tokens.negative} />
+              </View>
+              <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", textAlign: "center" }}>Delete "{group?.name}"?</Text>
+              <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: 8 }}>
+                All of this group's expenses, balances and settlements will be permanently deleted for every member. This can't be undone.
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 22 }}>
+                <TouchableOpacity
+                  onPress={() => setConfirmDelete(false)}
+                  disabled={deleteMutation.isPending}
+                  style={{ flex: 1, height: 48, borderRadius: tokens.radius.md, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                  style={{ flex: 1, height: 48, borderRadius: tokens.radius.md, backgroundColor: "#dc2626", alignItems: "center", justifyContent: "center" }}
+                >
+                  {deleteMutation.isPending
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Delete</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <InAppFullScreenModal visible={showCurrencyPicker} onRequestClose={() => setShowCurrencyPicker(false)}>
           <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>

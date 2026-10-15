@@ -3,6 +3,8 @@ import { View, TouchableOpacity, ActivityIndicator, FlatList, Animated, Dimensio
 import { Text } from "@/components/ui/Typography"
 import { captureRef } from "react-native-view-shot"
 import * as Sharing from "expo-sharing"
+import * as Print from "expo-print"
+import { File, Paths } from "expo-file-system"
 import Toast from "react-native-toast-message"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -11,7 +13,7 @@ import { useQuery } from "@tanstack/react-query"
 import { wrappedApi } from "@/lib/api"
 import { CURRENCIES } from "@/lib/currencies"
 import { LinearGradient } from "expo-linear-gradient"
-import { useTheme } from "@/lib/theme"
+import { useTheme, useFeatureAccent } from "@/lib/theme"
 
 const { width: SCREEN_W } = Dimensions.get("window")
 
@@ -293,6 +295,8 @@ function SlideOutro({ data, year }: { data: WrappedData; year: number }) {
 
 export default function ScrapBook() {
   const C = useTheme()
+  // Rose, matching the ScrapBook icon in the More menu (the slides keep their own palettes)
+  const A = useFeatureAccent("scrapbook")
   const insets = useSafeAreaInsets()
   const { height: SCREEN_H } = useWindowDimensions()
 
@@ -349,20 +353,52 @@ export default function ScrapBook() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, activeYear, SLIDE_H])
 
-  // Share the slide on screen as an image (Instagram stories, WhatsApp, …)
+  // Share the whole recap as a PDF, one slide per page (WhatsApp, email, Drive, …)
   const slideRefs = useRef<Record<number, View | null>>({})
   const [sharing, setSharing] = useState(false)
-  async function shareSlide() {
-    const node = slideRefs.current[activeSlide]
-    if (!node || sharing) return
+  const [shareProgress, setShareProgress] = useState(0)
+  async function shareScrapbook() {
+    if (sharing || visibleSlides.length === 0) return
     setSharing(true)
+    const returnTo = activeSlide
     try {
-      const uri = await captureRef(node, { format: "png", quality: 1, result: "tmpfile" })
-      await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share your ScrapBook" })
+      // Off-screen slides can be detached on Android, so bring each one on screen to capture it
+      const pages: string[] = []
+      for (let i = 0; i < visibleSlides.length; i++) {
+        setShareProgress(i + 1)
+        const wasMounted = !!slideRefs.current[i]
+        listRef.current?.scrollToIndex({ index: i, animated: false })
+        // A slide mounting for the first time plays its count-up/entrance animation (~1.2 s)
+        await new Promise((r) => setTimeout(r, wasMounted ? 300 : 1400))
+        const node = slideRefs.current[i]
+        if (!node) throw new Error(`slide ${i} not rendered`)
+        pages.push(await captureRef(node, { format: "jpg", quality: 0.9, result: "base64" }))
+      }
+      listRef.current?.scrollToIndex({ index: returnTo, animated: false })
+
+      // Pages keep the slide's on-screen shape
+      const w = 612
+      const h = Math.round((w * SLIDE_H) / SCREEN_W)
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        @page { size: ${w}px ${h}px; margin: 0; }
+        html, body { margin: 0; padding: 0; background: #0a0a1a; }
+        .page { width: ${w}px; height: ${h}px; overflow: hidden; page-break-after: always; }
+        .page:last-child { page-break-after: auto; }
+        img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      </style></head><body>${pages.map((b) => `<div class="page"><img src="data:image/jpeg;base64,${b}"/></div>`).join("")}</body></html>`
+      const { uri } = await Print.printToFileAsync({ html, width: w, height: h })
+      // Give it a readable name instead of expo-print's random one
+      const pdf = new File(uri)
+      const named = new File(Paths.cache, `ScrapBook-${activeYear}.pdf`)
+      if (named.exists) named.delete()
+      pdf.move(named)
+      await Sharing.shareAsync(pdf.uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: `My ${activeYear} ScrapBook` })
     } catch {
-      Toast.show({ type: "error", text1: "Couldn't share this slide" })
+      listRef.current?.scrollToIndex({ index: returnTo, animated: false })
+      Toast.show({ type: "error", text1: "Couldn't create the ScrapBook PDF" })
     } finally {
       setSharing(false)
+      setShareProgress(0)
     }
   }
 
@@ -373,19 +409,20 @@ export default function ScrapBook() {
         <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
-        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="sparkles-outline" size={20} color="#a5b4fc" />
+        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: A.soft, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="sparkles-outline" size={20} color={A.text} />
         </View>
         <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }} numberOfLines={1}>ScrapBook</Text>
         {!!data && !data.empty && (
           <TouchableOpacity
-            onPress={shareSlide}
+            onPress={shareScrapbook}
             disabled={sharing}
-            accessibilityLabel="Share this slide"
-            style={{ height: 38, paddingHorizontal: 14, borderRadius: 12, backgroundColor: "#6366f1", flexDirection: "row", alignItems: "center", gap: 6, opacity: sharing ? 0.6 : 1 }}
+            accessibilityLabel="Share ScrapBook as PDF"
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: A.solid, alignItems: "center", justifyContent: "center", opacity: sharing ? 0.6 : 1 }}
           >
-            <Ionicons name="share-social-outline" size={16} color="#fff" />
-            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Share</Text>
+            {sharing
+              ? <ActivityIndicator size="small" color={A.onSolid} />
+              : <Ionicons name="share-social-outline" size={19} color={A.onSolid} />}
           </TouchableOpacity>
         )}
       </View>
@@ -407,8 +444,8 @@ export default function ScrapBook() {
                 activeOpacity={0.8}
                 style={{
                   paddingHorizontal: 22, paddingVertical: 9, borderRadius: 28,
-                  backgroundColor: isActive ? "#6366f1" : C.surface,
-                  shadowColor: isActive ? "#6366f1" : "transparent",
+                  backgroundColor: isActive ? A.solid : C.surface,
+                  shadowColor: isActive ? A.solid : "transparent",
                   shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8,
                   elevation: isActive ? 8 : 0,
                 }}
@@ -422,7 +459,7 @@ export default function ScrapBook() {
 
       {(isLoading || !data) && !isError ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#6366f1" size="large" />
+          <ActivityIndicator color={A.solid} size="large" />
           <Text style={{ color: C.textSub, marginTop: 12, fontSize: 13 }}>Building your recap…</Text>
         </View>
       ) : isError ? (
@@ -430,7 +467,7 @@ export default function ScrapBook() {
           <Text style={{ fontSize: 48 }}>😕</Text>
           <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginTop: 16, textAlign: "center" }}>Couldn't load recap</Text>
           <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginTop: 8 }}>Check your connection and try again</Text>
-          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 24, backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
+          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 24, backgroundColor: A.solid, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
             <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -461,6 +498,16 @@ export default function ScrapBook() {
             <LinearGradient colors={[C.bg, "transparent"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={frameStyle.left} pointerEvents="none" />
             {/* Right */}
             <LinearGradient colors={["transparent", C.bg]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={frameStyle.right} pointerEvents="none" />
+            {/* Shown while every slide is captured for the PDF; not part of the captured slides */}
+            {sharing && (
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(10,10,26,0.82)", alignItems: "center", justifyContent: "center" }]}>
+                <ActivityIndicator color={A.solid} size="large" />
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700", marginTop: 14 }}>Creating PDF…</Text>
+                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 4 }}>
+                  {shareProgress > 0 ? `Slide ${shareProgress} of ${visibleSlides.length}` : ""}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Dot indicator */}
@@ -473,7 +520,7 @@ export default function ScrapBook() {
                 <View style={{
                   width: i === activeSlide ? 20 : 6,
                   height: 6, borderRadius: 3,
-                  backgroundColor: i === activeSlide ? "#818cf8" : C.border,
+                  backgroundColor: i === activeSlide ? A.text : C.border,
                 }} />
               </TouchableOpacity>
             ))}

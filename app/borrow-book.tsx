@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, AppState, AppStateStatus, Keyboard } from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, AppState, AppStateStatus, Keyboard, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { Avatar as SharedAvatar } from "@/components/ui/Avatar"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -10,7 +10,7 @@ import { parseAmountInput } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import { useTheme } from "@/lib/theme"
+import { useTheme, useFeatureAccent } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { borrowBookApi, friendsApi } from "@/lib/api"
@@ -20,10 +20,6 @@ import { CURRENCIES } from "@/lib/currencies"
 import { createPusher } from "@/lib/pusher"
 import { BlurView } from "expo-blur"
 
-// One app-wide accent (see lib/theme tokens) — features no longer have their own colours
-const ACCENT = "#6366f1"
-const ACCENT_BG = "rgba(99,102,241,0.14)"
-const ACCENT_BORDER = "rgba(99,102,241,0.35)"
 
 type Payment = { id: string; amount: number; date: string; note?: string }
 type Entry = {
@@ -175,15 +171,16 @@ function SwipeDownSheet({
   const panResponder = useRef(
     PanResponder.create({
       // Blank-area drags claimed on start; buttons/inputs deeper in the tree still win.
-      // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
-      // the sheet only takes over once a downward drag is recognised.
-      onStartShouldSetPanResponder: () => false,
+      // Claim touches that land on the sheet itself (handle, header, blank space) so a
+      // downward drag anywhere on it closes the sheet. Buttons/inputs still get taps first.
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: shouldStartDrag,
       // Capture from ScrollView only when it is scrolled to the top
       onMoveShouldSetPanResponderCapture: (_, g) =>
         shouldStartDrag(_, g) && (scrollAtTop?.current ?? true),
       onPanResponderMove: handleDragMove,
-      onPanResponderTerminationRequest: () => false,
+      // Hand the gesture over when a list inside starts scrolling, so lists stay responsive
+      onPanResponderTerminationRequest: () => true,
       onPanResponderRelease: handleDragRelease,
     })
   ).current
@@ -192,7 +189,7 @@ function SwipeDownSheet({
 
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={closeSheet}>
-      <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.2)", opacity: overlayAnim }}>
+      <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.2)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={closeSheet} />
       </Animated.View>
       <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: kbHeight }} pointerEvents="box-none">
@@ -219,6 +216,11 @@ function SwipeDownSheet({
 
 export default function BorrowBook() {
   const C = useTheme()
+  // Amber, matching the Borrow Book icon in the More menu
+  const A = useFeatureAccent("borrowBook")
+  const ACCENT = A.text
+  const ACCENT_BG = A.soft
+  const ACCENT_BORDER = A.border
   const insets = useSafeAreaInsets()
   const { height: windowH } = useWindowDimensions()
   const { user } = useAuthStore()
@@ -423,6 +425,7 @@ export default function BorrowBook() {
               actionLabel="Record an IOU"
               actionIcon="add"
               onAction={() => { resetAddForm(); setShowAdd(true) }}
+              accent={A}
             />
           )}
 
@@ -585,8 +588,8 @@ export default function BorrowBook() {
                               {/* Action buttons */}
                               {!iAmLender && e.remainingAmount === 0 ? (
                                 /* Borrower paid in full — waiting for lender confirmation */
-                                <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(99,102,241,0.25)", alignItems: "center" }}>
-                                  <Text style={{ color: "#a5b4fc", fontSize: 13, fontWeight: "600", textAlign: "center" }}>
+                                <View style={{ backgroundColor: ACCENT_BG, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: ACCENT_BORDER, alignItems: "center" }}>
+                                  <Text style={{ color: ACCENT, fontSize: 13, fontWeight: "600", textAlign: "center" }}>
                                     ⏳ Waiting for {e.lender.name ?? e.lender.email}'s approval
                                   </Text>
                                 </View>
@@ -849,10 +852,10 @@ export default function BorrowBook() {
             <TouchableOpacity
               onPress={() => createMutation.mutate()}
               disabled={!addFriendId || !addAmount || !(parseAmountInput(addAmount || "0") > 0) || createMutation.isPending}
-              style={{ height: 52, borderRadius: 16, backgroundColor: (!addFriendId || !addAmount || !(parseAmountInput(addAmount || "0") > 0)) ? "#374151" : ACCENT, alignItems: "center", justifyContent: "center" }}>
+              style={{ height: 52, borderRadius: 16, backgroundColor: (!addFriendId || !addAmount || !(parseAmountInput(addAmount || "0") > 0)) ? "#374151" : A.solid, alignItems: "center", justifyContent: "center" }}>
               {createMutation.isPending
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save IOU</Text>
+                ? <ActivityIndicator color={A.onSolid} />
+                : <Text style={{ color: (!addFriendId || !addAmount || !(parseAmountInput(addAmount || "0") > 0)) ? "#fff" : A.onSolid, fontWeight: "800", fontSize: 16 }}>Save IOU</Text>
               }
             </TouchableOpacity>
             </View>

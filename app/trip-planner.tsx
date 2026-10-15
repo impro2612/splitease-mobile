@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard } from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
@@ -8,16 +8,12 @@ import { parseAmountInput, startOfLocalDay, endOfLocalDay, currencySymbol } from
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import { useTheme } from "@/lib/theme"
+import { useTheme, useFeatureAccent } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 
-// One app-wide accent (see lib/theme tokens) — features no longer have their own colours
-const TEAL = "#6366f1"
-const TEAL_BG = "rgba(99,102,241,0.14)"
-const TEAL_BORDER = "rgba(99,102,241,0.35)"
 
 const TRIP_EMOJIS = ["✈️", "🏖️", "🏔️", "🗺️", "🌍", "🏕️", "🚢", "🏛️", "🎪", "🌄", "🏝️", "🗼", "🎡", "🌋", "🏜️", "🛳️"]
 
@@ -109,19 +105,20 @@ function SwipeSheet({
   }
 
   const pan = useRef(PanResponder.create({
-    // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
-    // the sheet only takes over once a downward drag is recognised.
-    onStartShouldSetPanResponder: () => false,
+    // Claim touches that land on the sheet itself (handle, header, blank space) so a
+    // downward drag anywhere on it closes the sheet. Buttons/inputs still get taps first.
+    onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: shouldDrag,
     onPanResponderMove: onMove,
-    onPanResponderTerminationRequest: () => false,
+    // Hand the gesture over when a list inside starts scrolling, so lists stay responsive
+      onPanResponderTerminationRequest: () => true,
     onPanResponderRelease: onRelease,
   })).current
 
   if (!mounted) return null
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={close}>
-      <Animated.View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", opacity: overlayAnim }}>
+      <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={close} />
       </Animated.View>
       <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: kbHeight }} pointerEvents="box-none">
@@ -135,6 +132,11 @@ function SwipeSheet({
 
 export default function TripPlanner() {
   const C = useTheme()
+  // Emerald, matching the Trip Planner icon in the More menu
+  const A = useFeatureAccent("trips")
+  const TEAL = A.text
+  const TEAL_BG = A.soft
+  const TEAL_BORDER = A.border
   const insets = useSafeAreaInsets()
   const qc = useQueryClient()
 
@@ -271,6 +273,7 @@ export default function TripPlanner() {
               actionLabel="Plan a trip"
               actionIcon="add"
               onAction={() => { resetForm(); setShowCreate(true) }}
+              accent={A}
             />
           )}
 
@@ -394,7 +397,7 @@ export default function TripPlanner() {
           onPress={() => createMutation.mutate()}
           disabled={!name.trim() || !budget || !(parseAmountInput(budget || "0") > 0) || createMutation.isPending}
           style={{ height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center",
-            backgroundColor: (!name.trim() || !budget || !(parseAmountInput(budget || "0") > 0)) ? `${TEAL}55` : TEAL }}>
+            backgroundColor: (!name.trim() || !budget || !(parseAmountInput(budget || "0") > 0)) ? `${A.solid}55` : A.solid }}>
           {createMutation.isPending
             ? <ActivityIndicator color="#fff" />
             : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Create Trip</Text>

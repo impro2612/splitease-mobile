@@ -5,15 +5,11 @@ import { parseAmountInput, currencySymbol } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, useLocalSearchParams } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import { useTheme } from "@/lib/theme"
+import { useTheme, featureAccents, useFeatureAccent } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 
-// One app-wide accent (see lib/theme tokens) — features no longer have their own colours
-const TEAL = "#6366f1"
-const TEAL_BG = "rgba(99,102,241,0.14)"
-const TEAL_BORDER = "rgba(99,102,241,0.35)"
 
 const TRIP_CATEGORIES = [
   { key: "accommodation", label: "Stay", emoji: "🏨", color: "#6366f1" },
@@ -49,7 +45,7 @@ function fmtDate(iso: string) {
 
 function Avatar({ name, size = 34 }: { name: string; size?: number }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: featureAccents.trips.solid, alignItems: "center", justifyContent: "center" }}>
       <Text style={{ color: "#fff", fontWeight: "700", fontSize: size * 0.38 }}>{name.charAt(0).toUpperCase()}</Text>
     </View>
   )
@@ -96,9 +92,9 @@ function SwipeSheet({
 
   const shouldDrag = (_: any, g: any) => g.dy > 8 && g.dy > Math.abs(g.dx)
   const pan = useRef(PanResponder.create({
-    // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
-    // the sheet only takes over once a downward drag is recognised.
-    onStartShouldSetPanResponder: () => false,
+    // Claim touches that land on the sheet itself (handle, header, blank space) so a
+    // downward drag anywhere on it closes the sheet. Buttons/inputs still get taps first.
+    onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: shouldDrag,
     onMoveShouldSetPanResponderCapture: shouldDrag,
     onPanResponderMove: (_: any, g: any) => { if (g.dy > 0) panY.setValue(g.dy) },
@@ -124,6 +120,11 @@ function SwipeSheet({
 
 export default function TripDetail() {
   const C = useTheme()
+  // Emerald, matching the Trip Planner icon in the More menu
+  const A = useFeatureAccent("trips")
+  const TEAL = A.text
+  const TEAL_BG = A.soft
+  const TEAL_BORDER = A.border
   const insets = useSafeAreaInsets()
   const qc = useQueryClient()
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -312,7 +313,7 @@ export default function TripDetail() {
                       <Text style={{ color: C.textSub, fontSize: 12 }}>{Math.round(memberPct * 100)}%</Text>
                     </View>
                     <View style={{ height: 4, backgroundColor: C.border, borderRadius: 2, overflow: "hidden" }}>
-                      <View style={{ height: "100%", width: `${Math.round(memberPct * 100)}%`, backgroundColor: "#6366f1", borderRadius: 2 }} />
+                      <View style={{ height: "100%", width: `${Math.round(memberPct * 100)}%`, backgroundColor: TEAL, borderRadius: 2 }} />
                     </View>
                   </View>
                 )
@@ -373,7 +374,7 @@ export default function TripDetail() {
               <TouchableOpacity
                 onPress={() => saveCatMutation.mutate(entered)}
                 disabled={saveCatMutation.isPending || isOverLimit || !(entered >= 0)}
-                style={{ height: 52, borderRadius: 16, backgroundColor: isOverLimit || !(entered >= 0) ? `${TEAL}55` : TEAL, alignItems: "center", justifyContent: "center" }}>
+                style={{ height: 52, borderRadius: 16, backgroundColor: isOverLimit || !(entered >= 0) ? `${A.solid}55` : A.solid, alignItems: "center", justifyContent: "center" }}>
                 {saveCatMutation.isPending
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save Budget</Text>

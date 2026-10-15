@@ -6,7 +6,7 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tansta
 import { Ionicons } from "@expo/vector-icons"
 import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
-import { useTheme } from "@/lib/theme"
+import { useTheme, useFeatureAccent } from "@/lib/theme"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
 import { router } from "expo-router"
@@ -75,6 +75,8 @@ function monthLabel(m: string) {
 }
 
 export default function Expenses() {
+  // Lime, matching the My Spending icon in the More menu
+  const A = useFeatureAccent("spending")
   const C = useTheme()
   const { user } = useAuthStore()
   const insets = useSafeAreaInsets()
@@ -325,7 +327,7 @@ export default function Expenses() {
     return {
       value: expense,
       label: monthLabel(t.month),
-      frontColor: t.month === selectedMonth ? "#6366f1" : "#374151",
+      frontColor: t.month === selectedMonth ? A.solid : "#374151",
       onPress: () => setSelectedTrendIndex((prev) => (prev === index ? null : index)),
     }
   })
@@ -358,13 +360,16 @@ export default function Expenses() {
             <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.navigate("/(tabs)/dashboard" as any)} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Back">
               <Ionicons name="arrow-back" size={18} color={C.text} />
             </TouchableOpacity>
+            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: A.soft, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="receipt-outline" size={20} color={A.text} />
+            </View>
             <Text style={{ color: C.text, fontSize: 22, fontWeight: "800" }}>My Spending</Text>
           </View>
-          {(summary?.transactionCount ?? 0) > 0 && <TouchableOpacity onPress={isOnline ? () => importMutation.mutate() : undefined} disabled={importMutation.isPending || !isOnline} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5, opacity: isOnline ? 1 : 0.4 }}>
+          {(summary?.transactionCount ?? 0) > 0 && <TouchableOpacity onPress={isOnline ? () => importMutation.mutate() : undefined} disabled={importMutation.isPending || !isOnline} style={{ backgroundColor: A.soft, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5, opacity: isOnline ? 1 : 0.4 }}>
             {importMutation.isPending
-              ? <ActivityIndicator size="small" color="#6366f1" />
-              : <Ionicons name="document-text-outline" size={14} color="#6366f1" />}
-            <Text style={{ color: "#6366f1", fontSize: 12, fontWeight: "600" }}>
+              ? <ActivityIndicator size="small" color={A.text} />
+              : <Ionicons name="document-text-outline" size={14} color={A.text} />}
+            <Text style={{ color: A.text, fontSize: 12, fontWeight: "600" }}>
               {importMutation.isPending ? "Importing..." : "Import PDF"}
             </Text>
           </TouchableOpacity>}
@@ -397,7 +402,7 @@ export default function Expenses() {
             key={tab}
             onPress={() => setActiveTab(tab)}
             style={{
-              backgroundColor: activeTab === tab ? "#6366f1" : "transparent",
+              backgroundColor: activeTab === tab ? A.solid : "transparent",
               borderRadius: 10,
               paddingVertical: 8,
               paddingHorizontal: 18,
@@ -405,7 +410,7 @@ export default function Expenses() {
               minWidth: 102,
             }}
           >
-            <Text style={{ color: activeTab === tab ? "#fff" : C.textSub, fontSize: 13, fontWeight: "600", textTransform: "capitalize" }}>
+            <Text style={{ color: activeTab === tab ? A.onSolid : C.textSub, fontSize: 13, fontWeight: "600", textTransform: "capitalize" }}>
               {tab}
             </Text>
           </TouchableOpacity>
@@ -415,7 +420,7 @@ export default function Expenses() {
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={A.text} />}
       >
         {summaryLoading && activeTab !== "suggestions" ? (
           <View style={{ paddingTop: 8 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /></View>
@@ -428,6 +433,7 @@ export default function Expenses() {
             actionIcon="cloud-upload-outline"
             onAction={() => importMutation.mutate()}
             disabled={!isOnline || importMutation.isPending}
+            accent={A}
           />
         ) : (
           <>
@@ -497,20 +503,20 @@ export default function Expenses() {
             >
               {pdfPasswordLoading ? (
                 <View style={{ alignItems: "center" }}>
-                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                    <ActivityIndicator color="#6366f1" size="large" />
+                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: A.soft, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <ActivityIndicator color={A.text} size="large" />
                   </View>
                   <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>Fetching data from the PDF</Text>
                   <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 20 }}>
                     Hang tight while we read your statement and sort the transactions.
                   </Text>
                   <View style={{ width: "100%", backgroundColor: C.inputBg, borderRadius: 18, borderWidth: 1, borderColor: C.border, paddingHorizontal: 18, paddingVertical: 18 }}>
-                    <Text style={{ color: "#8b85b3", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", marginBottom: 8 }}>
+                    <Text style={{ color: C.textMuted, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", marginBottom: 8 }}>
                       Quote While We Wait
                     </Text>
                     <Animated.Text
                       style={{
-                        color: "#ddd6fe",
+                        color: A.text,
                         fontSize: 18,
                         lineHeight: 28,
                         textAlign: "center",
@@ -564,9 +570,9 @@ export default function Expenses() {
                     <TouchableOpacity
                       onPress={handlePasswordSubmit}
                       disabled={!pdfPassword}
-                      style={{ flex: 1, backgroundColor: !pdfPassword ? "#374151" : "#6366f1", borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center" }}
+                      style={{ flex: 1, backgroundColor: !pdfPassword ? "#374151" : A.solid, borderRadius: 14, height: 50, alignItems: "center", justifyContent: "center" }}
                     >
-                      <Text style={{ color: "#fff", fontWeight: "700" }}>Unlock & Import</Text>
+                      <Text style={{ color: !pdfPassword ? "#fff" : A.onSolid, fontWeight: "700" }}>Unlock & Import</Text>
                     </TouchableOpacity>
                   </View>
                 </>
@@ -616,6 +622,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
   C: ReturnType<typeof useTheme>;
   selectedTrendIndex: number | null;
 }) {
+  const A = useFeatureAccent("spending")
   const chartHeight = 220
   const barWidth = 28
   const spacing = 12
@@ -649,7 +656,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
       {/* Summary cards */}
       <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
         {[
-          { label: "Income", amount: summary.totalIncome, color: "#6366f1" },
+          { label: "Income", amount: summary.totalIncome, color: A.text },
           { label: "Spent",  amount: summary.totalExpense, color: "#f87171" },
           { label: "Saved",  amount: summary.netSavings,   color: summary.netSavings >= 0 ? "#4ade80" : "#f87171" },
         ].map((s) => (
@@ -796,6 +803,7 @@ function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore,
   onDelete: (id: string) => void;
   C: ReturnType<typeof useTheme>;
 }) {
+  const A = useFeatureAccent("spending")
   const filterPills: Array<{
     key: string;
     label: string;
@@ -851,26 +859,26 @@ function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore,
             key={pill.key}
             onPress={pill.onPress}
             style={{
-              backgroundColor: pill.selected ? "#6366f1" : C.card,
+              backgroundColor: pill.selected ? A.solid : C.card,
               borderRadius: 20,
               paddingHorizontal: pill.icon ? 12 : 14,
               paddingVertical: 7,
               marginRight: 6,
               borderWidth: 1,
-              borderColor: pill.selected ? "#6366f1" : C.border,
+              borderColor: pill.selected ? A.solid : C.border,
               flexDirection: "row",
               alignItems: "center",
               gap: pill.icon ? 4 : 0,
             }}
           >
             {pill.icon ? <Text style={{ fontSize: 12 }}>{pill.icon}</Text> : null}
-            <Text style={{ color: pill.selected ? "#fff" : C.textSub, fontSize: pill.icon ? 11 : 12, fontWeight: "600" }}>{pill.label}</Text>
+            <Text style={{ color: pill.selected ? A.onSolid : C.textSub, fontSize: pill.icon ? 11 : 12, fontWeight: "600" }}>{pill.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       {txLoading ? (
-        <ActivityIndicator color="#6366f1" style={{ marginTop: 20 }} />
+        <ActivityIndicator color={A.text} style={{ marginTop: 20 }} />
       ) : Object.keys(grouped).length === 0 ? (
         <Text style={{ color: C.textSub, textAlign: "center", marginTop: 40 }}>No transactions</Text>
       ) : (
@@ -905,11 +913,11 @@ function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore,
         <TouchableOpacity
           onPress={onLoadMore}
           disabled={loadingMore}
-          style={{ alignSelf: "center", backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 20 }}
+          style={{ alignSelf: "center", backgroundColor: A.soft, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 20 }}
         >
           {loadingMore
-            ? <ActivityIndicator size="small" color="#6366f1" />
-            : <Text style={{ color: "#6366f1", fontWeight: "700", fontSize: 13 }}>Load more</Text>}
+            ? <ActivityIndicator size="small" color={A.text} />
+            : <Text style={{ color: A.text, fontWeight: "700", fontSize: 13 }}>Load more</Text>}
         </TouchableOpacity>
       )}
     </View>
@@ -926,16 +934,17 @@ function InsightsTab({ insights, C }: {
   };
   C: ReturnType<typeof useTheme>;
 }) {
-  if (!insights) return <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+  const A = useFeatureAccent("spending")
+  if (!insights) return <ActivityIndicator color={A.text} style={{ marginTop: 40 }} />
 
   return (
     <View style={{ paddingHorizontal: 20, gap: 16 }}>
       {/* AI summary */}
       {insights.aiSummary ? (
-        <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)" }}>
+        <View style={{ backgroundColor: A.soft, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: A.border }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <Text style={{ fontSize: 18 }}>✨</Text>
-            <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 13 }}>AI Summary</Text>
+            <Text style={{ color: A.text, fontWeight: "700", fontSize: 13 }}>AI Summary</Text>
           </View>
           <Text style={{ color: C.text, fontSize: 13, lineHeight: 20 }}>{insights.aiSummary}</Text>
         </View>
@@ -1021,16 +1030,17 @@ function SuggestionsTab({ C, suggestion, loading }: {
   } | null | undefined
   loading: boolean
 }) {
+  const A = useFeatureAccent("spending")
   if (loading) {
-    return <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+    return <ActivityIndicator color={A.text} style={{ marginTop: 40 }} />
   }
 
   if (!suggestion) {
     return (
       <View style={{ paddingHorizontal: 20 }}>
         <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.border }}>
-          <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <Ionicons name="bulb-outline" size={28} color="#6366f1" />
+          <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: A.soft, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+            <Ionicons name="bulb-outline" size={28} color={A.text} />
           </View>
           <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 8 }}>Suggestions</Text>
           <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22 }}>
@@ -1044,8 +1054,8 @@ function SuggestionsTab({ C, suggestion, loading }: {
   return (
     <View style={{ paddingHorizontal: 20, gap: 16 }}>
       <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.border }}>
-        <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-          <Ionicons name="bulb-outline" size={28} color="#6366f1" />
+        <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: A.soft, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <Ionicons name="bulb-outline" size={28} color={A.text} />
         </View>
         <Text style={{ color: C.text, fontSize: 19, fontWeight: "700", marginBottom: 4 }}>Suggestions for {suggestion.title}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
@@ -1055,15 +1065,15 @@ function SuggestionsTab({ C, suggestion, loading }: {
           {suggestion.source ? (
             <View
               style={{
-                backgroundColor: suggestion.source === "gemini" ? "rgba(99,102,241,0.14)" : C.inputBg,
+                backgroundColor: suggestion.source === "gemini" ? A.soft : C.inputBg,
                 borderRadius: 999,
                 paddingHorizontal: 8,
                 paddingVertical: 3,
                 borderWidth: 1,
-                borderColor: suggestion.source === "gemini" ? "rgba(99,102,241,0.35)" : C.border,
+                borderColor: suggestion.source === "gemini" ? A.border : C.border,
               }}
             >
-              <Text style={{ color: suggestion.source === "gemini" ? "#a5b4fc" : C.textSub, fontSize: 10, fontWeight: "700" }}>
+              <Text style={{ color: suggestion.source === "gemini" ? A.text : C.textSub, fontSize: 10, fontWeight: "700" }}>
                 {suggestion.source === "gemini" ? "Gemini" : "Built-in"}
               </Text>
             </View>
@@ -1073,8 +1083,8 @@ function SuggestionsTab({ C, suggestion, loading }: {
 
       <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: C.border }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(99,102,241,0.16)", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="book-outline" size={18} color="#a5b4fc" />
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: A.soft, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="book-outline" size={18} color={A.text} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Monthly Money Story</Text>
@@ -1088,8 +1098,8 @@ function SuggestionsTab({ C, suggestion, loading }: {
 
       {suggestion.recommendations.map((item, index) => (
         <View key={`${suggestion.analyzedMonth}-${index}`} style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: C.border, flexDirection: "row", gap: 12 }}>
-          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.16)", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
-            <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 12 }}>{index + 1}</Text>
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: A.soft, alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+            <Text style={{ color: A.text, fontWeight: "700", fontSize: 12 }}>{index + 1}</Text>
           </View>
           <Text style={{ flex: 1, color: C.text, fontSize: 14, lineHeight: 22 }}>{item}</Text>
         </View>
