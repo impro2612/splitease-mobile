@@ -159,7 +159,7 @@ export default function ConfirmExpense() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ color: C.text, fontSize: 18, fontWeight: "800" }}>Confirm Expense</Text>
-          <Text style={{ color: "#a5b4fc", fontSize: 12, marginTop: 1 }}>📡 Detected from SMS · {group?.name}</Text>
+          <Text style={{ color: C.accentText, fontSize: 12, marginTop: 1 }}>📡 Detected from SMS · {group?.name}</Text>
         </View>
       </View>
 
@@ -215,8 +215,8 @@ export default function ConfirmExpense() {
             {/* Foreign currency hint */}
             {isForeignCurrency && (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
-                <Ionicons name="information-circle-outline" size={14} color="#a5b4fc" />
-                <Text style={{ color: "#a5b4fc", fontSize: 12 }}>
+                <Ionicons name="information-circle-outline" size={14} color={C.accentText} />
+                <Text style={{ color: C.accentText, fontSize: 12 }}>
                   Detected currency: {activeCurrencyCode} · Group default is {gc.code}
                 </Text>
               </View>

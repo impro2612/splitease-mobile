@@ -16,7 +16,7 @@ export function EmptyState({ icon, title, subtitle, actionLabel, actionIcon, onA
   accent?: Accent
 }) {
   const C = useTheme()
-  const a = accent ?? { solid: tokens.accent, onSolid: "#fff", text: tokens.accentText, textLight: tokens.accentText, soft: tokens.accentSoft, border: tokens.accentBorder }
+  const a = accent ?? { solid: tokens.accent, onSolid: "#fff", text: C.accentText, textLight: C.accentText, soft: tokens.accentSoft, border: tokens.accentBorder }
   return (
     <View style={{ alignItems: "center", paddingVertical: 56, paddingHorizontal: 32 }}>
       <View style={{ width: 72, height: 72, borderRadius: 22, backgroundColor: a.soft, alignItems: "center", justifyContent: "center", marginBottom: 18 }}>

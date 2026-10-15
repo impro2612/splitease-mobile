@@ -18,7 +18,7 @@ import { getRate } from "@/lib/exchange"
 type Person = {
   user: { id: string; name: string | null; email: string; image: string | null }
   nets: Record<string, number> // + = they owe you
-  groups: { id: string; name: string; emoji: string }[]
+  groups: { id: string; name: string; emoji: string; nets?: Record<string, number> }[]
 }
 
 /** "₹3,475" or "₹225 + $40" — currencies are listed, never added together. */
@@ -41,7 +41,7 @@ export default function Home() {
     queryKey: ["groups"],
     queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summary, isLoading: summaryLoading, isError: summaryFailed } = useQuery({
     queryKey: ["balance-summary"],
     queryFn: () => dashboardApi.summary().then((r) => r.data),
   })
@@ -87,13 +87,15 @@ export default function Home() {
   totalOwe = Math.round(totalOwe * 100) / 100
   const net = Math.round((totalOwed - totalOwe) * 100) / 100
   const settled = Math.abs(net) < 0.005 && unconverted.length === 0
+  // A failed load must not read as "₹0 · All settled up"
+  const noSummary = summaryFailed && !summary
   const people: Person[] = summary?.people ?? []
   const owesYou = people.filter((p) => Object.values(p.nets).some((v) => v > 0))
   const youOwe = people.filter((p) => Object.values(p.nets).some((v) => v < 0))
-  const activeGroups = groups.filter((g: any) => Object.keys(g.myBalance ?? {}).length > 0).length
-
+  // Open the group the balance lives in: where you owe them first, then where they owe you
   const openPerson = (p: Person) => {
-    const g = p.groups[0]
+    const has = (pick: (v: number) => boolean) => p.groups.find((g) => Object.values(g.nets ?? {}).some(pick))
+    const g = has((v) => v < 0) ?? has((v) => v > 0) ?? p.groups[0]
     if (g) router.push(`/group/${g.id}` as any)
   }
 
@@ -122,23 +124,29 @@ export default function Home() {
           <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600" }}>Net balance</Text>
           {summaryLoading ? (
             <Skeleton width={190} height={36} style={{ marginTop: 10 }} />
+          ) : noSummary ? (
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginTop: 8 }}>Couldn't load balances</Text>
           ) : (
             <View style={{ flexDirection: "row", alignItems: "baseline", marginTop: 6 }}>
-              <Money amount={net} symbol={display.symbol} code={display.code} size={36} color={settled ? C.text : net < 0 ? tokens.negative : tokens.positive} />
+              <Money amount={net} symbol={display.symbol} code={display.code} size={36} color={settled ? C.text : net < 0 ? C.negative : C.positive} />
             </View>
           )}
           {!summaryLoading && (
             <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>
-              {settled ? "All settled up" : net < 0 ? "You owe others" : "Others owe you"}
-              {unconverted.length ? ` · plus ${unconverted.join(", ")} (no exchange rate)` : ""}
+              {noSummary ? "Check your connection and pull down to retry"
+                : settled ? "All settled up"
+                : net < 0 ? "You owe others"
+                : net > 0 ? "Others owe you"
+                : "Balanced in your currency"}
+              {!noSummary && unconverted.length ? ` · plus ${unconverted.join(", ")} (no exchange rate)` : ""}
             </Text>
           )}
         </View>
 
         <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
           {[
-            { label: "You're owed", icon: "trending-up" as const, value: totalOwed, color: tokens.positive },
-            { label: "You owe", icon: "trending-down" as const, value: totalOwe, color: tokens.negative },
+            { label: "You're owed", icon: "trending-up" as const, value: totalOwed, color: C.positive },
+            { label: "You owe", icon: "trending-down" as const, value: totalOwe, color: C.negative },
           ].map((c) => (
             <View key={c.label} style={{ flex: 1, backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -147,6 +155,8 @@ export default function Home() {
               </View>
               {summaryLoading ? (
                 <Skeleton width={90} height={22} />
+              ) : noSummary ? (
+                <Text style={{ color: C.textMuted, fontSize: 21, fontWeight: "800" }}>—</Text>
               ) : (
                 <View style={{ flexDirection: "row", alignItems: "baseline" }}>
                   <Money amount={c.value} symbol={display.symbol} code={display.code} size={21} color={c.value > 0 ? c.color : C.textSub} />
@@ -174,15 +184,15 @@ export default function Home() {
                   <Avatar name={p.user.name} email={p.user.email} image={p.user.image} size={42} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontSize: 15, fontWeight: "600" }} numberOfLines={1}>{name}</Text>
-                    {iOwe ? <Text style={{ color: tokens.negative, fontSize: 13, fontWeight: "600", marginTop: 2 }}>You owe {iOwe}</Text> : null}
-                    {theyOwe ? <Text style={{ color: tokens.positive, fontSize: 13, fontWeight: "600", marginTop: 2 }}>Owes you {theyOwe}</Text> : null}
+                    {iOwe ? <Text style={{ color: C.negative, fontSize: 13, fontWeight: "600", marginTop: 2 }}>You owe {iOwe}</Text> : null}
+                    {theyOwe ? <Text style={{ color: C.positive, fontSize: 13, fontWeight: "600", marginTop: 2 }}>Owes you {theyOwe}</Text> : null}
                     <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                       {p.groups.map((g) => `${g.emoji} ${g.name}`).join(" · ")}
                     </Text>
                   </View>
                   {iOwe ? (
                     <View style={{ backgroundColor: tokens.accentSoft, borderRadius: tokens.radius.sm, paddingHorizontal: 12, paddingVertical: 7 }}>
-                      <Text style={{ color: tokens.accentText, fontSize: 12, fontWeight: "700" }}>Settle up</Text>
+                      <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "700" }}>Settle up</Text>
                     </View>
                   ) : (
                     <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
@@ -198,7 +208,7 @@ export default function Home() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Your groups</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/groups" as any)}>
-              <Text style={{ color: tokens.accentText, fontSize: 13, fontWeight: "600" }}>See all</Text>
+              <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "600" }}>See all</Text>
             </TouchableOpacity>
           </View>
           {groupsLoading ? (
@@ -209,7 +219,7 @@ export default function Home() {
               style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg, flexDirection: "row", alignItems: "center", gap: 12 }}
             >
               <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: tokens.accentSoft, alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="add" size={22} color={tokens.accentText} />
+                <Ionicons name="add" size={22} color={C.accentText} />
               </View>
               <Text style={{ color: C.text, fontSize: 15, fontWeight: "600" }}>Create your first group</Text>
             </TouchableOpacity>

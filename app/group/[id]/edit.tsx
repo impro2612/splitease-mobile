@@ -206,7 +206,8 @@ export default function EditGroup() {
       queryClient.invalidateQueries({ queryKey: ["activity"] })
       queryClient.invalidateQueries({ queryKey: ["timeline"] })
       Toast.show({ type: "success", text1: "Group deleted" })
-      router.replace("/(tabs)/groups" as any)
+      // Drop the deleted group's screens from the back stack
+      router.dismissTo("/(tabs)/groups" as any)
     },
     onError: (err: any) => {
       haptic.error()
@@ -298,7 +299,7 @@ export default function EditGroup() {
             <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: locationLat ? "#6366f1" : C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: locationResults.length > 0 || locationSearching ? 4 : 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="location-outline" size={16} color={locationLat ? "#6366f1" : C.textSub} />
               <TextInput style={{ flex: 1, color: C.text, fontSize: 15 }} placeholder="e.g. Goa, India" placeholderTextColor={C.textMuted} value={location} onChangeText={handleLocationChange} />
-              {locationLat ? <Ionicons name="checkmark-circle" size={16} color="#4ade80" /> : null}
+              {locationLat ? <Ionicons name="checkmark-circle" size={16} color={C.positive} /> : null}
             </View>
             {locationSearching && (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6, paddingHorizontal: 4 }}>
@@ -353,11 +354,11 @@ export default function EditGroup() {
                   accessibilityLabel="Delete group"
                   style={{ height: 50, borderRadius: tokens.radius.md, backgroundColor: tokens.negativeSoft, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
                 >
-                  <Ionicons name="trash-outline" size={18} color={tokens.negative} />
-                  <Text style={{ color: tokens.negative, fontWeight: "700", fontSize: 15 }}>Delete group</Text>
+                  <Ionicons name="trash-outline" size={18} color={C.negative} />
+                  <Text style={{ color: C.negative, fontWeight: "700", fontSize: 15 }}>Delete group</Text>
                 </TouchableOpacity>
                 <Text style={{ color: C.textMuted, fontSize: 12, textAlign: "center", marginTop: 8 }}>
-                  Only admins can do this. It removes the group for every member.
+                  Only admins can do this, and only once everyone is settled up. It removes the group for every member.
                 </Text>
               </View>
             )}
@@ -379,7 +380,7 @@ export default function EditGroup() {
           <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: 24 }}>
             <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: 24 }}>
               <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: tokens.negativeSoft, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 }}>
-                <Ionicons name="trash-outline" size={24} color={tokens.negative} />
+                <Ionicons name="trash-outline" size={24} color={C.negative} />
               </View>
               <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", textAlign: "center" }}>Delete "{group?.name}"?</Text>
               <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: 8 }}>

@@ -17,6 +17,10 @@ export const dark = {
   inputBorder: "rgba(255,255,255,0.1)",
   iconBg: "rgba(255,255,255,0.06)",
   overlay: "rgba(0,0,0,0.65)",
+  // Text/icon colours that must stay readable on this theme's cards
+  accentText: "#a5b4fc",
+  positive: "#4ade80",
+  negative: "#f87171",
   isDark: true,
 }
 
@@ -36,6 +40,9 @@ export const light = {
   inputBorder: "rgba(0,0,0,0.1)",
   iconBg: "rgba(0,0,0,0.05)",
   overlay: "rgba(0,0,0,0.5)",
+  accentText: "#4f46e5",
+  positive: "#16a34a",
+  negative: "#dc2626",
   isDark: false,
 }
 

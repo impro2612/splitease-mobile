@@ -264,8 +264,8 @@ export default function Profile() {
               onPress={openEdit}
               style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 }}
             >
-              <Ionicons name="pencil" size={14} color="#a5b4fc" />
-              <Text style={{ color: "#a5b4fc", fontWeight: "600", fontSize: 13 }}>Edit Profile</Text>
+              <Ionicons name="pencil" size={14} color={C.accentText} />
+              <Text style={{ color: C.accentText, fontWeight: "600", fontSize: 13 }}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -276,7 +276,7 @@ export default function Profile() {
           <View style={cardStyle}>
             <View style={{ ...rowStyle, ...divider }}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                <Ionicons name="notifications" size={18} color="#a5b4fc" />
+                <Ionicons name="notifications" size={18} color={C.accentText} />
               </View>
               <Text style={{ color: C.text, flex: 1 }}>Push Notifications</Text>
               <Switch value={notifications} onValueChange={(v) => { haptic.tap(); handleNotificationsToggle(v) }} trackColor={{ false: "#374151", true: "#6366f1" }} thumbColor="#fff" />
@@ -284,7 +284,7 @@ export default function Profile() {
 
             <TouchableOpacity onPress={() => setShowCurrencyPicker(true)} style={{ ...rowStyle, ...divider }}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                <Ionicons name="card" size={18} color="#4ade80" />
+                <Ionicons name="card" size={18} color={C.positive} />
               </View>
               <Text style={{ color: C.text, flex: 1, minWidth: 0 }}>Default Currency</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "32%", minWidth: 0, flexShrink: 1 }}>
@@ -320,7 +320,7 @@ export default function Profile() {
 
             <TouchableOpacity onPress={() => router.push("/blocked-users" as any)} style={rowStyle}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                <Ionicons name="ban" size={18} color="#f87171" />
+                <Ionicons name="ban" size={18} color={C.negative} />
               </View>
               <Text style={{ color: C.text, flex: 1 }}>Blocked Users</Text>
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
@@ -353,7 +353,7 @@ export default function Profile() {
 
             <TouchableOpacity onPress={() => setShowSupport(true)} style={{ ...rowStyle, ...divider }}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                <Ionicons name="help-buoy" size={18} color="#4ade80" />
+                <Ionicons name="help-buoy" size={18} color={C.positive} />
               </View>
               <Text style={{ color: C.text, flex: 1 }}>Support</Text>
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
@@ -382,8 +382,8 @@ export default function Profile() {
             onPress={() => setShowSignOutConfirm(true)}
             style={{ backgroundColor: "rgba(244,63,94,0.12)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(244,63,94,0.2)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16 }}
           >
-            <Ionicons name="log-out-outline" size={18} color="#f87171" />
-            <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 15 }}>Sign Out</Text>
+            <Ionicons name="log-out-outline" size={18} color={C.negative} />
+            <Text style={{ color: C.negative, fontWeight: "700", fontSize: 15 }}>Sign Out</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowDeleteConfirm(true)}
@@ -443,7 +443,7 @@ export default function Profile() {
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                   <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600" }}>Change Password</Text>
                   <TouchableOpacity onPress={() => { setShowPasswordSection(false); setCurrentPassword(""); setNewPassword(""); setConfirmPassword("") }}>
-                    <Text style={{ color: "#f87171", fontSize: 12, fontWeight: "600" }}>Cancel</Text>
+                    <Text style={{ color: C.negative, fontSize: 12, fontWeight: "600" }}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -471,7 +471,7 @@ export default function Profile() {
                   </TouchableOpacity>
                 </View>
                 {confirmPassword && confirmPassword !== newPassword && (
-                  <Text style={{ color: "#f87171", fontSize: 11, marginTop: 4 }}>Passwords do not match</Text>
+                  <Text style={{ color: C.negative, fontSize: 11, marginTop: 4 }}>Passwords do not match</Text>
                 )}
               </View>
             )}
@@ -580,7 +580,7 @@ export default function Profile() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="mail-open-outline" size={26} color="#4ade80" />
+              <Ionicons name="mail-open-outline" size={26} color={C.positive} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Support</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 22, marginBottom: 24, textAlign: "center" }}>
@@ -602,7 +602,7 @@ export default function Profile() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="log-out-outline" size={26} color="#f87171" />
+              <Ionicons name="log-out-outline" size={26} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Sign Out</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>Are you sure you want to sign out?</Text>
@@ -623,7 +623,7 @@ export default function Profile() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="trash" size={26} color="#f87171" />
+              <Ionicons name="trash" size={26} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Delete Account</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>

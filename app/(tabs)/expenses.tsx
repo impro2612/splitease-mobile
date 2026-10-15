@@ -540,7 +540,7 @@ export default function Expenses() {
                   </Text>
                   <View style={{
                     backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1,
-                    borderColor: pdfPasswordError ? "#f87171" : C.border,
+                    borderColor: pdfPasswordError ? C.negative : C.border,
                     paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 6,
                   }}>
                     <TextInput
@@ -556,7 +556,7 @@ export default function Expenses() {
                     />
                   </View>
                   {pdfPasswordError ? (
-                    <Text style={{ color: "#f87171", fontSize: 12, marginBottom: 16 }}>{pdfPasswordError}</Text>
+                    <Text style={{ color: C.negative, fontSize: 12, marginBottom: 16 }}>{pdfPasswordError}</Text>
                   ) : (
                     <View style={{ height: 16 }} />
                   )}
@@ -587,7 +587,7 @@ export default function Expenses() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="warning-outline" size={26} color="#f87171" />
+              <Ionicons name="warning-outline" size={26} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
@@ -657,8 +657,8 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
       <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
         {[
           { label: "Income", amount: summary.totalIncome, color: A.text },
-          { label: "Spent",  amount: summary.totalExpense, color: "#f87171" },
-          { label: "Saved",  amount: summary.netSavings,   color: summary.netSavings >= 0 ? "#4ade80" : "#f87171" },
+          { label: "Spent",  amount: summary.totalExpense, color: C.negative },
+          { label: "Saved",  amount: summary.netSavings,   color: summary.netSavings >= 0 ? C.positive : C.negative },
         ].map((s) => (
           <View key={s.label} style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: C.border }}>
             <Text style={{ color: C.textSub, fontSize: 11, marginBottom: 4 }}>{s.label}</Text>
@@ -899,7 +899,7 @@ function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore,
                     <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{t.description}</Text>
                     <Text style={{ color: C.textSub, fontSize: 11, marginTop: 2 }}>{t.category}{t.bank ? ` · ${t.bank}` : ""}</Text>
                   </View>
-                  <Text style={{ color: t.type === "credit" ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
+                  <Text style={{ color: t.type === "credit" ? C.positive : C.negative, fontWeight: "700", fontSize: 14 }}>
                     {t.type === "credit" ? "+" : "-"}₹{t.amount.toFixed(0)}
                   </Text>
                 </TouchableOpacity>
@@ -960,7 +960,7 @@ function InsightsTab({ insights, C }: {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }}>{c.category}</Text>
                 {c.changePercent !== null && (
-                  <Text style={{ color: c.changePercent > 0 ? "#f87171" : "#4ade80", fontSize: 11 }}>
+                  <Text style={{ color: c.changePercent > 0 ? C.negative : C.positive, fontSize: 11 }}>
                     {c.changePercent > 0 ? "▲" : "▼"} {Math.abs(c.changePercent)}% vs last month
                   </Text>
                 )}
@@ -980,7 +980,7 @@ function InsightsTab({ insights, C }: {
             <View key={l.description} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
               <Text style={{ color: C.text, flex: 1, fontSize: 13 }}>{l.description}</Text>
               <Text style={{ color: C.textSub, fontSize: 11, marginRight: 8 }}>×{l.count}</Text>
-              <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 13 }}>₹{l.total.toFixed(0)}</Text>
+              <Text style={{ color: C.negative, fontWeight: "700", fontSize: 13 }}>₹{l.total.toFixed(0)}</Text>
             </View>
           ))}
         </View>
@@ -989,12 +989,12 @@ function InsightsTab({ insights, C }: {
       {/* Budget alerts */}
       {insights.budgetAlerts.length > 0 && (
         <View style={{ backgroundColor: "rgba(248,113,113,0.1)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(248,113,113,0.3)" }}>
-          <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 14, marginBottom: 12 }}>⚠️ Over Budget</Text>
+          <Text style={{ color: C.negative, fontWeight: "700", fontSize: 14, marginBottom: 12 }}>⚠️ Over Budget</Text>
           {insights.budgetAlerts.map((a) => (
             <View key={a.category} style={{ marginBottom: 8 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }}>{CATEGORY_ICONS[a.category]} {a.category}</Text>
-                <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 13 }}>+₹{a.overspent.toFixed(0)} over</Text>
+                <Text style={{ color: C.negative, fontWeight: "700", fontSize: 13 }}>+₹{a.overspent.toFixed(0)} over</Text>
               </View>
               <Text style={{ color: C.textSub, fontSize: 11 }}>Spent ₹{a.spent.toFixed(0)} · Budget ₹{a.budget.toFixed(0)}</Text>
             </View>
@@ -1009,7 +1009,7 @@ function InsightsTab({ insights, C }: {
           {insights.highSpendDays.map((d) => (
             <View key={d.day} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
               <Text style={{ color: C.text, fontSize: 13 }}>{new Date(d.day).toLocaleDateString("en-IN", { day: "numeric", month: "short", weekday: "short" })}</Text>
-              <Text style={{ color: "#f87171", fontWeight: "700" }}>₹{d.amount.toFixed(0)}</Text>
+              <Text style={{ color: C.negative, fontWeight: "700" }}>₹{d.amount.toFixed(0)}</Text>
             </View>
           ))}
         </View>

@@ -392,6 +392,9 @@ export default function ScrapBook() {
       const named = new File(Paths.cache, `ScrapBook-${activeYear}.pdf`)
       if (named.exists) named.delete()
       pdf.move(named)
+      // PDF is ready: drop the progress overlay before the share sheet opens over it
+      setSharing(false)
+      setShareProgress(0)
       await Sharing.shareAsync(pdf.uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: `My ${activeYear} ScrapBook` })
     } catch {
       listRef.current?.scrollToIndex({ index: returnTo, animated: false })
@@ -441,6 +444,7 @@ export default function ScrapBook() {
               <TouchableOpacity
                 key={y}
                 onPress={() => handleYearSelect(y)}
+                disabled={sharing}
                 activeOpacity={0.8}
                 style={{
                   paddingHorizontal: 22, paddingVertical: 9, borderRadius: 28,

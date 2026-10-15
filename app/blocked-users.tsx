@@ -59,7 +59,7 @@ export default function BlockedUsers() {
         ) : blocks.length === 0 ? (
           <View style={{ alignItems: "center", paddingTop: 80 }}>
             <View style={{ width: 72, height: 72, borderRadius: 24, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-              <Ionicons name="ban" size={34} color="#f87171" />
+              <Ionicons name="ban" size={34} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontWeight: "700", fontSize: 17, marginBottom: 6 }}>No blocked users</Text>
             <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", lineHeight: 20 }}>
@@ -82,7 +82,7 @@ export default function BlockedUsers() {
                 disabled={unblockMutation.isPending}
                 style={{ backgroundColor: "rgba(244,63,94,0.12)", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: "rgba(244,63,94,0.2)" }}
               >
-                <Text style={{ color: "#f87171", fontWeight: "600", fontSize: 13 }}>Unblock</Text>
+                <Text style={{ color: C.negative, fontWeight: "600", fontSize: 13 }}>Unblock</Text>
               </TouchableOpacity>
             </View>
           ))
@@ -94,7 +94,7 @@ export default function BlockedUsers() {
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 28 }} onPress={() => setConfirmTarget(null)}>
           <Pressable style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }} onPress={() => {}}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="ban" size={26} color="#f87171" />
+              <Ionicons name="ban" size={26} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Unblock User</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>

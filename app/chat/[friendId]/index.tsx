@@ -713,7 +713,7 @@ export default function ChatScreen() {
           onPress={() => isSelecting ? cancelSelection() : router.back()}
           style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
         >
-          <Ionicons name={isSelecting ? "close" : "arrow-back"} size={18} color="#fff" />
+          <Ionicons name={isSelecting ? "close" : "arrow-back"} size={18} color={C.text} />
         </TouchableOpacity>
         {isSelecting ? (
           <View style={{ flex: 1 }}>
@@ -726,7 +726,7 @@ export default function ChatScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
-              <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "500" }}>Encrypted in transit and at rest</Text>
+              <Text style={{ color: C.positive, fontSize: 11, fontWeight: "500" }}>Encrypted in transit and at rest</Text>
             </View>
           </>
         )}
@@ -812,7 +812,7 @@ export default function ChatScreen() {
                     <View style={{ flex: 1, flexDirection: "row", justifyContent: isMine ? "flex-end" : "flex-start" }}>
                       <View style={{
                         maxWidth: "78%",
-                        backgroundColor: isSelected ? "rgba(99,102,241,0.35)" : isMine ? "#6366f1" : "#1a1a2e",
+                        backgroundColor: isSelected ? "rgba(99,102,241,0.35)" : isMine ? "#6366f1" : C.card,
                         borderRadius: 18,
                         borderBottomRightRadius: isMine ? 4 : 18,
                         borderBottomLeftRadius: isMine ? 18 : 4,
@@ -822,7 +822,7 @@ export default function ChatScreen() {
                         borderColor: isSelected ? "#6366f1" : C.border,
                         opacity: msg.pending ? 0.65 : 1,
                       }}>
-                        <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
+                        <Text style={{ color: isMine && !isSelected ? "#fff" : C.text, fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3, justifyContent: "flex-end" }}>
                           <Text style={{ color: isMine ? "rgba(255,255,255,0.55)" : C.textMuted, fontSize: 10 }}>
                             {formatTime(msg.createdAt)}
@@ -965,7 +965,7 @@ export default function ChatScreen() {
           ...(actionMsg?.id ? [{
             label: "Delete",
             icon: "trash-outline",
-            color: "#f87171",
+            color: C.negative,
             bgColor: "rgba(239,68,68,0.15)",
             onPress: () => {
               if (!actionMsg?.id) return
@@ -993,7 +993,7 @@ export default function ChatScreen() {
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="warning-outline" size={26} color="#f87171" />
+              <Ionicons name="warning-outline" size={26} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>

@@ -107,9 +107,20 @@ function buildMapHtml(pins: Pin[], bottomInset: number) {
 </head>
 <body>
 <div id="map"></div>
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<div id="maperr" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:32px;font-family:-apple-system,sans-serif;color:${popupSub};font-size:14px;line-height:20px"></div>
+<script>
+function showMapError(msg) {
+  const el = document.getElementById('maperr');
+  el.textContent = msg; el.style.display = 'flex';
+}
+</script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" onerror="showMapError('Couldn\\'t load the map. Check your connection and reopen Timeline.')"></script>
 <script>
 const pins = ${pinsJson};
+const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
+if (typeof maplibregl === 'undefined') { /* script failed; message already shown */ }
+else if (!webgl) showMapError("This device can't display the map.");
+else {
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -141,6 +152,7 @@ else if (pins.length > 1) {
   const b = new maplibregl.LngLatBounds();
   pins.forEach(p => b.extend([p.lng, p.lat]));
   map.fitBounds(b, { padding: pad, maxZoom: 8, duration: 0 });
+}
 }
 </script>
 </body>

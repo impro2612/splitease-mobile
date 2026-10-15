@@ -383,9 +383,9 @@ export default function Friends() {
             style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, padding: 10, flexDirection: "row", alignItems: "center", gap: 6 }}
           >
             {contactsLoading
-              ? <ActivityIndicator size="small" color="#a5b4fc" />
-              : <Ionicons name="sync" size={16} color="#a5b4fc" />}
-            <Text style={{ color: "#a5b4fc", fontSize: 12, fontWeight: "600" }}>Sync</Text>
+              ? <ActivityIndicator size="small" color={C.accentText} />
+              : <Ionicons name="sync" size={16} color={C.accentText} />}
+            <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "600" }}>Sync</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -464,7 +464,7 @@ export default function Friends() {
                       }}
                       style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", position: "relative" }}
                     >
-                      <Ionicons name="chatbubble-ellipses" size={17} color="#4ade80" />
+                      <Ionicons name="chatbubble-ellipses" size={17} color={C.positive} />
                       {hasUnread && (
                         <View style={{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: C.card, paddingHorizontal: 3 }}>
                           <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", lineHeight: 10 }}>1</Text>
@@ -506,7 +506,7 @@ export default function Friends() {
                           <Ionicons name="checkmark" size={16} color="#fff" />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => respondMutation.mutate({ id: r.id, action: "reject" })} disabled={respondMutation.isPending} style={{ backgroundColor: "rgba(244,63,94,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}>
-                          <Ionicons name="close" size={16} color="#f87171" />
+                          <Ionicons name="close" size={16} color={C.negative} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => confirmBlock(r.requester?.id, r.requester?.name ?? "this user")} style={{ backgroundColor: "rgba(239,68,68,0.18)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 }}>
                           <Ionicons name="ban" size={16} color="#ef4444" />
@@ -541,7 +541,7 @@ export default function Friends() {
                           disabled={removeMutation.isPending}
                           style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(244,63,94,0.15)", alignItems: "center", justifyContent: "center" }}
                         >
-                          <Ionicons name="close" size={16} color="#f87171" />
+                          <Ionicons name="close" size={16} color={C.negative} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -594,7 +594,7 @@ export default function Friends() {
             /* First-time: center sync prompt */
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
               <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-                <Ionicons name="people" size={38} color="#a5b4fc" />
+                <Ionicons name="people" size={38} color={C.accentText} />
               </View>
               <Text style={{ color: C.text, fontSize: 20, fontWeight: "700", marginBottom: 10, textAlign: "center" }}>Sync Phone Contacts</Text>
               <Text style={{ color: C.textMuted, fontSize: 14, textAlign: "center", lineHeight: 21, marginBottom: 32 }}>
@@ -651,7 +651,7 @@ export default function Friends() {
                               <Text style={{ color: C.textMuted, fontSize: 12 }}>You</Text>
                             ) : alreadyFriend ? (
                               <View style={{ backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                                <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "600" }}>Friends</Text>
+                                <Text style={{ color: C.positive, fontSize: 11, fontWeight: "600" }}>Friends</Text>
                               </View>
                             ) : sentRequest ? (
                               <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
@@ -691,14 +691,14 @@ export default function Friends() {
                 return (
                   <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: splitEaseUser ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.06)", padding: 12, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
                     <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: splitEaseUser ? "rgba(99,102,241,0.15)" : "#6366f122", alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 15 }}>{item.initials}</Text>
+                      <Text style={{ color: C.accentText, fontWeight: "700", fontSize: 15 }}>{item.initials}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }} numberOfLines={1}>{item.name}</Text>
                         {splitEaseUser && (
                           <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
-                            <Text style={{ color: "#a5b4fc", fontSize: 9, fontWeight: "700" }}>ON APP</Text>
+                            <Text style={{ color: C.accentText, fontSize: 9, fontWeight: "700" }}>ON APP</Text>
                           </View>
                         )}
                       </View>
@@ -706,7 +706,7 @@ export default function Friends() {
                     </View>
                     {alreadyFriend ? (
                       <View style={{ backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
-                        <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "600" }}>Friends</Text>
+                        <Text style={{ color: C.positive, fontSize: 11, fontWeight: "600" }}>Friends</Text>
                       </View>
                     ) : sentRequest ? (
                       <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
@@ -719,8 +719,8 @@ export default function Friends() {
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity onPress={() => openInvite(item)} style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
-                        <Ionicons name="paper-plane-outline" size={13} color="#a5b4fc" />
-                        <Text style={{ color: "#a5b4fc", fontSize: 12, fontWeight: "600" }}>Invite</Text>
+                        <Ionicons name="paper-plane-outline" size={13} color={C.accentText} />
+                        <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "600" }}>Invite</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -742,10 +742,10 @@ export default function Friends() {
             style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, backgroundColor: "rgba(244,63,94,0.08)", borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: "rgba(244,63,94,0.15)" }}
           >
             <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.12)", alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="person-remove" size={18} color="#f87171" />
+              <Ionicons name="person-remove" size={18} color={C.negative} />
             </View>
             <View>
-              <Text style={{ color: "#f87171", fontWeight: "600", fontSize: 15 }}>Remove Friend</Text>
+              <Text style={{ color: C.negative, fontWeight: "600", fontSize: 15 }}>Remove Friend</Text>
               <Text style={{ color: C.textMuted, fontSize: 12 }}>Remove from your friends list</Text>
             </View>
           </TouchableOpacity>
@@ -769,7 +769,7 @@ export default function Friends() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="person-remove-outline" size={26} color="#f87171" />
+              <Ionicons name="person-remove-outline" size={26} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>

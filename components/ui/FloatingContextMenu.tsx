@@ -190,7 +190,7 @@ export default function FloatingContextMenu({
                       backgroundColor: action.bgColor ?? "rgba(99,102,241,0.15)",
                       alignItems: "center", justifyContent: "center",
                     }}>
-                      <Ionicons name={action.icon as any} size={17} color={action.color ?? "#a5b4fc"} />
+                      <Ionicons name={action.icon as any} size={17} color={action.color ?? C.accentText} />
                     </View>
                     <Text style={{ color: action.color ?? "#f1f5f9", fontSize: 15, fontWeight: "600" }}>
                       {action.label}

@@ -195,7 +195,7 @@ export default function CreateGroup() {
             <View style={{ backgroundColor: C.inputBg, borderRadius: 14, borderWidth: 1, borderColor: locationLat ? "#6366f1" : C.border, paddingHorizontal: 16, height: 48, justifyContent: "center", marginBottom: locationResults.length > 0 || locationSearching ? 4 : 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="location-outline" size={16} color={locationLat ? "#6366f1" : C.textSub} />
               <TextInput style={{ flex: 1, color: C.text, fontSize: 15 }} placeholder="e.g. Goa, India" placeholderTextColor={C.textMuted} value={location} onChangeText={handleLocationChange} />
-              {locationLat ? <Ionicons name="checkmark-circle" size={16} color="#4ade80" /> : null}
+              {locationLat ? <Ionicons name="checkmark-circle" size={16} color={C.positive} /> : null}
             </View>
             {locationSearching && (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6, paddingHorizontal: 4 }}>

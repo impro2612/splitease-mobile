@@ -407,12 +407,12 @@ export default function BorrowBook() {
           <View style={{ flexDirection: "row", gap: 12, marginTop: 8, marginBottom: 20 }}>
             <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 16 }}>
               <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>They owe you</Text>
-              <Text style={{ color: "#4ade80", fontSize: 20, fontWeight: "800" }}>{fmtTotals(lentByCur)}</Text>
+              <Text style={{ color: C.positive, fontSize: 20, fontWeight: "800" }}>{fmtTotals(lentByCur)}</Text>
               <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{theyOweMe.length} {theyOweMe.length === 1 ? "person" : "people"}</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 16 }}>
               <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>You owe</Text>
-              <Text style={{ color: "#f87171", fontSize: 20, fontWeight: "800" }}>{fmtTotals(borrowedByCur)}</Text>
+              <Text style={{ color: C.negative, fontSize: 20, fontWeight: "800" }}>{fmtTotals(borrowedByCur)}</Text>
               <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{iOweThem.length} {iOweThem.length === 1 ? "person" : "people"}</Text>
             </View>
           </View>
@@ -431,7 +431,7 @@ export default function BorrowBook() {
 
           {theyOweMe.length > 0 && (
             <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: "#4ade80", fontSize: 12, fontWeight: "700", marginBottom: 10, letterSpacing: 0.5 }}>THEY OWE YOU</Text>
+              <Text style={{ color: C.positive, fontSize: 12, fontWeight: "700", marginBottom: 10, letterSpacing: 0.5 }}>THEY OWE YOU</Text>
               <View style={{ gap: 8 }}>
                 {theyOweMe.map((f) => (
                   <TouchableOpacity key={f.friend.id} onPress={() => setSelectedFriend(f)}
@@ -442,7 +442,7 @@ export default function BorrowBook() {
                       <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{f.pendingCount} pending {f.pendingCount === 1 ? "entry" : "entries"}</Text>
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
-                      <Text style={{ color: "#4ade80", fontWeight: "800", fontSize: 16 }}>+{fmtNets(netsOf(f), (v) => v > 0)}</Text>
+                      <Text style={{ color: C.positive, fontWeight: "800", fontSize: 16 }}>+{fmtNets(netsOf(f), (v) => v > 0)}</Text>
                       <Ionicons name="chevron-forward" size={14} color={C.textSub} />
                     </View>
                   </TouchableOpacity>
@@ -453,7 +453,7 @@ export default function BorrowBook() {
 
           {iOweThem.length > 0 && (
             <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: "#f87171", fontSize: 12, fontWeight: "700", marginBottom: 10, letterSpacing: 0.5 }}>YOU OWE</Text>
+              <Text style={{ color: C.negative, fontSize: 12, fontWeight: "700", marginBottom: 10, letterSpacing: 0.5 }}>YOU OWE</Text>
               <View style={{ gap: 8 }}>
                 {iOweThem.map((f) => (
                   <TouchableOpacity key={f.friend.id} onPress={() => setSelectedFriend(f)}
@@ -464,7 +464,7 @@ export default function BorrowBook() {
                       <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{f.pendingCount} pending {f.pendingCount === 1 ? "entry" : "entries"}</Text>
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
-                      <Text style={{ color: "#f87171", fontWeight: "800", fontSize: 16 }}>-{fmtNets(netsOf(f), (v) => v < 0)}</Text>
+                      <Text style={{ color: C.negative, fontWeight: "800", fontSize: 16 }}>-{fmtNets(netsOf(f), (v) => v < 0)}</Text>
                       <Ionicons name="chevron-forward" size={14} color={C.textSub} />
                     </View>
                   </TouchableOpacity>
@@ -483,7 +483,7 @@ export default function BorrowBook() {
                     <Avatar name={f.friend.name ?? f.friend.email} image={(f.friend as any).image} size={42} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>{f.friend.name ?? f.friend.email}</Text>
-                      <Text style={{ color: "#4ade80", fontSize: 12, marginTop: 2 }}>All settled ✓</Text>
+                      <Text style={{ color: C.positive, fontSize: 12, marginTop: 2 }}>All settled ✓</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color={C.textSub} />
                   </TouchableOpacity>
@@ -521,9 +521,9 @@ export default function BorrowBook() {
                   <Avatar name={liveFriend.friend.name ?? liveFriend.friend.email} image={(liveFriend.friend as any).image} size={46} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontSize: 17, fontWeight: "800" }}>{liveFriend.friend.name ?? liveFriend.friend.email}</Text>
-                    {fmtNets(netsOf(liveFriend), (v) => v > 0) !== "" && <Text style={{ color: "#4ade80", fontSize: 13, fontWeight: "600", marginTop: 2 }}>Owes you {fmtNets(netsOf(liveFriend), (v) => v > 0)}</Text>}
-                    {fmtNets(netsOf(liveFriend), (v) => v < 0) !== "" && <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600", marginTop: 2 }}>You owe {fmtNets(netsOf(liveFriend), (v) => v < 0)}</Text>}
-                    {Object.keys(netsOf(liveFriend)).length === 0 && <Text style={{ color: "#4ade80", fontSize: 13, fontWeight: "600", marginTop: 2 }}>All settled ✓</Text>}
+                    {fmtNets(netsOf(liveFriend), (v) => v > 0) !== "" && <Text style={{ color: C.positive, fontSize: 13, fontWeight: "600", marginTop: 2 }}>Owes you {fmtNets(netsOf(liveFriend), (v) => v > 0)}</Text>}
+                    {fmtNets(netsOf(liveFriend), (v) => v < 0) !== "" && <Text style={{ color: C.negative, fontSize: 13, fontWeight: "600", marginTop: 2 }}>You owe {fmtNets(netsOf(liveFriend), (v) => v < 0)}</Text>}
+                    {Object.keys(netsOf(liveFriend)).length === 0 && <Text style={{ color: C.positive, fontSize: 13, fontWeight: "600", marginTop: 2 }}>All settled ✓</Text>}
                   </View>
                   <TouchableOpacity
                     onPress={() => { setSelectedFriend(null); setAddFriendId(liveFriend.friend.id); setShowAdd(true) }}
@@ -553,7 +553,7 @@ export default function BorrowBook() {
                               {/* Amount row */}
                               <View>
                                 {/* Remaining balance — big */}
-                                <Text style={{ color: iAmLender ? "#4ade80" : "#f87171", fontWeight: "800", fontSize: 20 }}>
+                                <Text style={{ color: iAmLender ? C.positive : C.negative, fontWeight: "800", fontSize: 20 }}>
                                   {iAmLender ? "+" : "-"}{fmt(e.remainingAmount, e.currency)}
                                 </Text>
                                 {/* Original amount if part-paid */}
@@ -562,7 +562,7 @@ export default function BorrowBook() {
                                     <Text style={{ color: C.textSub, fontSize: 12 }}>
                                       Original: {fmt(e.amount, e.currency)}
                                     </Text>
-                                    <Text style={{ color: "#4ade80", fontSize: 12 }}>
+                                    <Text style={{ color: C.positive, fontSize: 12 }}>
                                       Paid: {fmt(e.paidAmount, e.currency)}
                                     </Text>
                                   </View>
@@ -576,7 +576,7 @@ export default function BorrowBook() {
                                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
                                     {e.payments.map((p, i) => (
                                       <View key={p.id} style={{ backgroundColor: "rgba(74,222,128,0.1)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "rgba(74,222,128,0.25)" }}>
-                                        <Text style={{ color: "#4ade80", fontSize: 11 }}>
+                                        <Text style={{ color: C.positive, fontSize: 11 }}>
                                           {fmt(p.amount, e.currency)} · {fmtDate(p.date)}
                                         </Text>
                                       </View>
@@ -612,7 +612,7 @@ export default function BorrowBook() {
                                           onConfirm: () => fullPaymentMutation.mutate(e),
                                         })}
                                         style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
-                                        <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>Full Payment</Text>
+                                        <Text style={{ color: C.positive, fontWeight: "700", fontSize: 13 }}>Full Payment</Text>
                                       </TouchableOpacity>
                                     </>
                                   ) : (
@@ -634,7 +634,7 @@ export default function BorrowBook() {
                                           onConfirm: () => settleMutation.mutate(e.id),
                                         })}
                                         style={{ flex: 1, height: 36, borderRadius: 10, backgroundColor: "rgba(74,222,128,0.1)", borderWidth: 1, borderColor: "rgba(74,222,128,0.3)", alignItems: "center", justifyContent: "center" }}>
-                                        <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>
+                                        <Text style={{ color: C.positive, fontWeight: "700", fontSize: 13 }}>
                                           {e.remainingAmount === 0 ? "✓ Confirm Payment" : "✓ Mark Settled"}
                                         </Text>
                                       </TouchableOpacity>
@@ -647,7 +647,7 @@ export default function BorrowBook() {
                                           onConfirm: () => deleteMutation.mutate(e.id),
                                         })}
                                         style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)", alignItems: "center", justifyContent: "center" }}>
-                                        <Ionicons name="trash-outline" size={15} color="#f87171" />
+                                        <Ionicons name="trash-outline" size={15} color={C.negative} />
                                       </TouchableOpacity>
                                     </>
                                   )}
@@ -676,7 +676,7 @@ export default function BorrowBook() {
                                 </Text>
                               </View>
                               <View style={{ backgroundColor: "rgba(74,222,128,0.1)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                                <Text style={{ color: "#4ade80", fontSize: 11, fontWeight: "700" }}>SETTLED</Text>
+                                <Text style={{ color: C.positive, fontSize: 11, fontWeight: "700" }}>SETTLED</Text>
                               </View>
                             </View>
                           )
@@ -753,7 +753,7 @@ export default function BorrowBook() {
             <TouchableOpacity
               onPress={() => paymentMutation.mutate()}
               disabled={!payAmount || !(parseAmountInput(payAmount || "0") > 0) || paymentMutation.isPending}
-              style={{ height: 52, borderRadius: 16, backgroundColor: (!payAmount || !(parseAmountInput(payAmount || "0") > 0)) ? "rgba(74,222,128,0.3)" : "#4ade80", alignItems: "center", justifyContent: "center" }}>
+              style={{ height: 52, borderRadius: 16, backgroundColor: (!payAmount || !(parseAmountInput(payAmount || "0") > 0)) ? "rgba(74,222,128,0.3)" : C.positive, alignItems: "center", justifyContent: "center" }}>
               {paymentMutation.isPending
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save Payment</Text>
@@ -800,12 +800,12 @@ export default function BorrowBook() {
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Direction</Text>
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
               <TouchableOpacity onPress={() => setAddIAmLender(true)}
-                style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: addIAmLender ? "rgba(74,222,128,0.12)" : C.bg, borderWidth: addIAmLender ? 1.5 : 1, borderColor: addIAmLender ? "#4ade80" : C.border }}>
-                <Text style={{ color: addIAmLender ? "#4ade80" : C.textSub, fontWeight: "700", fontSize: 14 }}>I Lent</Text>
+                style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: addIAmLender ? "rgba(74,222,128,0.12)" : C.bg, borderWidth: addIAmLender ? 1.5 : 1, borderColor: addIAmLender ? C.positive : C.border }}>
+                <Text style={{ color: addIAmLender ? C.positive : C.textSub, fontWeight: "700", fontSize: 14 }}>I Lent</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setAddIAmLender(false)}
-                style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: !addIAmLender ? "rgba(248,113,113,0.12)" : C.bg, borderWidth: !addIAmLender ? 1.5 : 1, borderColor: !addIAmLender ? "#f87171" : C.border }}>
-                <Text style={{ color: !addIAmLender ? "#f87171" : C.textSub, fontWeight: "700", fontSize: 14 }}>I Borrowed</Text>
+                style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: !addIAmLender ? "rgba(248,113,113,0.12)" : C.bg, borderWidth: !addIAmLender ? 1.5 : 1, borderColor: !addIAmLender ? C.negative : C.border }}>
+                <Text style={{ color: !addIAmLender ? C.negative : C.textSub, fontWeight: "700", fontSize: 14 }}>I Borrowed</Text>
               </TouchableOpacity>
             </View>
 
@@ -867,7 +867,7 @@ export default function BorrowBook() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: confirmDialog?.danger ? "rgba(239,68,68,0.15)" : "rgba(74,222,128,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name={confirmDialog?.danger ? "warning-outline" : "checkmark-circle-outline"} size={26} color={confirmDialog?.danger ? "#f87171" : "#4ade80"} />
+              <Ionicons name={confirmDialog?.danger ? "warning-outline" : "checkmark-circle-outline"} size={26} color={confirmDialog?.danger ? C.negative : C.positive} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
@@ -879,7 +879,7 @@ export default function BorrowBook() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
-                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: confirmDialog?.danger ? "#ef4444" : "#4ade80", alignItems: "center", justifyContent: "center" }}>
+                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: confirmDialog?.danger ? "#ef4444" : C.positive, alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmText}</Text>
               </TouchableOpacity>
             </View>

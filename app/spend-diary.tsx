@@ -299,7 +299,7 @@ export default function SpendDiary() {
             })}
             style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center" }}
           >
-            <Ionicons name="trash-outline" size={17} color="#f87171" />
+            <Ionicons name="trash-outline" size={17} color={C.negative} />
           </TouchableOpacity>
         </View>
 
@@ -373,7 +373,7 @@ export default function SpendDiary() {
                   })}
                   style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center" }}
                 >
-                  <Ionicons name="trash-outline" size={15} color="#f87171" />
+                  <Ionicons name="trash-outline" size={15} color={C.negative} />
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
@@ -453,7 +453,7 @@ export default function SpendDiary() {
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 28 }}>
             <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
               <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-                <Ionicons name="warning-outline" size={26} color="#f87171" />
+                <Ionicons name="warning-outline" size={26} color={C.negative} />
               </View>
               <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
               <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>

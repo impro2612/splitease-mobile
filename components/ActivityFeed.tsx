@@ -40,7 +40,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
               {item.group?.name ?? m.groupName} · {time}
             </Text>
           </View>
-          <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 13 }}>
+          <Text style={{ color: C.accentText, fontWeight: "700", fontSize: 13 }}>
             {formatCurrency(m.amount, curr.symbol, curr.code)}
           </Text>
         </View>
@@ -84,7 +84,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(244,63,94,0.12)" }]}>
-            <Ionicons name="trash-outline" size={18} color="#f87171" />
+            <Ionicons name="trash-outline" size={18} color={C.negative} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
@@ -94,8 +94,8 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
               {item.group?.name ?? m.groupName} · {time}
             </Text>
           </View>
-          <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 13 }}>
-            -{formatCurrency(m.amount, curr.symbol, curr.code)}
+          <Text style={{ color: C.negative, fontWeight: "700", fontSize: 13 }}>
+            {formatCurrency(m.amount, curr.symbol, curr.code)}
           </Text>
         </View>
       )
@@ -113,7 +113,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(34,197,94,0.12)" }]}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#4ade80" />
+            <Ionicons name="checkmark-circle-outline" size={18} color={C.positive} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>{desc}</Text>
@@ -121,7 +121,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
               {item.group?.name ?? m.groupName} · {time}
             </Text>
           </View>
-          <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>
+          <Text style={{ color: C.positive, fontWeight: "700", fontSize: 13 }}>
             {formatCurrency(m.amount, curr.symbol, curr.code)}
           </Text>
         </View>
@@ -142,7 +142,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
             </Text>
             <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{time}</Text>
           </View>
-          <Ionicons name="people-outline" size={18} color="#a5b4fc" />
+          <Ionicons name="people-outline" size={18} color={C.accentText} />
         </View>
       )
     }
@@ -167,7 +167,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(244,63,94,0.12)" }]}>
-            <Ionicons name="trash-outline" size={18} color="#f87171" />
+            <Ionicons name="trash-outline" size={18} color={C.negative} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
@@ -183,7 +183,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(34,197,94,0.1)" }]}>
-            <Ionicons name="person-add-outline" size={18} color="#4ade80" />
+            <Ionicons name="person-add-outline" size={18} color={C.positive} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
@@ -200,7 +200,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(99,102,241,0.15)" }]}>
-            <Ionicons name="person-add-outline" size={18} color="#a5b4fc" />
+            <Ionicons name="person-add-outline" size={18} color={C.accentText} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
@@ -219,7 +219,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(34,197,94,0.12)" }]}>
-            <Ionicons name="people-outline" size={18} color="#4ade80" />
+            <Ionicons name="people-outline" size={18} color={C.positive} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
@@ -235,7 +235,7 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
       return (
         <View style={rowStyle(C)}>
           <View style={[iconBox, { backgroundColor: "rgba(99,102,241,0.15)" }]}>
-            <Ionicons name="git-network-outline" size={18} color="#a5b4fc" />
+            <Ionicons name="git-network-outline" size={18} color={C.accentText} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>

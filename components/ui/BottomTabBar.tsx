@@ -8,6 +8,7 @@ import { tokens, useTheme } from "@/lib/theme"
 import { TABS } from "@/lib/navigation"
 import { MoreSheet } from "@/components/ui/MoreSheet"
 import { haptic } from "@/lib/haptics"
+import { useOffline } from "@/context/OfflineContext"
 
 /**
  * Tab bar for screens pushed on top of the tabs (e.g. a group's detail page), so the bottom
@@ -18,6 +19,7 @@ export function BottomTabBar({ activeTab }: { activeTab?: string }) {
   const C = useTheme()
   const pathname = usePathname()
   const [moreVisible, setMoreVisible] = useState(false)
+  const { isOnline } = useOffline()
 
   return (
     <>
@@ -40,7 +42,7 @@ export function BottomTabBar({ activeTab }: { activeTab?: string }) {
           )
         })}
       </View>
-      <MoreSheet visible={moreVisible} onClose={() => setMoreVisible(false)} onSelect={(route) => router.push(route as any)} />
+      <MoreSheet visible={moreVisible} onClose={() => setMoreVisible(false)} onSelect={(route) => router.push(route as any)} disabled={!isOnline} />
     </>
   )
 }

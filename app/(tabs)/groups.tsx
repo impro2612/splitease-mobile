@@ -156,7 +156,7 @@ export default function Groups() {
                           <Text style={{ color: C.textSub, fontSize: 12 }}>{group._count?.expenses ?? 0}</Text>
                         </View>
                       </View>
-                      <Text style={{ color: balance > 0 ? tokens.positive : balance < 0 ? tokens.negative : C.textMuted, fontWeight: "700", fontSize: 14 }}>
+                      <Text style={{ color: balance > 0 ? C.positive : balance < 0 ? C.negative : C.textMuted, fontWeight: "700", fontSize: 14 }}>
                         {describeBalance(balance, gc.symbol, gc.code)}
                       </Text>
                     </View>

@@ -111,7 +111,7 @@ export default function SignIn() {
 
             {error ? (
               <View style={{ backgroundColor: "rgba(244,63,94,0.1)", borderWidth: 1, borderColor: "rgba(244,63,94,0.2)", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 16 }}>
-                <Text style={{ color: "#f87171", fontSize: 13 }}>{error}</Text>
+                <Text style={{ color: C.negative, fontSize: 13 }}>{error}</Text>
               </View>
             ) : null}
 

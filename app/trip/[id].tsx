@@ -194,7 +194,7 @@ export default function TripDetail() {
           <Text style={{ color: C.textSub, fontSize: 11 }}>{fmtDate(trip.startDate)} – {fmtDate(trip.endDate)}</Text>
         </View>
         <TouchableOpacity onPress={() => setConfirmDelete(true)} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="trash-outline" size={18} color="#f87171" />
+          <Ionicons name="trash-outline" size={18} color={C.negative} />
         </TouchableOpacity>
       </View>
 
@@ -213,7 +213,7 @@ export default function TripDetail() {
           </View>
           <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, alignItems: "center" }}>
             <Text style={{ color: C.textSub, fontSize: 10, fontWeight: "700", marginBottom: 4 }}>LEFT</Text>
-            <Text style={{ color: remaining >= 0 ? TEAL : "#f87171", fontSize: 18, fontWeight: "800" }}>{remaining < 0 ? "-" : ""}{fmt(Math.abs(remaining), trip.currency)}</Text>
+            <Text style={{ color: remaining >= 0 ? TEAL : C.negative, fontSize: 18, fontWeight: "800" }}>{remaining < 0 ? "-" : ""}{fmt(Math.abs(remaining), trip.currency)}</Text>
           </View>
         </View>
 
@@ -400,8 +400,8 @@ export default function TripDetail() {
           {trip.groupId && (
             <TouchableOpacity onPress={() => linkGroupMutation.mutate(null)}
               style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "rgba(239,68,68,0.08)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(239,68,68,0.2)" }}>
-              <Ionicons name="unlink-outline" size={20} color="#f87171" />
-              <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 14 }}>Unlink group</Text>
+              <Ionicons name="unlink-outline" size={20} color={C.negative} />
+              <Text style={{ color: C.negative, fontWeight: "700", fontSize: 14 }}>Unlink group</Text>
             </TouchableOpacity>
           )}
           {groups.map((g: any) => (
@@ -422,7 +422,7 @@ export default function TripDetail() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="warning-outline" size={26} color="#f87171" />
+              <Ionicons name="warning-outline" size={26} color={C.negative} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Delete Trip?</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>

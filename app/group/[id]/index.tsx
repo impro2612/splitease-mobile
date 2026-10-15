@@ -920,14 +920,14 @@ export default function GroupDetail() {
             style={{ backgroundColor: tab === "members" ? tokens.accentSoft : C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
             accessibilityLabel="Members"
           >
-            <Ionicons name="people-outline" size={18} color={tab === "members" ? tokens.accentText : C.text} />
+            <Ionicons name="people-outline" size={18} color={tab === "members" ? C.accentText : C.text} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => { haptic.tap(); openEditGroup() }}
             style={{ backgroundColor: tokens.accentSoft, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
             accessibilityLabel="Edit group"
           >
-            <Ionicons name="pencil" size={16} color={tokens.accentText} />
+            <Ionicons name="pencil" size={16} color={C.accentText} />
           </TouchableOpacity>
         </View>
 
@@ -945,7 +945,7 @@ export default function GroupDetail() {
                 return (
                   <View key={code} style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
                     <Text style={{ color: C.textSub, fontSize: 15, fontWeight: "600" }}>{net > 0 ? "You get back" : "You owe"}</Text>
-                    <Money amount={net} symbol={ci.symbol} code={ci.code} size={22} color={net > 0 ? tokens.positive : tokens.negative} />
+                    <Money amount={net} symbol={ci.symbol} code={ci.code} size={22} color={net > 0 ? C.positive : C.negative} />
                   </View>
                 )
               })}
@@ -967,7 +967,7 @@ export default function GroupDetail() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 40 }}>
             <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Members</Text>
             <TouchableOpacity onPress={() => setTab(prevTab)} style={{ flexDirection: "row", alignItems: "center", gap: 4, padding: 6 }}>
-              <Text style={{ color: tokens.accentText, fontSize: 13, fontWeight: "600" }}>Done</Text>
+              <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "600" }}>Done</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -988,7 +988,7 @@ export default function GroupDetail() {
       {/* Tracking Banner */}
       {isTracking && (
         <View style={{ backgroundColor: "rgba(99,102,241,0.12)", borderBottomWidth: 1, borderBottomColor: "rgba(99,102,241,0.2)", paddingHorizontal: 20, paddingVertical: 10 }}>
-          <Text style={{ color: "#a5b4fc", fontSize: 13, fontWeight: "600", textAlign: "center" }}>
+          <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "600", textAlign: "center" }}>
             📡 Tracking expenses{trackConfig?.expiresAt ? ` · ends ${formatDate(new Date(trackConfig.expiresAt))}` : ""}
           </Text>
         </View>
@@ -1065,7 +1065,7 @@ export default function GroupDetail() {
                         ) : (
                           <>
                             <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600" }}>{myAmount > 0 ? "you lent" : "you borrowed"}</Text>
-                            <Text style={{ color: myAmount > 0 ? tokens.positive : tokens.negative, fontWeight: "700", fontSize: 15, fontVariant: ["tabular-nums"] }}>
+                            <Text style={{ color: myAmount > 0 ? C.positive : C.negative, fontWeight: "700", fontSize: 15, fontVariant: ["tabular-nums"] }}>
                               {formatCurrency(myAmount, expCurr.symbol, expCurr.code)}
                             </Text>
                           </>
@@ -1152,7 +1152,7 @@ export default function GroupDetail() {
                 <View style={{ backgroundColor: "rgba(99,102,241,0.12)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.35)", paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
                   <Text style={{ fontSize: 16 }}>⚡</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 13 }}>Smart Debts Enabled</Text>
+                    <Text style={{ color: C.accentText, fontWeight: "700", fontSize: 13 }}>Smart Debts Enabled</Text>
                     <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 1 }}>Showing minimum transactions to settle all debts</Text>
                   </View>
                 </View>
@@ -1192,7 +1192,7 @@ export default function GroupDetail() {
                         <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{currency}</Text>
                         {isDefaultCurrency && (
                           <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                            <Text style={{ color: "#a5b4fc", fontSize: 9, fontWeight: "700" }}>DEFAULT</Text>
+                            <Text style={{ color: C.accentText, fontSize: 9, fontWeight: "700" }}>DEFAULT</Text>
                           </View>
                         )}
                       </View>
@@ -1205,7 +1205,7 @@ export default function GroupDetail() {
                             disabled={!rate}
                             style={{ backgroundColor: isConverted ? "rgba(99,102,241,0.15)" : "rgba(16,185,129,0.12)", borderRadius: 10, borderWidth: 1, borderColor: isConverted ? "rgba(99,102,241,0.4)" : "rgba(16,185,129,0.3)", paddingHorizontal: 8, paddingVertical: 5, opacity: rate ? 1 : 0.4 }}
                           >
-                            <Text style={{ color: isConverted ? "#a5b4fc" : "#34d399", fontWeight: "700", fontSize: 11 }}>
+                            <Text style={{ color: isConverted ? C.accentText : "#34d399", fontWeight: "700", fontSize: 11 }}>
                               {isConverted ? "⟲ Revert" : `→ ${gc.code}`}
                             </Text>
                             {rate ? (
@@ -1229,7 +1229,7 @@ export default function GroupDetail() {
                         const net = convertAmt(mb.getsBack - mb.owes)
                         const isMe = m.userId === user?.id
                         const name = isMe ? "You" : (m.user?.name ?? "Someone")
-                        const netColor = net > 0 ? "#4ade80" : net < 0 ? "#f87171" : "#64748b"
+                        const netColor = net > 0 ? C.positive : net < 0 ? C.negative : "#64748b"
                         const cardKey = `${currency}-${m.userId}`
                         const isExpanded = expandedMembers.has(cardKey)
 
@@ -1273,7 +1273,7 @@ export default function GroupDetail() {
                                           ? `${isMe ? "You owe" : `${name} owes`} ${otherName}`
                                           : `${otherName} owes ${isMe ? "you" : name}`}
                                       </Text>
-                                      <Text style={{ color: d.dir === "owes" ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 14 }}>
+                                      <Text style={{ color: d.dir === "owes" ? C.negative : C.positive, fontWeight: "700", fontSize: 14 }}>
                                         {formatCurrency(displayAmt, dispCi.symbol, dispCi.code)}
                                       </Text>
                                     </View>
@@ -1303,7 +1303,7 @@ export default function GroupDetail() {
                                           }}
                                           style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
                                         >
-                                          <Text style={{ color: "#a5b4fc", fontWeight: "600", fontSize: 11 }}>Summary</Text>
+                                          <Text style={{ color: C.accentText, fontWeight: "600", fontSize: 11 }}>Summary</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                           onPress={() => {
@@ -1402,9 +1402,9 @@ export default function GroupDetail() {
                 style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}
               >
                 <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="person-add" size={20} color="#a5b4fc" />
+                  <Ionicons name="person-add" size={20} color={C.accentText} />
                 </View>
-                <Text style={{ color: "#a5b4fc", fontWeight: "600" }}>Add members</Text>
+                <Text style={{ color: C.accentText, fontWeight: "600" }}>Add members</Text>
               </TouchableOpacity>
             )}
 
@@ -1420,7 +1420,7 @@ export default function GroupDetail() {
                   <View style={{ flex: 1 }}>
                     <View className="flex-row items-center gap-2">
                       <Text style={{ color: C.text, fontWeight: "600" }}>{m.user?.name ?? "Unknown"}</Text>
-                      {isMe && <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>(you)</Text>}
+                      {isMe && <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "600" }}>(you)</Text>}
                     </View>
                     <Text style={{ color: C.textSub, fontSize: 12 }}>{m.user?.email}</Text>
                   </View>
@@ -1444,7 +1444,7 @@ export default function GroupDetail() {
                         disabled={removeMemberMutation.isPending}
                         style={{ padding: 4 }}
                       >
-                        <Ionicons name="person-remove-outline" size={18} color="#f87171" />
+                        <Ionicons name="person-remove-outline" size={18} color={C.negative} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => showConfirm({
@@ -1569,7 +1569,7 @@ export default function GroupDetail() {
                         return (
                           <View key={c} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                             <Text style={{ color: C.textMuted, fontSize: 11 }}>{ci.flag} {c}</Text>
-                            <Text style={{ color: "#a5b4fc", fontSize: 11, fontWeight: "600" }}>{formatCurrency(myShareByCurrency[c], ci.symbol, ci.code)}</Text>
+                            <Text style={{ color: C.accentText, fontSize: 11, fontWeight: "600" }}>{formatCurrency(myShareByCurrency[c], ci.symbol, ci.code)}</Text>
                           </View>
                         )
                       })}
@@ -1643,10 +1643,10 @@ export default function GroupDetail() {
             {nextPayer && (
               <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="trending-down-outline" size={22} color={tokens.accentText} />
+                  <Ionicons name="trending-down-outline" size={22} color={C.accentText} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#a5b4fc", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 2 }}>PAY NEXT TO REDUCE DEBT</Text>
+                  <Text style={{ color: C.accentText, fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 2 }}>PAY NEXT TO REDUCE DEBT</Text>
                   <Text style={{ color: C.text, fontSize: 15, fontWeight: "700" }}>
                     {nextPayer.member.userId === user?.id ? "You" : (nextPayer.member.user?.name ?? "Someone")}
                   </Text>
@@ -1655,8 +1655,8 @@ export default function GroupDetail() {
                   </Text>
                 </View>
                 <View style={{ alignItems: "center", backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, padding: 8 }}>
-                  <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>should</Text>
-                  <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "600" }}>pay next</Text>
+                  <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "600" }}>should</Text>
+                  <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "600" }}>pay next</Text>
                 </View>
               </View>
             )}
@@ -1666,7 +1666,7 @@ export default function GroupDetail() {
               style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}
             >
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="document-text-outline" size={22} color="#a5b4fc" />
+                <Ionicons name="document-text-outline" size={22} color={C.accentText} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Write Notes</Text>
@@ -1763,7 +1763,7 @@ export default function GroupDetail() {
                     <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Smart Debts</Text>
                     {smartDebtsEnabled && (
                       <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
-                        <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "700" }}>ACTIVE</Text>
+                        <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "700" }}>ACTIVE</Text>
                       </View>
                     )}
                   </View>
@@ -1793,10 +1793,10 @@ export default function GroupDetail() {
                   disabled={smartDebtsLoading}
                   style={{ backgroundColor: "rgba(244,63,94,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(244,63,94,0.25)", paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                 >
-                  {smartDebtsLoading ? <ActivityIndicator color="#f87171" size="small" /> : (
+                  {smartDebtsLoading ? <ActivityIndicator color={C.negative} size="small" /> : (
                     <>
-                      <Ionicons name="flash-off-outline" size={18} color="#f87171" />
-                      <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 14 }}>Disable Smart Debts</Text>
+                      <Ionicons name="flash-off-outline" size={18} color={C.negative} />
+                      <Text style={{ color: C.negative, fontWeight: "700", fontSize: 14 }}>Disable Smart Debts</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -1816,14 +1816,14 @@ export default function GroupDetail() {
             <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: isTracking ? "rgba(99,102,241,0.4)" : C.border, padding: 18, gap: 14, opacity: otherGroupTracking ? 0.6 : 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: isTracking ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name={isTracking ? "radio" : "radio-outline"} size={22} color={otherGroupTracking ? C.textMuted : "#a5b4fc"} />
+                  <Ionicons name={isTracking ? "radio" : "radio-outline"} size={22} color={otherGroupTracking ? C.textMuted : C.accentText} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Track Expense</Text>
                     {isTracking && (
                       <View style={{ backgroundColor: "rgba(99,102,241,0.2)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
-                        <Text style={{ color: "#a5b4fc", fontSize: 10, fontWeight: "700" }}>ACTIVE</Text>
+                        <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "700" }}>ACTIVE</Text>
                       </View>
                     )}
                   </View>
@@ -1842,8 +1842,8 @@ export default function GroupDetail() {
                   onPress={confirmStopTracking}
                   style={{ backgroundColor: "rgba(244,63,94,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(244,63,94,0.25)", paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                 >
-                  <Ionicons name="stop-circle-outline" size={18} color="#f87171" />
-                  <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 14 }}>Stop Tracking</Text>
+                  <Ionicons name="stop-circle-outline" size={18} color={C.negative} />
+                  <Text style={{ color: C.negative, fontWeight: "700", fontSize: 14 }}>Stop Tracking</Text>
                 </TouchableOpacity>
               ) : otherGroupTracking ? (
                 <View style={{ backgroundColor: C.iconBg, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, gap: 4 }}>
@@ -1916,7 +1916,7 @@ export default function GroupDetail() {
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 20 }}>
             {/* Icon — centered */}
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: confirmDialog?.danger ? "rgba(239,68,68,0.15)" : "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name={confirmDialog?.danger ? "warning-outline" : "shield-outline"} size={26} color={confirmDialog?.danger ? "#f87171" : "#a5b4fc"} />
+              <Ionicons name={confirmDialog?.danger ? "warning-outline" : "shield-outline"} size={26} color={confirmDialog?.danger ? C.negative : C.accentText} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
@@ -1953,9 +1953,9 @@ export default function GroupDetail() {
             <View style={{ backgroundColor: C.iconBg, borderRadius: 14, padding: 14, marginBottom: 20, gap: 6 }}>
               <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 4 }}>EXAMPLE</Text>
               <View style={{ gap: 4 }}>
-                <Text style={{ color: "#f87171", fontSize: 12 }}>❌  A → B ₹100  &  B → C ₹100  (2 payments)</Text>
+                <Text style={{ color: C.negative, fontSize: 12 }}>❌  A → B ₹100  &  B → C ₹100  (2 payments)</Text>
                 <View style={{ height: 1, backgroundColor: C.border, marginVertical: 4 }} />
-                <Text style={{ color: "#4ade80", fontSize: 12 }}>✅  A → C ₹100  (1 payment, B eliminated)</Text>
+                <Text style={{ color: C.positive, fontSize: 12 }}>✅  A → C ₹100  (1 payment, B eliminated)</Text>
               </View>
             </View>
             <View style={{ flexDirection: "row", gap: 10 }}>
@@ -1995,7 +1995,7 @@ export default function GroupDetail() {
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 20 }}>
             <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="radio" size={26} color="#a5b4fc" />
+              <Ionicons name="radio" size={26} color={C.accentText} />
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Enable Expense Tracking</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>Auto-detect debit SMS for this group. Pick an end date to begin.</Text>
@@ -2104,7 +2104,7 @@ export default function GroupDetail() {
                 onPress={() => { setShowEditExpense(false); confirmDelete(editTarget) }}
                 style={{ backgroundColor: "rgba(244,63,94,0.15)", borderRadius: 20, padding: 8 }}
               >
-                <Ionicons name="trash-outline" size={18} color="#f87171" />
+                <Ionicons name="trash-outline" size={18} color={C.negative} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowEditExpense(false)} style={{ backgroundColor: C.iconBg, borderRadius: 20, padding: 8 }}>
                 <Ionicons name="close" size={18} color={C.text} />
@@ -2267,7 +2267,7 @@ export default function GroupDetail() {
         </View>
       </InAppFullScreenModal>
 
-      <Celebration visible={celebrate} onDone={() => setCelebrate(false)} />
+      <Celebration visible={celebrate} message="Paid in full" onDone={() => setCelebrate(false)} />
       <BottomTabBar activeTab="groups" />
     </SafeAreaView>
   )
@@ -2528,8 +2528,8 @@ function ExpenseFormFields({
                     </View>
                   )
                 })}
-                {pctError && <Text style={{ color: "#f87171", fontSize: 12, marginTop: 4 }}>⚠ {pctError} used</Text>}
-                {!pctError && numAmount > 0 && <Text style={{ color: "#4ade80", fontSize: 12, marginTop: 4 }}>✓ Splits to 100%</Text>}
+                {pctError && <Text style={{ color: C.negative, fontSize: 12, marginTop: 4 }}>⚠ {pctError} used</Text>}
+                {!pctError && numAmount > 0 && <Text style={{ color: C.positive, fontSize: 12, marginTop: 4 }}>✓ Splits to 100%</Text>}
               </View>
             )}
 
@@ -2560,7 +2560,7 @@ function ExpenseFormFields({
                   )
                 })}
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-                  <Text style={{ color: customError ? "#f87171" : "#64748b", fontSize: 12 }}>
+                  <Text style={{ color: customError ? C.negative : "#64748b", fontSize: 12 }}>
                     {customError ? `⚠ ${customError}` : `Total: ${gc.symbol}${customTotal.toFixed(2)}`}
                   </Text>
                   <Text style={{ color: C.textMuted, fontSize: 12 }}>of {gc.symbol}{numAmount.toFixed(2)}</Text>
