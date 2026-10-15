@@ -8,7 +8,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
@@ -130,7 +129,7 @@ export default function CreateGroup() {
   })
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    <>
       <View style={{ flex: 1, backgroundColor: C.bg }}>
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
           <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
@@ -155,6 +154,7 @@ export default function CreateGroup() {
           </View>
 
           <ScrollView
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
@@ -296,6 +296,6 @@ export default function CreateGroup() {
           </View>
         </InAppFullScreenModal>
       </View>
-    </TouchableWithoutFeedback>
+    </>
   )
 }
