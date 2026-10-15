@@ -78,7 +78,7 @@ export default function SignUp() {
   async function handleSignUp() {
     if (!name || !email || !password) { setError("All fields are required"); return }
     const digits = phone.replace(/\D/g, "")
-    if (digits.length < 6) { setError("Please enter a valid phone number"); return }
+    if (digits.length < 7) { setError("Please enter a valid phone number"); return }
     if (password.length < 8) { setError("Password must be at least 8 characters"); return }
     if (!/\d/.test(password)) { setError("Password must contain at least one number"); return }
     setLoading(true); setError("")

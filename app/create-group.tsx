@@ -64,7 +64,7 @@ export default function CreateGroup() {
       setLocationSearching(true)
       try {
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text.trim())}&format=json&addressdetails=1&limit=10&dedupe=1`
-        const res = await fetch(url, { headers: { "User-Agent": "SplitEase/1.0" } })
+        const res = await fetch(url, { headers: { "User-Agent": "SplitIT/1.0 (+https://splitwithease.vercel.app)" } })
         const data = await res.json()
         if (!Array.isArray(data)) {
           setLocationResults([])
