@@ -1,4 +1,5 @@
-import { View, Text } from "react-native"
+import { View } from "react-native"
+import { Text } from "@/components/ui/Typography"
 import { useTheme } from "@/lib/theme"
 
 type Variant = "default" | "success" | "danger" | "warning" | "secondary"

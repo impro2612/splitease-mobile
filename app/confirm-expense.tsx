@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, FlatList } from "react-native"
+import { View, TouchableOpacity, ScrollView, ActivityIndicator, FlatList } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import { useLocalSearchParams, router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
@@ -166,7 +167,7 @@ export default function ConfirmExpense() {
         <View style={{ gap: 16, paddingTop: 8 }}>
           {/* Description */}
           <View>
-            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Description</Text>
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Description</Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
@@ -178,7 +179,7 @@ export default function ConfirmExpense() {
 
           {/* Amount + Currency picker */}
           <View>
-            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Amount</Text>
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Amount</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {/* Currency chip — tappable */}
               <TouchableOpacity
@@ -224,7 +225,7 @@ export default function ConfirmExpense() {
 
           {/* Paid by */}
           <View>
-            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Paid by</Text>
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Paid by</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {members.map((m: any) => (
@@ -255,7 +256,7 @@ export default function ConfirmExpense() {
 
           {/* Date */}
           <View>
-            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Date</Text>
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Date</Text>
             <TouchableOpacity
               onPress={openDatePicker}
               style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}

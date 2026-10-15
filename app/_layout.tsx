@@ -1,6 +1,7 @@
 import "../global.css"
 import React, { useEffect, useRef, useState } from "react"
-import { Platform, View, Text, TouchableOpacity, Pressable, useColorScheme, AppState, AppStateStatus } from "react-native"
+import { Platform, View, TouchableOpacity, Pressable, useColorScheme, AppState, AppStateStatus } from "react-native"
+import { Text } from "@/components/ui/Typography"
 import { Stack, router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { GestureHandlerRootView } from "react-native-gesture-handler"

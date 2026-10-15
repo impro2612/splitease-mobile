@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
+import { View, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
+import { Text } from "@/components/ui/Typography"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"

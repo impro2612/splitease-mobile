@@ -1,4 +1,5 @@
-import { View, Text, Image } from "react-native"
+import { View, Image } from "react-native"
+import { Text } from "@/components/ui/Typography"
 import { getInitials } from "@/lib/utils"
 
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316", "#22c55e", "#06b6d4", "#a855f7"]

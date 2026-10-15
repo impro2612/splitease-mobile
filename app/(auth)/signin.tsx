@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react"
-import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, Image,
-  KeyboardAvoidingView, ActivityIndicator, Platform,
-} from "react-native"
+import { View, TouchableOpacity, ScrollView, Image, KeyboardAvoidingView, ActivityIndicator, Platform } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import { router } from "expo-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"

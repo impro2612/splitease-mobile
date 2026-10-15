@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Modal, Linking, Platform, FlatList,
-  AppState, AppStateStatus,
-} from "react-native"
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Linking, Platform, FlatList, AppState, AppStateStatus } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import * as Contacts from "expo-contacts"
 import * as SecureStore from "expo-secure-store"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"

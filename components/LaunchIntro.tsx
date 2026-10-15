@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Image, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Image, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/Typography";
 
 const logoImage = require("@/assets/splash-icon.png");
 const taglineImage = require("@/assets/123.png");

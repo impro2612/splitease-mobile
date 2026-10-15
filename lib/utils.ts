@@ -1,16 +1,34 @@
 import { CURRENCIES } from "@/lib/currencies"
 /**
- * Formats the MAGNITUDE of an amount (callers render the +/- sign themselves).
- * INR uses Indian digit grouping (₹12,34,567.00); everything else groups by thousands.
+ * Formats the MAGNITUDE of an amount (callers render the +/- sign or wording themselves).
+ * INR uses Indian digit grouping (₹12,34,567); everything else groups by thousands.
+ * Whole amounts drop the ".00" (₹1,500 not ₹1,500.00); paise/cents are shown only when present.
  */
 export function formatCurrency(amount: number, symbol = "$", code = "USD") {
+  const { whole, fraction } = splitAmount(amount, code)
+  return `${symbol}${whole}${fraction ? `.${fraction}` : ""}`
+}
+
+/** Grouped whole part and 2-digit fraction ("" when the amount is whole). */
+export function splitAmount(amount: number, code = "USD"): { whole: string; fraction: string } {
   const abs = Math.abs(amount)
   const noDecimals = ["JPY", "KRW", "VND", "IDR", "HUF", "CLP", "COP"].includes(code)
-  const [intPart, frac] = abs.toFixed(noDecimals ? 0 : 2).split(".")
-  const grouped = code === "INR"
+  const [intPart, frac = ""] = abs.toFixed(noDecimals ? 0 : 2).split(".")
+  const whole = code === "INR"
     ? intPart.replace(/(\d)(?=(\d\d)+\d$)/g, "$1,")
     : intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-  return `${symbol}${grouped}${frac !== undefined ? `.${frac}` : ""}`
+  return { whole, fraction: frac && frac !== "00" ? frac : "" }
+}
+
+/**
+ * Plain-language balance: "You owe ₹2,500", "You get back ₹225", "Settled up".
+ * `who` lets the same wording work for other people ("Rahul owes ₹3,475").
+ */
+export function describeBalance(net: number, symbol: string, code: string, who = "You"): string {
+  if (Math.abs(net) < 0.005) return "Settled up"
+  const amt = formatCurrency(net, symbol, code)
+  const you = who === "You"
+  return net > 0 ? `${who} ${you ? "get" : "gets"} back ${amt}` : `${who} ${you ? "owe" : "owes"} ${amt}`
 }
 
 export function getInitials(name?: string | null, email?: string | null): string {

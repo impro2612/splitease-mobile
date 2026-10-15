@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import {
-  View, Text, TouchableOpacity, ScrollView, TextInput,
-  Modal, ActivityIndicator, RefreshControl, Alert,
-  Animated, PanResponder, useWindowDimensions, Pressable, Keyboard,
-} from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, RefreshControl, Alert, Animated, PanResponder, useWindowDimensions, Pressable, Keyboard } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import { parseAmountInput, currencySymbol } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, useLocalSearchParams } from "expo-router"
@@ -13,9 +10,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 
-const TEAL = "#10b981"
-const TEAL_BG = "rgba(16,185,129,0.12)"
-const TEAL_BORDER = "rgba(16,185,129,0.3)"
+// One app-wide accent (see lib/theme tokens) — features no longer have their own colours
+const TEAL = "#6366f1"
+const TEAL_BG = "rgba(99,102,241,0.14)"
+const TEAL_BORDER = "rgba(99,102,241,0.35)"
 
 const TRIP_CATEGORIES = [
   { key: "accommodation", label: "Stay", emoji: "🏨", color: "#6366f1" },
@@ -354,7 +352,7 @@ export default function TripDetail() {
                   </Text>
                 </View>
               </View>
-              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>PLANNED AMOUNT</Text>
+              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Planned amount</Text>
               <View style={{ height: 52, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: inputBorderColor, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, marginBottom: isOverLimit ? 6 : 20 }}>
                 <Text style={{ color: C.textSub, fontSize: 18, marginRight: 4 }}>{currencySymbol(trip.currency)}</Text>
                 <TextInput

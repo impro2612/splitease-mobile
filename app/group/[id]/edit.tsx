@@ -1,15 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import {
-  ActivityIndicator,
-  FlatList,
-  Keyboard,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native"
+import { ActivityIndicator, FlatList, Keyboard, Platform, ScrollView, TouchableOpacity, View } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { Ionicons } from "@expo/vector-icons"
 import { router, useLocalSearchParams } from "expo-router"

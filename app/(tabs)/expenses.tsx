@@ -1,15 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from "react"
-import {
-  View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator,
-  Modal, TextInput, FlatList, useWindowDimensions, RefreshControl,
-  KeyboardAvoidingView, Platform, Animated, Keyboard,
-} from "react-native"
+import { View, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Modal, FlatList, useWindowDimensions, RefreshControl, KeyboardAvoidingView, Platform, Animated, Keyboard } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
 import { useTheme } from "@/lib/theme"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { SkeletonRow } from "@/components/ui/Skeleton"
+import { router } from "expo-router"
 import { useOffline } from "@/context/OfflineContext"
 import { transactionsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
@@ -354,15 +354,20 @@ export default function Expenses() {
       {/* Header + Month Selector */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <Text style={{ color: C.text, fontSize: 22, fontWeight: "700" }}>Expenses</Text>
-          <TouchableOpacity onPress={isOnline ? () => importMutation.mutate() : undefined} disabled={importMutation.isPending || !isOnline} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5, opacity: isOnline ? 1 : 0.4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.navigate("/(tabs)/dashboard" as any)} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Back">
+              <Ionicons name="arrow-back" size={18} color={C.text} />
+            </TouchableOpacity>
+            <Text style={{ color: C.text, fontSize: 22, fontWeight: "800" }}>My Spending</Text>
+          </View>
+          {(summary?.transactionCount ?? 0) > 0 && <TouchableOpacity onPress={isOnline ? () => importMutation.mutate() : undefined} disabled={importMutation.isPending || !isOnline} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5, opacity: isOnline ? 1 : 0.4 }}>
             {importMutation.isPending
               ? <ActivityIndicator size="small" color="#6366f1" />
               : <Ionicons name="document-text-outline" size={14} color="#6366f1" />}
             <Text style={{ color: "#6366f1", fontSize: 12, fontWeight: "600" }}>
               {importMutation.isPending ? "Importing..." : "Import PDF"}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </View>
 
         {/* Month nav */}
@@ -413,12 +418,16 @@ export default function Expenses() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" />}
       >
         {summaryLoading && activeTab !== "suggestions" ? (
-          <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+          <View style={{ paddingTop: 8 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /></View>
         ) : (!summary || summary.transactionCount === 0) && activeTab !== "suggestions" ? (
           <EmptyState
-            onImport={isOnline ? () => importMutation.mutate() : undefined}
-            disabled={!isOnline}
-            C={C}
+            icon="document-text-outline"
+            title="No transactions this month"
+            subtitle="Import a PDF bank statement and we'll categorise every transaction for you."
+            actionLabel={importMutation.isPending ? "Importing…" : "Import statement"}
+            actionIcon="cloud-upload-outline"
+            onAction={() => importMutation.mutate()}
+            disabled={!isOnline || importMutation.isPending}
           />
         ) : (
           <>
@@ -596,24 +605,6 @@ export default function Expenses() {
 }
 
 // ── Sub-components ──────────────────────────────────────────────────────────
-
-function EmptyState({ onImport, disabled, C }: {
-  onImport: (() => void) | undefined; disabled?: boolean; C: ReturnType<typeof useTheme>
-}) {
-  return (
-    <View style={{ alignItems: "center", padding: 40 }}>
-      <Text style={{ fontSize: 60, marginBottom: 16 }}>📊</Text>
-      <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>Track your spending</Text>
-      <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 32 }}>
-        Upload a PDF bank statement to automatically import and categorize your transactions.
-      </Text>
-      <TouchableOpacity onPress={onImport} disabled={disabled} style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8, width: "100%", opacity: disabled ? 0.4 : 1 }}>
-        <Ionicons name="document-text-outline" size={18} color="#fff" />
-        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Import Bank Statement (PDF)</Text>
-      </TouchableOpacity>
-    </View>
-  )
-}
 
 function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedCategory, width, C, selectedTrendIndex }: {
   summary: { month?: string; totalIncome: number; totalExpense: number; netSavings: number; categoryBreakdown: { category: string; amount: number }[] };

@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect, useCallback } from "react"
-import {
-  View, Text, TouchableOpacity, ActivityIndicator,
-  FlatList, Animated, Dimensions, ScrollView, StyleSheet, useWindowDimensions,
-} from "react-native"
+import { View, TouchableOpacity, ActivityIndicator, FlatList, Animated, Dimensions, ScrollView, StyleSheet, useWindowDimensions } from "react-native"
+import { Text } from "@/components/ui/Typography"
+import { captureRef } from "react-native-view-shot"
+import * as Sharing from "expo-sharing"
+import Toast from "react-native-toast-message"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -325,7 +326,7 @@ export default function ScrapBook() {
     listRef.current?.scrollToIndex({ index: 0, animated: false })
   }
 
-  const renderSlide = useCallback(({ item }: { item: SlideId }) => {
+  const renderSlide = useCallback(({ item, index }: { item: SlideId; index: number }) => {
     if (!data) return null
     const slideMap: Record<SlideId, React.JSX.Element> = {
       intro: <SlideIntro data={data} />,
@@ -339,8 +340,31 @@ export default function ScrapBook() {
       outro: <SlideOutro data={data} year={activeYear} />,
     }
     // Explicit height so LinearGradient fills correctly in horizontal FlatList
-    return <View style={{ width: SCREEN_W, height: SLIDE_H }}>{slideMap[item]}</View>
+    // collapsable={false} keeps a real native view so the slide can be captured for sharing
+    return (
+      <View ref={(r) => { slideRefs.current[index] = r }} collapsable={false} style={{ width: SCREEN_W, height: SLIDE_H, backgroundColor: C.bg }}>
+        {slideMap[item]}
+      </View>
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, activeYear, SLIDE_H])
+
+  // Share the slide on screen as an image (Instagram stories, WhatsApp, …)
+  const slideRefs = useRef<Record<number, View | null>>({})
+  const [sharing, setSharing] = useState(false)
+  async function shareSlide() {
+    const node = slideRefs.current[activeSlide]
+    if (!node || sharing) return
+    setSharing(true)
+    try {
+      const uri = await captureRef(node, { format: "png", quality: 1, result: "tmpfile" })
+      await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share your ScrapBook" })
+    } catch {
+      Toast.show({ type: "error", text1: "Couldn't share this slide" })
+    } finally {
+      setSharing(false)
+    }
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
@@ -349,10 +373,21 @@ export default function ScrapBook() {
         <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
-        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.15)", alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="sparkles-outline" size={20} color="#f43f5e" />
+        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(99,102,241,0.14)", alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="sparkles-outline" size={20} color="#a5b4fc" />
         </View>
-        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }} numberOfLines={1}>Your ScrapBook</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }} numberOfLines={1}>ScrapBook</Text>
+        {!!data && !data.empty && (
+          <TouchableOpacity
+            onPress={shareSlide}
+            disabled={sharing}
+            accessibilityLabel="Share this slide"
+            style={{ height: 38, paddingHorizontal: 14, borderRadius: 12, backgroundColor: "#6366f1", flexDirection: "row", alignItems: "center", gap: 6, opacity: sharing ? 0.6 : 1 }}
+          >
+            <Ionicons name="share-social-outline" size={16} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Share</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Year pills row */}
@@ -372,8 +407,8 @@ export default function ScrapBook() {
                 activeOpacity={0.8}
                 style={{
                   paddingHorizontal: 22, paddingVertical: 9, borderRadius: 28,
-                  backgroundColor: isActive ? "#7c3aed" : C.surface,
-                  shadowColor: isActive ? "#7c3aed" : "transparent",
+                  backgroundColor: isActive ? "#6366f1" : C.surface,
+                  shadowColor: isActive ? "#6366f1" : "transparent",
                   shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8,
                   elevation: isActive ? 8 : 0,
                 }}
@@ -387,7 +422,7 @@ export default function ScrapBook() {
 
       {(isLoading || !data) && !isError ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#a78bfa" size="large" />
+          <ActivityIndicator color="#6366f1" size="large" />
           <Text style={{ color: C.textSub, marginTop: 12, fontSize: 13 }}>Building your recap…</Text>
         </View>
       ) : isError ? (
@@ -395,7 +430,7 @@ export default function ScrapBook() {
           <Text style={{ fontSize: 48 }}>😕</Text>
           <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginTop: 16, textAlign: "center" }}>Couldn't load recap</Text>
           <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginTop: 8 }}>Check your connection and try again</Text>
-          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 24, backgroundColor: "#7c3aed", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
+          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 24, backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
             <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -438,7 +473,7 @@ export default function ScrapBook() {
                 <View style={{
                   width: i === activeSlide ? 20 : 6,
                   height: 6, borderRadius: 3,
-                  backgroundColor: i === activeSlide ? "#a78bfa" : C.border,
+                  backgroundColor: i === activeSlide ? "#818cf8" : C.border,
                 }} />
               </TouchableOpacity>
             ))}

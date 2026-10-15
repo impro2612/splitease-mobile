@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react"
-import {
-  View, Text, TouchableOpacity, ScrollView, TextInput,
-  Modal, ActivityIndicator, Pressable, RefreshControl, Platform,
-  Animated, PanResponder, useWindowDimensions, Keyboard,
-} from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { SkeletonRow } from "@/components/ui/Skeleton"
+import { CurrencyChip } from "@/components/ui/CurrencyChip"
 import { parseAmountInput, startOfLocalDay, endOfLocalDay, currencySymbol } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -14,12 +14,12 @@ import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/d
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 
-const TEAL = "#10b981"
-const TEAL_BG = "rgba(16,185,129,0.12)"
-const TEAL_BORDER = "rgba(16,185,129,0.3)"
+// One app-wide accent (see lib/theme tokens) — features no longer have their own colours
+const TEAL = "#6366f1"
+const TEAL_BG = "rgba(99,102,241,0.14)"
+const TEAL_BORDER = "rgba(99,102,241,0.35)"
 
 const TRIP_EMOJIS = ["✈️", "🏖️", "🏔️", "🗺️", "🌍", "🏕️", "🚢", "🏛️", "🎪", "🌄", "🏝️", "🗼", "🎡", "🌋", "🏜️", "🛳️"]
-const CURRENCIES = ["INR", "USD", "EUR", "GBP"] as const
 
 type Trip = {
   id: string; name: string; emoji: string
@@ -145,7 +145,7 @@ export default function TripPlanner() {
   const [startDate, setStartDate] = useState(new Date())
   const [endDate, setEndDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 7); return d })
   const [budget, setBudget] = useState("")
-  const [currency, setCurrency] = useState<typeof CURRENCIES[number]>("INR")
+  const [currency, setCurrency] = useState("INR")
   const [groupId, setGroupId] = useState("")
 
   const { data: trips = [], isLoading, refetch } = useQuery<Trip[]>({
@@ -258,21 +258,20 @@ export default function TripPlanner() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}><ActivityIndicator color={TEAL} size="large" /></View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 12 }}><SkeletonRow /><SkeletonRow /></View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={TEAL} />}>
 
           {trips.length === 0 && (
-            <View style={{ alignItems: "center", paddingTop: 80 }}>
-              <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: TEAL_BG, alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-                <Text style={{ fontSize: 40 }}>✈️</Text>
-              </View>
-              <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", marginBottom: 8 }}>No trips yet</Text>
-              <Text style={{ color: C.textSub, fontSize: 14, textAlign: "center", lineHeight: 22 }}>
-                Tap + to plan your first trip budget
-              </Text>
-            </View>
+            <EmptyState
+              icon="airplane-outline"
+              title="No trips yet"
+              subtitle="Set a budget before you go and see how you're tracking while you travel."
+              actionLabel="Plan a trip"
+              actionIcon="add"
+              onAction={() => { resetForm(); setShowCreate(true) }}
+            />
           )}
 
           {active.length > 0 && (
@@ -308,7 +307,7 @@ export default function TripPlanner() {
         <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 20 }}>Plan a Trip</Text>
 
         {/* Emoji row */}
-        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>CHOOSE ICON</Text>
+        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Choose icon</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
           <View style={{ flexDirection: "row", gap: 8 }}>
             {TRIP_EMOJIS.map(e => (
@@ -324,7 +323,7 @@ export default function TripPlanner() {
         </ScrollView>
 
         {/* Trip name */}
-        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>TRIP NAME</Text>
+        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Trip name</Text>
         <View style={{ height: 48, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, justifyContent: "center", marginBottom: 14 }}>
           <TextInput
             style={{ color: C.text, fontSize: 15 }}
@@ -336,13 +335,13 @@ export default function TripPlanner() {
         </View>
 
         {/* Dates */}
-        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>DATES</Text>
+        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Dates</Text>
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
           <TouchableOpacity onPress={() => openDatePicker(startDate, setStartDate, undefined, setIosPickerCfg)}
             style={{ flex: 1, height: 48, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 8 }}>
             <Ionicons name="calendar-outline" size={16} color={C.textSub} />
             <View>
-              <Text style={{ color: C.textSub, fontSize: 10, fontWeight: "600" }}>FROM</Text>
+              <Text style={{ color: C.textSub, fontSize: 10, fontWeight: "600" }}>From</Text>
               <Text style={{ color: C.text, fontSize: 13 }}>{startDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</Text>
             </View>
           </TouchableOpacity>
@@ -357,7 +356,7 @@ export default function TripPlanner() {
         </View>
 
         {/* Budget */}
-        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>TOTAL BUDGET</Text>
+        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Total budget</Text>
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
           <View style={{ flex: 1, height: 48, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14 }}>
             <Text style={{ color: C.textSub, fontSize: 16, marginRight: 4 }}>{currencySymbol(currency)}</Text>
@@ -367,19 +366,11 @@ export default function TripPlanner() {
               keyboardType="decimal-pad" value={budget} onChangeText={setBudget}
             />
           </View>
-          {CURRENCIES.map(cur => (
-            <TouchableOpacity key={cur} onPress={() => setCurrency(cur)}
-              style={{ paddingHorizontal: 10, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center",
-                backgroundColor: currency === cur ? TEAL_BG : C.bg,
-                borderWidth: currency === cur ? 1.5 : 1,
-                borderColor: currency === cur ? TEAL : C.border }}>
-              <Text style={{ color: currency === cur ? TEAL : C.textSub, fontWeight: "700", fontSize: 12 }}>{cur}</Text>
-            </TouchableOpacity>
-          ))}
+          <CurrencyChip value={currency} onChange={setCurrency} height={48} />
         </View>
 
         {/* Link group (optional) */}
-        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>LINK GROUP (optional)</Text>
+        <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Link group (optional)</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <TouchableOpacity onPress={() => setGroupId("")}

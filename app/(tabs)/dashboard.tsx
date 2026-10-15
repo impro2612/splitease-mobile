@@ -1,453 +1,246 @@
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator,
-} from "react-native"
-import { useState, useEffect } from "react"
+import { View, ScrollView, TouchableOpacity, RefreshControl } from "react-native"
+import { Text } from "@/components/ui/Typography"
+import { useState, useEffect, useCallback } from "react"
 import { router } from "expo-router"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
 import { groupsApi, dashboardApi } from "@/lib/api"
-import { formatCurrency, formatRelativeTime, getExpenseEmoji, currencySymbol } from "@/lib/utils"
+import { formatCurrency, currencySymbol } from "@/lib/utils"
 import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
+import { Money } from "@/components/ui/Money"
+import { Skeleton, SkeletonRow } from "@/components/ui/Skeleton"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { useTheme } from "@/lib/theme"
+import { tokens, useTheme } from "@/lib/theme"
 import { getRate } from "@/lib/exchange"
+import { ActivityFeed, type ActivityItem } from "@/components/ActivityFeed"
 
-type ActivityItem = {
-  id: string
-  type: string
-  actorId: string
-  targetUserId?: string | null
-  groupId?: string | null
-  meta: Record<string, any>
-  createdAt: string
-  actor: { id: string; name: string | null; image: string | null }
-  targetUser?: { id: string; name: string | null; image: string | null } | null
-  group?: { id: string; name: string; emoji: string; color: string } | null
+type Person = {
+  user: { id: string; name: string | null; email: string; image: string | null }
+  nets: Record<string, number> // + = they owe you
+  groups: { id: string; name: string; emoji: string }[]
 }
 
-function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: string; C: any }) {
-  const m = item.meta
-  const isMe = item.actorId === userId
-  const actorName = isMe ? "You" : (item.actor.name ?? "Someone")
-  const time = formatRelativeTime(item.createdAt)
-
-  switch (item.type) {
-    case "expense_added": {
-      const curr = CURRENCIES.find(c => c.code === m.currency) ?? CURRENCIES[0]
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: C.iconBg }]}>
-            <Text style={{ fontSize: 18 }}>{getExpenseEmoji(m.description ?? "")}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} added "{m.description}"
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-              {item.group?.name ?? m.groupName} · {time}
-            </Text>
-          </View>
-          <Text style={{ color: "#a5b4fc", fontWeight: "700", fontSize: 13 }}>
-            {formatCurrency(m.amount, curr.symbol, curr.code)}
-          </Text>
-        </View>
-      )
-    }
-
-    case "expense_edited": {
-      const curr = CURRENCIES.find(c => c.code === m.currency) ?? CURRENCIES[0]
-      const expenseName = m.newDescription ?? m.description
-      const fmtD = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-      const changed = m.oldDescription && m.newDescription
-        ? `"${m.oldDescription}" → "${m.newDescription}"`
-        : m.oldAmount != null && m.newAmount != null
-          ? `${formatCurrency(m.oldAmount, curr.symbol, curr.code)} → ${formatCurrency(m.newAmount, curr.symbol, curr.code)}`
-          : m.oldPaidByName != null && m.newPaidByName != null
-            ? `${m.oldPaidByName} → ${m.newPaidByName}`
-            : m.oldDate && m.newDate
-              ? `${fmtD(m.oldDate)} → ${fmtD(m.newDate)}`
-              : m.oldCurrency && m.newCurrency
-                ? `${m.oldCurrency} → ${m.newCurrency}`
-                : `"${expenseName}"`
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(245,158,11,0.12)" }]}>
-            <Ionicons name="create-outline" size={18} color="#fbbf24" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} edited {changed}
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-              "{m.newDescription ?? m.description}" · {item.group?.name ?? m.groupName} · {time}
-            </Text>
-          </View>
-        </View>
-      )
-    }
-
-    case "expense_deleted": {
-      const curr = CURRENCIES.find(c => c.code === m.currency) ?? CURRENCIES[0]
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(244,63,94,0.12)" }]}>
-            <Ionicons name="trash-outline" size={18} color="#f87171" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} deleted "{m.description}"
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-              {item.group?.name ?? m.groupName} · {time}
-            </Text>
-          </View>
-          <Text style={{ color: "#f87171", fontWeight: "700", fontSize: 13 }}>
-            -{formatCurrency(m.amount, curr.symbol, curr.code)}
-          </Text>
-        </View>
-      )
-    }
-
-    case "settlement": {
-      const curr = CURRENCIES.find(c => c.code === m.currency) ?? CURRENCIES[0]
-      const toName = m.toUserName ?? item.targetUser?.name ?? "someone"
-      const isTarget = item.targetUserId === userId
-      const desc = isMe
-        ? `You settled with ${toName}`
-        : isTarget
-          ? `${actorName} settled with you`
-          : `${actorName} settled with ${toName}`
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(34,197,94,0.12)" }]}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#4ade80" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>{desc}</Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-              {item.group?.name ?? m.groupName} · {time}
-            </Text>
-          </View>
-          <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 13 }}>
-            {formatCurrency(m.amount, curr.symbol, curr.code)}
-          </Text>
-        </View>
-      )
-    }
-
-    case "group_created": {
-      const emoji = item.group?.emoji ?? m.groupEmoji ?? "💰"
-      const name = item.group?.name ?? m.groupName ?? "a group"
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(99,102,241,0.15)" }]}>
-            <Text style={{ fontSize: 18 }}>{emoji}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} created group "{name}"
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{time}</Text>
-          </View>
-          <Ionicons name="people-outline" size={18} color="#a5b4fc" />
-        </View>
-      )
-    }
-
-    case "group_renamed": {
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(99,102,241,0.15)" }]}>
-            <Text style={{ fontSize: 18 }}>{item.group?.emoji ?? m.groupEmoji ?? "💰"}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} renamed "{m.oldName}" → "{m.newName}"
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{time}</Text>
-          </View>
-        </View>
-      )
-    }
-
-    case "group_deleted": {
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(244,63,94,0.12)" }]}>
-            <Ionicons name="trash-outline" size={18} color="#f87171" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} deleted group "{m.groupName}"
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{time}</Text>
-          </View>
-        </View>
-      )
-    }
-
-    case "member_joined": {
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(34,197,94,0.1)" }]}>
-            <Ionicons name="person-add-outline" size={18} color="#4ade80" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} joined {item.group?.name ?? m.groupName}
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{time}</Text>
-          </View>
-        </View>
-      )
-    }
-
-    case "friend_request_sent": {
-      const toName = m.toUserName ?? item.targetUser?.name ?? "someone"
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(99,102,241,0.15)" }]}>
-            <Ionicons name="person-add-outline" size={18} color="#a5b4fc" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {isMe ? `You sent a friend request to ${toName}` : `${actorName} sent you a friend request`}
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{time}</Text>
-          </View>
-        </View>
-      )
-    }
-
-    case "friend_accepted": {
-      const otherName = isMe
-        ? (item.targetUser?.name ?? "someone")
-        : actorName
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(34,197,94,0.12)" }]}>
-            <Ionicons name="people-outline" size={18} color="#4ade80" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {isMe ? `You and ${otherName} are now friends` : `${actorName} accepted your friend request`}
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{time}</Text>
-          </View>
-        </View>
-      )
-    }
-
-    case "smart_debts_toggled": {
-      return (
-        <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: "rgba(99,102,241,0.15)" }]}>
-            <Ionicons name="git-network-outline" size={18} color="#a5b4fc" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
-              {actorName} {m.enabled ? "enabled" : "disabled"} smart debts
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-              {item.group?.name ?? m.groupName} · {time}
-            </Text>
-          </View>
-        </View>
-      )
-    }
-
-    default:
-      return null
-  }
+function greeting() {
+  const h = new Date().getHours()
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"
 }
 
-const rowStyle = (C: any) => ({
-  backgroundColor: C.card,
-  borderRadius: 14,
-  borderWidth: 1,
-  borderColor: C.border,
-  padding: 14,
-  marginBottom: 8,
-  flexDirection: "row" as const,
-  alignItems: "center" as const,
-  gap: 12,
-})
-
-const iconBox = {
-  width: 40,
-  height: 40,
-  borderRadius: 12,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
+/** "₹3,475" or "₹225 + $40" — currencies are listed, never added together. */
+function joinAmounts(nets: Record<string, number>, pick: (v: number) => boolean) {
+  return Object.entries(nets)
+    .filter(([, v]) => pick(v))
+    .map(([code, v]) => formatCurrency(v, currencySymbol(code), code))
+    .join(" + ")
 }
 
-export default function Dashboard() {
+export default function Home() {
   const { user, currency } = useAuthStore()
   const C = useTheme()
-  const currencyInfo = CURRENCIES.find(c => c.code === currency) ?? CURRENCIES[0]
-
+  const queryClient = useQueryClient()
+  const display = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0]
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
-  const [, setTick] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => {
-    const id = setInterval(() => setTick((n) => n + 1), 30_000)
-    return () => clearInterval(id)
-  }, [])
-
-  const { data: groups = [], isLoading } = useQuery({
+  const { data: groups = [], isLoading: groupsLoading } = useQuery({
     queryKey: ["groups"],
     queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
-
-  const { data: summary } = useQuery({
+  const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["balance-summary"],
     queryFn: () => dashboardApi.summary().then((r) => r.data),
   })
-
   const { data: activityItems = [] } = useQuery<ActivityItem[]>({
     queryKey: ["activity"],
     queryFn: () => dashboardApi.activity().then((r) => r.data),
     staleTime: 0,
   })
 
+  // Rates to express the overall position in the user's display currency
   useEffect(() => {
     if (!summary?.perCurrency) return
-    const displayCode = currency ?? "USD"
-    const nonDefault = Object.keys(summary.perCurrency).filter(
-      (c) => c !== displayCode && !fxRates[c]
-    )
-    if (nonDefault.length === 0) return
-    Promise.all(
-      nonDefault.map(async (cur) => ({ currency: cur, rate: await getRate(cur, displayCode) }))
-    ).then((results) => {
+    const missing = Object.keys(summary.perCurrency).filter((c) => c !== display.code && !fxRates[c])
+    if (missing.length === 0) return
+    Promise.all(missing.map(async (cur) => ({ cur, rate: await getRate(cur, display.code) }))).then((res) => {
       setFxRates((prev) => {
         const next = { ...prev }
-        for (const r of results) if (r.rate !== null) next[r.currency] = r.rate
+        for (const r of res) if (r.rate !== null) next[r.cur] = r.rate
         return next
       })
     })
-  }, [summary, currency])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary, display.code])
 
-  let totalOwed = 0
-  let totalOwe = 0
-  // Currencies whose rate isn't available yet (or failed) are listed separately rather than
-  // silently dropped from the totals.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["balance-summary"] }),
+      queryClient.invalidateQueries({ queryKey: ["groups"] }),
+      queryClient.invalidateQueries({ queryKey: ["activity"] }),
+    ])
+    setRefreshing(false)
+  }, [queryClient])
+
+  // Overall net in the display currency; currencies without a rate are listed separately
+  let net = 0
   const unconverted: string[] = []
-  if (summary?.perCurrency) {
-    const displayCode = currency ?? "USD"
-    for (const [cur, { owe, owed }] of Object.entries(summary.perCurrency as Record<string, { owe: number; owed: number }>)) {
-      const rate = cur === displayCode ? 1 : (fxRates[cur] ?? null)
-      if (rate === null) {
-        if (owe || owed) unconverted.push(`${owed - owe >= 0 ? "+" : "-"}${formatCurrency(Math.abs(owed - owe), currencySymbol(cur), cur)}`)
-        continue
-      }
-      totalOwe += owe * rate
-      totalOwed += owed * rate
+  for (const [cur, { owe, owed }] of Object.entries((summary?.perCurrency ?? {}) as Record<string, { owe: number; owed: number }>)) {
+    const rate = cur === display.code ? 1 : (fxRates[cur] ?? null)
+    if (rate === null) {
+      if (owed - owe) unconverted.push(`${owed - owe > 0 ? "+" : "−"}${formatCurrency(owed - owe, currencySymbol(cur), cur)}`)
+      continue
     }
+    net += (owed - owe) * rate
   }
-  const net = totalOwed - totalOwe
+  net = Math.round(net * 100) / 100
+  const settled = Math.abs(net) < 0.005 && unconverted.length === 0
+  const people: Person[] = summary?.people ?? []
+  const owesYou = people.filter((p) => Object.values(p.nets).some((v) => v > 0))
+  const youOwe = people.filter((p) => Object.values(p.nets).some((v) => v < 0))
+  const activeGroups = groups.filter((g: any) => Object.keys(g.myBalance ?? {}).length > 0).length
+
+  const openPerson = (p: Person) => {
+    const g = p.groups[0]
+    if (g) router.push(`/group/${g.id}` as any)
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View>
-          <Text style={{ color: C.text, fontSize: 24, fontWeight: "700" }}>
-            Hey, {user?.name?.split(" ")[0] ?? "there"} 👋
-          </Text>
-          <Text style={{ color: C.textSub, fontSize: 13, marginTop: 2 }}>Here's your overview</Text>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: tokens.space.xl, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} />}
+      >
+        {/* Header */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 16, paddingBottom: 18 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>{greeting()}</Text>
+            <Text style={{ color: C.text, fontSize: 24, fontWeight: "800", marginTop: 2 }} numberOfLines={1}>
+              {user?.name?.split(" ")[0] ?? "there"}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/profile" as any)} accessibilityLabel="Profile and settings">
+            <Avatar name={user?.name} email={user?.email} image={user?.image} size={44} />
+          </TouchableOpacity>
         </View>
-        <Avatar name={user?.name} email={user?.email} image={user?.image} size={42} />
-      </View>
 
-      {/* Balance cards */}
-      <View style={{ paddingHorizontal: 20, marginTop: 10, gap: 8 }}>
-        <View style={{ backgroundColor: net >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 16, borderWidth: 1, borderColor: net >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 14 }}>
-          <Text style={{ color: C.textSub, fontSize: 10, fontWeight: "500", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Net balance</Text>
-          <Text style={{ color: net >= 0 ? "#4ade80" : "#f87171", fontSize: 26, fontWeight: "800" }}>
-            {net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(net), currencyInfo.symbol, currencyInfo.code)}
+        {/* Overall position — neutral card, only the number carries colour */}
+        <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: tokens.space.xl }}>
+          <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600" }}>
+            {summaryLoading ? "Overall" : settled ? "Overall" : net < 0 ? "Overall, you owe" : "Overall, you get back"}
           </Text>
-          <Text style={{ color: C.textSub, fontSize: 11, marginTop: 2 }}>
-            {net > 0 ? "Others owe you" : net < 0 ? "You owe others" : unconverted.length ? "" : "All settled up! ✅"}
-          </Text>
-          {unconverted.length > 0 && (
-            <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>
-              Not included (exchange rate unavailable): {unconverted.join(" · ")}
+          {summaryLoading ? (
+            <Skeleton width={180} height={36} style={{ marginTop: 10 }} />
+          ) : settled ? (
+            <Text style={{ color: C.text, fontSize: 30, fontWeight: "800", marginTop: 6 }}>All settled up</Text>
+          ) : (
+            <View style={{ marginTop: 6 }}>
+              <Money amount={net} symbol={display.symbol} code={display.code} size={36} color={net < 0 ? tokens.negative : tokens.positive} />
+            </View>
+          )}
+          {!summaryLoading && (
+            <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 6 }}>
+              {settled
+                ? "Nobody owes anybody — nice."
+                : `Across ${activeGroups} group${activeGroups === 1 ? "" : "s"}${unconverted.length ? ` · plus ${unconverted.join(", ")} (no exchange rate)` : ""}`}
             </Text>
           )}
         </View>
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <View style={{ flex: 1, backgroundColor: "rgba(34,197,94,0.08)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(34,197,94,0.15)", padding: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
-              <Ionicons name="trending-up" size={13} color="#4ade80" />
-              <Text style={{ color: C.textSub, fontSize: 11 }}>You're owed</Text>
-            </View>
-            <Text style={{ color: "#4ade80", fontSize: 17, fontWeight: "700" }}>+{formatCurrency(totalOwed, currencyInfo.symbol, currencyInfo.code)}</Text>
-          </View>
-          <View style={{ flex: 1, backgroundColor: "rgba(244,63,94,0.08)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(244,63,94,0.15)", padding: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
-              <Ionicons name="trending-down" size={13} color="#f87171" />
-              <Text style={{ color: C.textSub, fontSize: 11 }}>You owe</Text>
-            </View>
-            <Text style={{ color: "#f87171", fontSize: 17, fontWeight: "700" }}>-{formatCurrency(totalOwe, currencyInfo.symbol, currencyInfo.code)}</Text>
-          </View>
-        </View>
-      </View>
 
-      {/* Groups quick access */}
-      <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>Your Groups</Text>
-          <TouchableOpacity onPress={() => router.push("/groups")}>
-            <Text style={{ color: "#6366f1", fontSize: 13 }}>View all / Create</Text>
-          </TouchableOpacity>
-        </View>
-        {isLoading ? (
-          <ActivityIndicator color="#6366f1" />
-        ) : groups.length === 0 ? (
-          <TouchableOpacity
-            onPress={() => router.push("/groups")}
-            style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 24, alignItems: "center" }}
-          >
-            <Text style={{ fontSize: 36, marginBottom: 8 }}>👥</Text>
-            <Text style={{ color: C.textSub, fontSize: 13 }}>No groups yet — tap to create one</Text>
-          </TouchableOpacity>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
-            {groups.slice(0, 6).map((g: any) => (
-              <TouchableOpacity
-                key={g.id}
-                onPress={() => router.push(`/group/${g.id}`)}
-                style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, marginHorizontal: 4, width: 130 }}
-              >
-                <Text style={{ fontSize: 28, marginBottom: 8 }}>{g.emoji}</Text>
-                <Text style={{ color: C.text, fontWeight: "500", fontSize: 13 }} numberOfLines={1}>{g.name}</Text>
-                <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{g.members?.length ?? 0} members</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* People — the actionable part */}
+        {(youOwe.length > 0 || owesYou.length > 0) && (
+          <View style={{ marginTop: 26 }}>
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700", marginBottom: 10 }}>People</Text>
+            {[...youOwe, ...owesYou.filter((p) => !youOwe.includes(p))].map((p) => {
+              const iOwe = joinAmounts(p.nets, (v) => v < 0)
+              const theyOwe = joinAmounts(p.nets, (v) => v > 0)
+              const name = p.user.name ?? p.user.email
+              return (
+                <TouchableOpacity
+                  key={p.user.id}
+                  onPress={() => openPerson(p)}
+                  activeOpacity={0.75}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.md + 2, marginBottom: 8 }}
+                >
+                  <Avatar name={p.user.name} email={p.user.email} image={p.user.image} size={42} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: C.text, fontSize: 15, fontWeight: "600" }} numberOfLines={1}>{name}</Text>
+                    {iOwe ? <Text style={{ color: tokens.negative, fontSize: 13, fontWeight: "600", marginTop: 2 }}>You owe {iOwe}</Text> : null}
+                    {theyOwe ? <Text style={{ color: tokens.positive, fontSize: 13, fontWeight: "600", marginTop: 2 }}>Owes you {theyOwe}</Text> : null}
+                    <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                      {p.groups.map((g) => `${g.emoji} ${g.name}`).join(" · ")}
+                    </Text>
+                  </View>
+                  {iOwe ? (
+                    <View style={{ backgroundColor: tokens.accentSoft, borderRadius: tokens.radius.sm, paddingHorizontal: 12, paddingVertical: 7 }}>
+                      <Text style={{ color: tokens.accentText, fontSize: 12, fontWeight: "700" }}>Settle up</Text>
+                    </View>
+                  ) : (
+                    <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
+                  )}
+                </TouchableOpacity>
+              )
+            })}
+          </View>
         )}
-      </View>
 
-      {/* Recent Activity */}
-      <View style={{ flex: 1, marginTop: 20, paddingHorizontal: 20 }}>
-        <Text style={{ color: C.text, fontWeight: "600", fontSize: 15, marginBottom: 12 }}>Recent Activity</Text>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-          {activityItems.length === 0 ? (
-            <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 24, alignItems: "center" }}>
-              <Text style={{ fontSize: 36, marginBottom: 8 }}>📝</Text>
-              <Text style={{ color: C.textSub, fontSize: 13 }}>No activity yet</Text>
-            </View>
+        {/* Groups shortcuts */}
+        <View style={{ marginTop: 26 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Your groups</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/groups" as any)}>
+              <Text style={{ color: tokens.accentText, fontSize: 13, fontWeight: "600" }}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          {groupsLoading ? (
+            <SkeletonRow />
+          ) : groups.length === 0 ? (
+            <TouchableOpacity
+              onPress={() => router.push("/create-group" as any)}
+              style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg, flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
+              <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: tokens.accentSoft, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="add" size={22} color={tokens.accentText} />
+              </View>
+              <Text style={{ color: C.text, fontSize: 15, fontWeight: "600" }}>Create your first group</Text>
+            </TouchableOpacity>
           ) : (
-            activityItems.map((item) => (
-              <ActivityRow key={item.id} item={item} userId={user?.id ?? ""} C={C} />
-            ))
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              {groups.slice(0, 8).map((g: any) => (
+                <TouchableOpacity
+                  key={g.id}
+                  onPress={() => router.push(`/group/${g.id}` as any)}
+                  style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.md + 2, width: 140 }}
+                >
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: (g.color ?? tokens.accent) + "26", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                    <Text style={{ fontSize: 20 }}>{g.emoji}</Text>
+                  </View>
+                  <Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }} numberOfLines={1}>{g.name}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{g.members?.length ?? 0} members</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           )}
-        </ScrollView>
-      </View>
+        </View>
+
+        {/* Recent activity */}
+        <View style={{ marginTop: 26 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Recent activity</Text>
+            {activityItems.length > 5 && (
+              <TouchableOpacity onPress={() => router.push("/(tabs)/activity" as any)}>
+                <Text style={{ color: tokens.accentText, fontSize: 13, fontWeight: "600" }}>See all</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {activityItems.length === 0 ? (
+            <Text style={{ color: C.textMuted, fontSize: 13, paddingVertical: 12 }}>Nothing yet — add an expense to get started.</Text>
+          ) : (
+            <ActivityFeed items={activityItems} userId={user?.id ?? ""} limit={5} />
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }

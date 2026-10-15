@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react"
-import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator,
-} from "react-native"
+import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import { router } from "expo-router"
 import { useQuery } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { groupsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
-import { formatCurrency } from "@/lib/utils"
+import { describeBalance } from "@/lib/utils"
 import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import { useTheme } from "@/lib/theme"
 import { useOffline } from "@/context/OfflineContext"
 import { getRate } from "@/lib/exchange"
-import { BottomTabBar } from "@/components/ui/BottomTabBar"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { SkeletonRow } from "@/components/ui/Skeleton"
+import { tokens } from "@/lib/theme"
 
 export default function Groups() {
   const { user } = useAuthStore()
@@ -73,23 +73,22 @@ export default function Groups() {
         {/* Header */}
         <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View>
-            <Text style={{ color: C.text, fontSize: 24, fontWeight: "700" }}>Groups</Text>
+            <Text style={{ color: C.text, fontSize: 26, fontWeight: "800" }}>Groups</Text>
             <Text style={{ color: C.textSub, fontSize: 13 }}>{groups.length} group{groups.length !== 1 ? "s" : ""}</Text>
           </View>
           <TouchableOpacity
             onPress={isOnline ? () => router.push("/create-group" as any) : undefined}
             disabled={!isOnline}
-            className="bg-primary rounded-2xl px-4 py-2.5 flex-row items-center gap-2"
-            style={{ opacity: isOnline ? 1 : 0.4 }}
+            style={{ backgroundColor: tokens.accent, borderRadius: tokens.radius.md, paddingHorizontal: 16, height: 42, flexDirection: "row", alignItems: "center", gap: 6, opacity: isOnline ? 1 : 0.4 }}
           >
             <Ionicons name="add" size={18} color="#fff" />
-            <Text className="text-white font-semibold text-sm">New Group</Text>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>New group</Text>
           </TouchableOpacity>
         </View>
 
         {/* Search bar */}
         <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
-          <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.md, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
             <Ionicons name="search-outline" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
             <TextInput
               style={{ flex: 1, color: C.text, fontSize: 14 }}
@@ -110,16 +109,17 @@ export default function Groups() {
 
         <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
           {isLoading ? (
-            <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+            <View style={{ paddingTop: 8 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /></View>
           ) : groups.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: 80 }}>
-              <Text style={{ fontSize: 56, marginBottom: 16 }}>👥</Text>
-              <Text style={{ color: C.text, fontSize: 18, fontWeight: "600", marginBottom: 8 }}>No groups yet</Text>
-              <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 24 }}>Create a group to start splitting expenses</Text>
-              <TouchableOpacity onPress={isOnline ? () => router.push("/create-group" as any) : undefined} disabled={!isOnline} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12, opacity: isOnline ? 1 : 0.4 }}>
-                <Text style={{ color: C.text, fontWeight: "600" }}>Create first group</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="people-outline"
+              title="No groups yet"
+              subtitle="Create a group for a trip, your flat, or anything you share costs on."
+              actionLabel="Create a group"
+              actionIcon="add"
+              onAction={() => router.push("/create-group" as any)}
+              disabled={!isOnline}
+            />
           ) : (
             <View style={{ gap: 12, paddingBottom: 24 }}>
               {groups
@@ -131,7 +131,7 @@ export default function Groups() {
                   <TouchableOpacity
                     key={group.id}
                     onPress={() => router.push(`/group/${group.id}`)}
-                    style={{ backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, padding: 16 }}
+                    style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}
                     activeOpacity={0.7}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -145,7 +145,7 @@ export default function Groups() {
                       <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
                     </View>
 
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                           <Ionicons name="people-outline" size={12} color={C.textMuted} />
@@ -156,16 +156,16 @@ export default function Groups() {
                           <Text style={{ color: C.textSub, fontSize: 12 }}>{group._count?.expenses ?? 0}</Text>
                         </View>
                       </View>
-                      <Text style={{ color: balance > 0 ? "#4ade80" : balance < 0 ? "#f87171" : C.textMuted, fontWeight: "700", fontSize: 14 }}>
-                        {balance > 0 ? "+" : balance < 0 ? "-" : ""}{balance !== 0 ? formatCurrency(Math.abs(balance), gc.symbol, gc.code) : "Settled"}
+                      <Text style={{ color: balance > 0 ? tokens.positive : balance < 0 ? tokens.negative : C.textMuted, fontWeight: "700", fontSize: 14 }}>
+                        {describeBalance(balance, gc.symbol, gc.code)}
                       </Text>
                     </View>
 
                     {/* Member avatars */}
                     <View style={{ flexDirection: "row", marginTop: 8, marginLeft: 2 }}>
                       {group.members?.slice(0, 5).map((m: any, i: number) => (
-                        <View key={m.id} style={{ marginLeft: i === 0 ? 0 : -8 }}>
-                          <Avatar name={m.user.name} email={m.user.email} image={m.user.image} size={24} />
+                        <View key={m.id} style={{ marginLeft: i === 0 ? 0 : -8, borderRadius: 16, borderWidth: 2, borderColor: C.card }}>
+                          <Avatar name={m.user.name} email={m.user.email} image={m.user.image} size={26} />
                         </View>
                       ))}
                       {(group.members?.length ?? 0) > 5 && (
@@ -187,7 +187,6 @@ export default function Groups() {
           )}
         </ScrollView>
       </SafeAreaView>
-      <BottomTabBar />
     </View>
   )
 }

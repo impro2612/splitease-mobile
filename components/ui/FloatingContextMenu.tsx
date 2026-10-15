@@ -1,8 +1,6 @@
 import React, { useEffect, useRef } from "react"
-import {
-  Modal, Pressable, View, Text, TouchableOpacity,
-  Animated, Dimensions,
-} from "react-native"
+import { Modal, Pressable, View, TouchableOpacity, Animated, Dimensions } from "react-native"
+import { Text } from "@/components/ui/Typography"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
 

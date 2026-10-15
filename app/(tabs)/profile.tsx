@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react"
-import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Switch, Modal, FlatList, Image,
-} from "react-native"
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Modal, FlatList, Image } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
+import { haptic } from "@/lib/haptics"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -280,7 +279,7 @@ export default function Profile() {
                 <Ionicons name="notifications" size={18} color="#a5b4fc" />
               </View>
               <Text style={{ color: C.text, flex: 1 }}>Push Notifications</Text>
-              <Switch value={notifications} onValueChange={handleNotificationsToggle} trackColor={{ false: "#374151", true: "#6366f1" }} thumbColor="#fff" />
+              <Switch value={notifications} onValueChange={(v) => { haptic.tap(); handleNotificationsToggle(v) }} trackColor={{ false: "#374151", true: "#6366f1" }} thumbColor="#fff" />
             </View>
 
             <TouchableOpacity onPress={() => setShowCurrencyPicker(true)} style={{ ...rowStyle, ...divider }}>

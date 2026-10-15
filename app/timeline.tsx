@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from "react"
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, ScrollView } from "react-native"
+import { View, TouchableOpacity, ActivityIndicator, Animated, ScrollView } from "react-native"
+import { Text } from "@/components/ui/Typography"
+import { EmptyState } from "@/components/ui/EmptyState"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -8,7 +10,7 @@ import { useQuery } from "@tanstack/react-query"
 import { timelineApi } from "@/lib/api"
 import WebView from "react-native-webview"
 
-const PURPLE = "#a78bfa"
+const PURPLE = "#818cf8" // app accent family
 const PURPLE_BG = "rgba(167,139,250,0.12)"
 
 type Pin = {
@@ -80,7 +82,7 @@ function buildMapHtml(pins: Pin[], bottomInset: number) {
   .pin-wrap { position:relative; width:36px; height:44px; }
   .pin-bubble {
     position:absolute; top:0; left:50%; transform:translateX(-50%);
-    background:#a78bfa; border-radius:50% 50% 50% 0; width:32px; height:32px;
+    background:#818cf8; border-radius:50% 50% 50% 0; width:32px; height:32px;
     display:flex; align-items:center; justify-content:center; font-size:16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     transform: translateX(-50%) rotate(-45deg);
@@ -89,7 +91,7 @@ function buildMapHtml(pins: Pin[], bottomInset: number) {
   .pin-tip {
     position:absolute; bottom:0; left:50%; transform:translateX(-50%);
     width:6px; height:14px;
-    background:linear-gradient(to bottom, #a78bfa, transparent);
+    background:linear-gradient(to bottom, #818cf8, transparent);
     border-radius:0 0 4px 4px;
   }
   .popup-box {
@@ -211,14 +213,12 @@ export default function Timeline() {
           <Text style={{ color: C.textSub, marginTop: 12, fontSize: 13 }}>Loading your map…</Text>
         </View>
       ) : !hasMap ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-            <Ionicons name="earth-outline" size={40} color={PURPLE} />
-          </View>
-          <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 8 }}>No places yet</Text>
-          <Text style={{ color: C.textSub, fontSize: 14, textAlign: "center", lineHeight: 22 }}>
-            Add a location when creating a group — it'll show up as a pin on your world map.
-          </Text>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <EmptyState
+            icon="map-outline"
+            title="No places yet"
+            subtitle="Add a location to a group and it'll appear as a pin on your map."
+          />
         </View>
       ) : (
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
@@ -253,8 +253,8 @@ export default function Timeline() {
                         borderRadius: 24,
                         backgroundColor: isActive ? "rgba(124,58,237,0.92)" : "rgba(15,23,42,0.72)",
                         borderWidth: 1,
-                        borderColor: isActive ? "#a78bfa" : "rgba(255,255,255,0.18)",
-                        shadowColor: isActive ? "#7c3aed" : "#000",
+                        borderColor: isActive ? "#818cf8" : "rgba(255,255,255,0.18)",
+                        shadowColor: isActive ? "#6366f1" : "#000",
                         shadowOffset: { width: 0, height: isActive ? 6 : 3 },
                         shadowOpacity: isActive ? 0.55 : 0.25,
                         shadowRadius: isActive ? 12 : 5,

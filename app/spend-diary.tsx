@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react"
-import {
-  View, Text, TouchableOpacity, ScrollView, TextInput,
-  Modal, ActivityIndicator, Pressable, RefreshControl,
-  Platform, Animated, PanResponder, useWindowDimensions, Keyboard,
-} from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { SkeletonRow } from "@/components/ui/Skeleton"
+import { CurrencyChip } from "@/components/ui/CurrencyChip"
+import { currencySymbol } from "@/lib/utils"
 import { parseAmountInput } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -14,10 +15,10 @@ import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/d
 import { spendDiaryApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 
-const ACCENT = "#06b6d4"
-const ACCENT_BG = "rgba(6,182,212,0.12)"
-const ACCENT_BORDER = "rgba(6,182,212,0.3)"
-const CURRENCIES = ["INR", "USD", "EUR", "GBP"]
+// One app-wide accent (see lib/theme tokens) — features no longer have their own colours
+const ACCENT = "#6366f1"
+const ACCENT_BG = "rgba(99,102,241,0.14)"
+const ACCENT_BORDER = "rgba(99,102,241,0.35)"
 
 type Diary = {
   id: string
@@ -38,8 +39,7 @@ type Entry = {
 }
 
 function fmt(amount: number, currency: string) {
-  const symbols: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" }
-  return `${symbols[currency] ?? currency}${amount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+  return `${currencySymbol(currency)}${amount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 function fmtDate(d: string) {
@@ -185,7 +185,7 @@ export default function SpendDiary() {
       qc.invalidateQueries({ queryKey: ["spend-diary"] })
       setShowCreateDiary(false)
       setNewDiaryTitle("")
-      Toast.show({ type: "success", text1: "Diary created 📓" })
+      Toast.show({ type: "success", text1: "Diary created" })
     },
     onError: () => Toast.show({ type: "error", text1: "Failed to create diary" }),
   })
@@ -264,8 +264,15 @@ export default function SpendDiary() {
   }
 
   const isEditMode = !!editingEntry
-  const totalSpent = entries.reduce((s, e) => s + e.amount, 0)
-  const entryCurrencySymbol = { INR: "₹", USD: "$", EUR: "€", GBP: "£" }[entryCurrency] ?? entryCurrency
+  // Totals per currency — ₹ and $ entries are listed side by side, never added together
+  const totalsByCurrency = entries.reduce((acc: Record<string, number>, e) => {
+    acc[e.currency] = (acc[e.currency] ?? 0) + e.amount
+    return acc
+  }, {})
+  const totalSpentLabel = Object.keys(totalsByCurrency).length
+    ? Object.entries(totalsByCurrency).map(([c, v]) => fmt(v, c)).join(" + ")
+    : fmt(0, "INR")
+  const entryCurrencySymbol = currencySymbol(entryCurrency)
 
   // ── Detail view ───────────────────────────────────────────────────────────────
   if (activeDiary) {
@@ -304,12 +311,12 @@ export default function SpendDiary() {
           padding: 18, flexDirection: "row", alignItems: "center", gap: 16,
         }}>
           <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 24 }}>📓</Text>
+            <Ionicons name="journal-outline" size={22} color={ACCENT} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Spent</Text>
             <Text style={{ color: ACCENT, fontSize: 26, fontWeight: "800", marginTop: 2 }}>
-              {fmt(totalSpent, entries[0]?.currency ?? "INR")}
+              {totalSpentLabel}
             </Text>
             <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>{entries.length} expense{entries.length !== 1 ? "s" : ""}</Text>
           </View>
@@ -328,10 +335,8 @@ export default function SpendDiary() {
             <ActivityIndicator color={ACCENT} />
           </View>
         ) : entries.length === 0 ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
-            <Text style={{ fontSize: 48, marginBottom: 16 }}>📝</Text>
-            <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", textAlign: "center" }}>No expenses yet</Text>
-            <Text style={{ color: C.textSub, fontSize: 14, textAlign: "center", marginTop: 8 }}>Tap Add to record your first expense</Text>
+          <View style={{ flex: 1, justifyContent: "center" }}>
+            <EmptyState icon="receipt-outline" title="Nothing recorded yet" subtitle="Tap Add to note your first expense in this diary." />
           </View>
         ) : (
           <ScrollView
@@ -379,7 +384,7 @@ export default function SpendDiary() {
         <BottomSheet visible={showAddEntry} onClose={closeEntrySheet} title={isEditMode ? "Edit Expense" : "Add Expense"}>
           <View style={{ gap: 14 }}>
             <View>
-              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Title</Text>
+              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Title</Text>
               <TextInput
                 value={entryTitle}
                 onChangeText={setEntryTitle}
@@ -390,7 +395,7 @@ export default function SpendDiary() {
             </View>
 
             <View>
-              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Amount</Text>
+              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Amount</Text>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14 }}>
                   <Text style={{ color: C.textSub, fontSize: 16, marginRight: 4 }}>{entryCurrencySymbol}</Text>
@@ -403,24 +408,12 @@ export default function SpendDiary() {
                     style={{ flex: 1, paddingVertical: 12, color: C.text, fontSize: 15 }}
                   />
                 </View>
-                {CURRENCIES.map((c) => (
-                  <TouchableOpacity
-                    key={c}
-                    onPress={() => setEntryCurrency(c)}
-                    style={{
-                      paddingHorizontal: 10, paddingVertical: 12, borderRadius: 12,
-                      backgroundColor: entryCurrency === c ? ACCENT_BG : C.bg,
-                      borderWidth: 1.5, borderColor: entryCurrency === c ? ACCENT : C.border,
-                    }}
-                  >
-                    <Text style={{ color: entryCurrency === c ? ACCENT : C.textSub, fontSize: 12, fontWeight: "700" }}>{c}</Text>
-                  </TouchableOpacity>
-                ))}
+                <CurrencyChip value={entryCurrency} onChange={setEntryCurrency} height={48} />
               </View>
             </View>
 
             <View>
-              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Date</Text>
+              <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Date</Text>
               {Platform.OS === "android" ? (
                 <TouchableOpacity
                   onPress={() => DateTimePickerAndroid.open({
@@ -497,7 +490,7 @@ export default function SpendDiary() {
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 20 }}>📓</Text>
+          <Ionicons name="journal-outline" size={20} color={ACCENT} />
         </View>
         <Text style={{ flex: 1, color: C.text, fontSize: 20, fontWeight: "800" }}>Spend Diary</Text>
         <TouchableOpacity
@@ -509,22 +502,17 @@ export default function SpendDiary() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={ACCENT} size="large" />
-        </View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 12 }}><SkeletonRow /><SkeletonRow /></View>
       ) : diaries.length === 0 ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
-          <Text style={{ fontSize: 56, marginBottom: 20 }}>📓</Text>
-          <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", textAlign: "center" }}>Your diary is empty</Text>
-          <Text style={{ color: C.textSub, fontSize: 14, textAlign: "center", marginTop: 8, lineHeight: 22 }}>
-            Create a diary to start tracking your personal expenses — for trips, daily spends, or anything you want to record.
-          </Text>
-          <TouchableOpacity
-            onPress={() => setShowCreateDiary(true)}
-            style={{ marginTop: 24, backgroundColor: ACCENT, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}
-          >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Create First Diary</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <EmptyState
+            icon="journal-outline"
+            title="No diaries yet"
+            subtitle="Keep a private log of what you spend — for a trip, a month, or anything else."
+            actionLabel="Create a diary"
+            actionIcon="add"
+            onAction={() => setShowCreateDiary(true)}
+          />
         </View>
       ) : (
         <ScrollView
@@ -542,7 +530,7 @@ export default function SpendDiary() {
               }}
             >
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 24 }}>📓</Text>
+                <Ionicons name="journal-outline" size={22} color={ACCENT} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{diary.title}</Text>
@@ -563,7 +551,7 @@ export default function SpendDiary() {
       <BottomSheet visible={showCreateDiary} onClose={() => { setShowCreateDiary(false); setNewDiaryTitle("") }} title="New Diary">
         <View style={{ gap: 14 }}>
           <View>
-            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Diary Name</Text>
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>Diary name</Text>
             <TextInput
               value={newDiaryTitle}
               onChangeText={setNewDiaryTitle}

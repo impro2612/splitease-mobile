@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from "react"
-import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, FlatList, Platform,
-  useWindowDimensions, Animated, Pressable,
-} from "react-native"
+import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable } from "react-native"
+import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 import { createPusher } from "@/lib/pusher"
@@ -22,7 +19,12 @@ import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import EmojiKeyboard from "rn-emoji-keyboard"
 import { syncTrackConfigToNative, checkNotificationAccess, openNotificationAccessSettings } from "@/lib/nativeTrackExpense"
-import { useTheme } from "@/lib/theme"
+import { tokens, useTheme } from "@/lib/theme"
+import { Money } from "@/components/ui/Money"
+import { Celebration } from "@/components/ui/Celebration"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { SkeletonRow } from "@/components/ui/Skeleton"
+import { haptic } from "@/lib/haptics"
 import { useOffline } from "@/context/OfflineContext"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
 import { getRate } from "@/lib/exchange"
@@ -35,10 +37,11 @@ type Tab = "expenses" | "balances" | "members" | "analytics" | "utility"
 
 const PIE_COLORS = ["#6366f1", "#f59e0b", "#10b981", "#f87171", "#38bdf8", "#a78bfa", "#fb923c", "#34d399"]
 
-function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
+function AnimatedPieChart({ data, size = 240, symbol = "$", code = "USD" }: {
   data: { name: string; amount: number; color: string }[]
   size?: number
   symbol?: string
+  code?: string
 }) {
   const C = useTheme()
   const [selected, setSelected] = useState<number | null>(null)
@@ -145,7 +148,7 @@ function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
                 {sel.name.slice(0, 12).toUpperCase()}
               </SvgText>
               <SvgText x={cx} y={cy + 10} textAnchor="middle" fill={C.text} fontSize="16" fontWeight="bold">
-                {`${symbol}${sel.amount.toFixed(2)}`}
+                {formatCurrency(sel.amount, symbol, code)}
               </SvgText>
             </G>
           ) : (
@@ -154,7 +157,7 @@ function AnimatedPieChart({ data, size = 240, symbol = "$" }: {
                 TOTAL
               </SvgText>
               <SvgText x={cx} y={cy + 11} textAnchor="middle" fill={C.text} fontSize="15" fontWeight="bold">
-                {`${symbol}${total.toFixed(2)}`}
+                {formatCurrency(total, symbol, code)}
               </SvgText>
             </G>
           )}
@@ -238,6 +241,10 @@ export default function GroupDetail() {
   const queryClient = useQueryClient()
   const { isOnline, enqueueExpense } = useOffline()
   const [tab, setTab] = useState<Tab>("expenses")
+  const [prevTab, setPrevTab] = useState<Tab>("expenses") // where "Done" returns from tools/members
+  // Each tab/panel starts at the top — otherwise switching kept the previous scroll offset
+  const scrollRef = useRef<ScrollView>(null)
+  useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }) }, [tab])
 
   // Add Expense modal
   const [showAddExpense, setShowAddExpense] = useState(false)
@@ -304,6 +311,7 @@ export default function GroupDetail() {
   const [inlineSettleKey, setInlineSettleKey] = useState<string | null>(null)
   const [inlineSettleAmount, setInlineSettleAmount] = useState("")
   const [inlineSettling, setInlineSettling] = useState(false) // blocks double-tap duplicate settlements
+  const [celebrate, setCelebrate] = useState(false)
 
   // Currency conversion in Balances tab: { "USD": 84.52 } means 1 USD = 84.52 INR
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
@@ -583,13 +591,14 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["activity"] })
       setShowAddExpense(false)
       resetAddForm()
+      haptic.success()
       if (result === null) {
         Toast.show({ type: "info", text1: "Expense saved offline", text2: "Will sync when back online" })
       } else {
-        Toast.show({ type: "success", text1: "Expense added!" })
+        Toast.show({ type: "success", text1: "Expense added" })
       }
     },
-    onError: () => Toast.show({ type: "error", text1: "Failed to add expense" }),
+    onError: (e: any) => { haptic.error(); Toast.show({ type: "error", text1: "Couldn't add expense", text2: e?.response?.data?.error }) },
   })
 
   const editExpenseMutation = useMutation({
@@ -871,7 +880,7 @@ export default function GroupDetail() {
   if (isLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }} edges={["top"]}>
-        <ActivityIndicator color="#6366f1" />
+        <View style={{ width: "100%", paddingHorizontal: 20 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /></View>
       </SafeAreaView>
     )
   }
@@ -893,66 +902,75 @@ export default function GroupDetail() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
-        <View className="flex-row items-center gap-3 mb-3">
-          <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: C.iconBg, borderRadius: 12, padding: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Back">
             <Ionicons name="arrow-back" size={18} color={C.text} />
           </TouchableOpacity>
-          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: (group?.color ?? "#6366f1") + "33", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 22 }}>{group?.emoji}</Text>
+          <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: (group?.color ?? tokens.accent) + "2e", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 21 }}>{group?.emoji}</Text>
           </View>
-          <View className="flex-1">
-            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }} numberOfLines={1}>{group?.name}</Text>
-            {group?.description ? <Text style={{ color: C.textSub, fontSize: 12 }}>{group.description}</Text> : null}
-          </View>
-          <TouchableOpacity onPress={openEditGroup} style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, padding: 10 }}>
-            <Ionicons name="pencil" size={16} color="#a5b4fc" />
-          </TouchableOpacity>
-        </View>
-
-        <View className="flex-row gap-2 mb-3">
-          <View style={{ flex: 1, backgroundColor: myNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(244,63,94,0.1)", borderRadius: 14, borderWidth: 1, borderColor: myNet >= 0 ? "rgba(34,197,94,0.2)" : "rgba(244,63,94,0.2)", padding: 12, alignItems: "center" }}>
-            <Text style={{ color: C.textSub, fontSize: 12, marginBottom: 8 }}>Your balance</Text>
-            {balanceEntries.length === 0 ? (
-              <Text style={{ color: "#64748b", fontWeight: "800", fontSize: 18 }}>Settled up ✅</Text>
-            ) : (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
-                {balanceEntries.map(([code, net], idx) => {
-                  const ci = CURRENCIES.find(c => c.code === code) ?? { symbol: code, code }
-                  const color = net >= 0 ? "#4ade80" : "#f87171"
-                  const bgColor = net >= 0 ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)"
-                  const borderColor = net >= 0 ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"
-                  return (
-                    <View key={code} style={{ backgroundColor: bgColor, borderRadius: 10, borderWidth: 1, borderColor, paddingHorizontal: 12, paddingVertical: 6, alignItems: "center" }}>
-                      <Text style={{ color: C.textMuted, fontSize: 10, fontWeight: "600", marginBottom: 2 }}>{code}</Text>
-                      <Text style={{ color, fontWeight: "800", fontSize: 18 }}>
-                        {net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(net), ci.symbol, ci.code)}
-                      </Text>
-                    </View>
-                  )
-                })}
-              </View>
-            )}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.text, fontSize: 19, fontWeight: "800" }} numberOfLines={1}>{group?.name}</Text>
+            <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+              {members.length} member{members.length === 1 ? "" : "s"} · {gc.code}{group?.description ? ` · ${group.description}` : ""}
+            </Text>
           </View>
           <TouchableOpacity
-            onPress={() => { resetAddForm(); setShowAddExpense(true) }}
-            style={{ backgroundColor: "#6366f1", borderRadius: 14, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", gap: 4 }}
+            onPress={() => { haptic.tap(); if (tab !== "members") setPrevTab(tab === "utility" ? prevTab : tab); setTab(tab === "members" ? prevTab : "members") }}
+            style={{ backgroundColor: tab === "members" ? tokens.accentSoft : C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+            accessibilityLabel="Members"
           >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={{ color: C.text, fontSize: 10, fontWeight: "600" }}>Add</Text>
+            <Ionicons name="people-outline" size={18} color={tab === "members" ? tokens.accentText : C.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { haptic.tap(); if (tab !== "utility") setPrevTab(tab === "members" ? prevTab : tab); setTab(tab === "utility" ? prevTab : "utility") }}
+            style={{ backgroundColor: tab === "utility" ? tokens.accentSoft : C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+            accessibilityLabel="Group tools"
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color={tab === "utility" ? tokens.accentText : C.text} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: C.iconBg, borderRadius: 12 }} contentContainerStyle={{ padding: 3, gap: 4 }}>
-          {(["expenses", "balances", "analytics", "utility", "members"] as Tab[]).map((t) => (
-            <TouchableOpacity
-              key={t}
-              onPress={() => setTab(t)}
-              style={{ backgroundColor: tab === t ? "#6366f1" : "transparent", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, alignItems: "center" }}
-            >
-              <Text style={{ color: tab === t ? "#fff" : C.textSub, fontWeight: "600", fontSize: 13, textTransform: "capitalize" }}>{t}</Text>
+        {/* Your balance — neutral card; each currency in words, only the amount carries colour */}
+        <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 12 }}>
+          <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Your balance</Text>
+          {balanceEntries.length === 0 ? (
+            <Text style={{ color: C.text, fontWeight: "800", fontSize: 20 }}>All settled up</Text>
+          ) : (
+            <View style={{ gap: 4 }}>
+              {balanceEntries.map(([code, net]) => {
+                const ci = CURRENCIES.find(c => c.code === code) ?? { symbol: code, code }
+                return (
+                  <View key={code} style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+                    <Text style={{ color: C.textSub, fontSize: 15, fontWeight: "600" }}>{net > 0 ? "You get back" : "You owe"}</Text>
+                    <Money amount={net} symbol={ci.symbol} code={ci.code} size={22} color={net > 0 ? tokens.positive : tokens.negative} />
+                  </View>
+                )
+              })}
+            </View>
+          )}
+        </View>
+
+        {tab === "utility" || tab === "members" ? (
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 40 }}>
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>{tab === "utility" ? "Group tools" : "Members"}</Text>
+            <TouchableOpacity onPress={() => setTab(prevTab)} style={{ flexDirection: "row", alignItems: "center", gap: 4, padding: 6 }}>
+              <Text style={{ color: tokens.accentText, fontSize: 13, fontWeight: "600" }}>Done</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          </View>
+        ) : (
+          <View style={{ flexDirection: "row", backgroundColor: C.iconBg, borderRadius: 12, padding: 3, gap: 4 }}>
+            {([["expenses", "Expenses"], ["balances", "Balances"], ["analytics", "Insights"]] as [Tab, string][]).map(([t, label]) => (
+              <TouchableOpacity
+                key={t}
+                onPress={() => { haptic.tap(); setTab(t) }}
+                style={{ flex: 1, backgroundColor: tab === t ? tokens.accent : "transparent", borderRadius: 10, paddingVertical: 8, alignItems: "center" }}
+              >
+                <Text style={{ color: tab === t ? "#fff" : C.textSub, fontWeight: "600", fontSize: 13 }}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Tracking Banner */}
@@ -965,31 +983,36 @@ export default function GroupDetail() {
       )}
 
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1, paddingHorizontal: 20 }}
+        contentContainerStyle={{ paddingBottom: 96 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Expenses Tab */}
         {tab === "expenses" && (
           expenses.length === 0 ? (
-            <View className="items-center py-16">
-              <Text className="text-5xl mb-3">📝</Text>
-              <Text style={{ color: C.text, fontWeight: "600", marginBottom: 4 }}>No expenses yet</Text>
-              <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginBottom: 20 }}>Add the first expense for this group</Text>
-              <TouchableOpacity onPress={() => { resetAddForm(); setShowAddExpense(true) }} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
-                <Text style={{ color: C.text, fontWeight: "600" }}>Add expense</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="receipt-outline"
+              title="No expenses yet"
+              subtitle="Add the first expense — it's split between everyone automatically."
+              actionLabel="Add expense"
+              actionIcon="add"
+              onAction={() => { resetAddForm(); setShowAddExpense(true) }}
+            />
           ) : (
             <View className="gap-2 py-3">
               {expenses.slice().sort((a: any, b: any) => {
                 const dateDiff = new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()
                 if (dateDiff !== 0) return dateDiff
                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              }).map((exp: any) => {
+              }).map((exp: any, idx: number, sortedList: any[]) => {
+                const dayOf = (e: any) => new Date(e.date ?? e.createdAt).toDateString()
+                const showDay = idx === 0 || dayOf(sortedList[idx - 1]) !== dayOf(exp)
                 const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
                 const isPayer = exp.paidById === user?.id
                 const payer = members.find((m: any) => m.userId === exp.paidById)
                 const myAmount = isPayer ? exp.amount - (mySplit?.amount ?? 0) : -(mySplit?.amount ?? 0)
+                const involved = isPayer || !!mySplit
                 const expCurr = CURRENCIES.find(c => c.code === (exp.currency ?? gc.code)) ?? gc
                 // Group reactions: { emoji -> [userId, ...] }
                 const reactionMap: Record<string, string[]> = {}
@@ -1000,14 +1023,19 @@ export default function GroupDetail() {
                 const reactionEntries = Object.entries(reactionMap)
 
                 return (
+                  <View key={exp.id}>
+                  {showDay && (
+                    <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600", marginTop: idx === 0 ? 0 : 10, marginBottom: 6 }}>
+                      {new Date(exp.date ?? exp.createdAt).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: new Date(exp.date ?? exp.createdAt).getFullYear() === new Date().getFullYear() ? undefined : "numeric" })}
+                    </Text>
+                  )}
                   <TouchableOpacity
-                    key={exp.id}
                     ref={(r) => { expenseRefs.current[exp.id] = r }}
                     onPress={() => openEdit(exp)}
                     onLongPress={() => openReactionPicker(exp)}
                     delayLongPress={350}
                     activeOpacity={0.75}
-                    style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, gap: 10 }}
+                    style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: 14, gap: 10 }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
@@ -1016,15 +1044,20 @@ export default function GroupDetail() {
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{exp.description}</Text>
                         <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-                          {isPayer ? "You paid" : `${payer?.user?.name ?? "Someone"} paid`}
+                          {isPayer ? "You paid" : `${payer?.user?.name ?? "Someone"} paid`} {formatCurrency(exp.amount, expCurr.symbol, expCurr.code)}
                         </Text>
-                        <Text style={{ color: C.textSub, fontSize: 12 }}>{formatDate(exp.date ?? exp.createdAt)}</Text>
                       </View>
                       <View style={{ alignItems: "flex-end", gap: 4 }}>
-                        <Text style={{ color: myAmount >= 0 ? "#4ade80" : "#f87171", fontWeight: "700", fontSize: 14 }}>
-                          {myAmount >= 0 ? "+" : "-"}{formatCurrency(Math.abs(myAmount), expCurr.symbol, expCurr.code)}
-                        </Text>
-                        <Text style={{ color: C.textSub, fontSize: 12 }}>{formatCurrency(exp.amount, expCurr.symbol, expCurr.code)} total</Text>
+                        {!involved || Math.abs(myAmount) < 0.005 ? (
+                          <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600" }}>{involved ? "your share only" : "not involved"}</Text>
+                        ) : (
+                          <>
+                            <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600" }}>{myAmount > 0 ? "you lent" : "you borrowed"}</Text>
+                            <Text style={{ color: myAmount > 0 ? tokens.positive : tokens.negative, fontWeight: "700", fontSize: 15, fontVariant: ["tabular-nums"] }}>
+                              {formatCurrency(myAmount, expCurr.symbol, expCurr.code)}
+                            </Text>
+                          </>
+                        )}
                         {reactionEntries.length > 0 && (
                           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, justifyContent: "flex-end", marginTop: 2 }}>
                             {reactionEntries.map(([emoji, userIds]) => {
@@ -1072,6 +1105,7 @@ export default function GroupDetail() {
                       </View>
                     </View>
                   </TouchableOpacity>
+                  </View>
                 )
               })}
             </View>
@@ -1095,11 +1129,7 @@ export default function GroupDetail() {
 
           if (currencyGroups.every(g => g.balances.length === 0)) {
             return (
-              <View style={{ alignItems: "center", paddingVertical: 48 }}>
-                <Text style={{ fontSize: 40, marginBottom: 12 }}>🎉</Text>
-                <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>All settled up!</Text>
-                <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>No outstanding balances</Text>
-              </View>
+              <EmptyState icon="checkmark-done-outline" title="All settled up" subtitle="Nobody in this group owes anybody." />
             )
           }
 
@@ -1314,9 +1344,10 @@ export default function GroupDetail() {
                                                 queryClient.invalidateQueries({ queryKey: ["activity"] })
                                                 setInlineSettleKey(null)
                                                 setInlineSettleAmount("")
-                                                Toast.show({ type: "success", text1: amt >= d.amount ? "Fully settled! 🎉" : "Partial settlement recorded!" })
+                                                if (amt >= d.amount) { haptic.success(); setCelebrate(true) }
+                                                else { haptic.success(); Toast.show({ type: "success", text1: "Partial payment recorded" }) }
                                               })
-                                              .catch((e: any) => Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Failed to record settlement" }))
+                                              .catch((e: any) => { haptic.error(); Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Failed to record settlement" }) })
                                               .finally(() => setInlineSettling(false))
                                           }}
                                           disabled={inlineSettling}
@@ -1547,7 +1578,7 @@ export default function GroupDetail() {
                   {pieData.length > 0 && (
                     <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center" }}>
                       <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Expense Distribution</Text>
-                      <AnimatedPieChart key={pieData.length} data={pieData} size={240} symbol={gc.symbol} />
+                      <AnimatedPieChart key={pieData.length} data={pieData} size={240} symbol={gc.symbol} code={gc.code} />
                       {/* Legend */}
                       <View style={{ width: "100%", marginTop: 20, gap: 10 }}>
                         {pieData.map((d, i) => (
@@ -1600,7 +1631,7 @@ export default function GroupDetail() {
             {nextPayer && (
               <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 24 }}>🎯</Text>
+                  <Ionicons name="trending-down-outline" size={22} color={tokens.accentText} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: "#a5b4fc", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 2 }}>PAY NEXT TO REDUCE DEBT</Text>
@@ -1608,7 +1639,7 @@ export default function GroupDetail() {
                     {nextPayer.member.userId === user?.id ? "You" : (nextPayer.member.user?.name ?? "Someone")}
                   </Text>
                   <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
-                    owes {formatCurrency(nextPayer.amountOwed, gc.symbol, gc.code)} overall
+                    {nextPayer.member.userId === user?.id ? "owe" : "owes"} {formatCurrency(nextPayer.amountOwed, gc.symbol, gc.code)} overall
                   </Text>
                 </View>
                 <View style={{ alignItems: "center", backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, padding: 8 }}>
@@ -1739,6 +1770,7 @@ export default function GroupDetail() {
                       await balancesApi.toggleSmartDebts(id, false)
                       queryClient.invalidateQueries({ queryKey: ["balances", id] })
                       queryClient.invalidateQueries({ queryKey: ["activity"] })
+                      haptic.success()
                       Toast.show({ type: "success", text1: "Smart Debts disabled" })
                     } catch {
                       Toast.show({ type: "error", text1: "Failed to disable Smart Debts" })
@@ -1929,7 +1961,8 @@ export default function GroupDetail() {
                     await balancesApi.toggleSmartDebts(id, true)
                     queryClient.invalidateQueries({ queryKey: ["balances", id] })
                     queryClient.invalidateQueries({ queryKey: ["activity"] })
-                    Toast.show({ type: "success", text1: "Smart Debts enabled ⚡" })
+                    haptic.success()
+                    Toast.show({ type: "success", text1: "Smart Debts enabled" })
                   } catch {
                     Toast.show({ type: "error", text1: "Failed to enable Smart Debts" })
                   } finally {
@@ -2222,7 +2255,26 @@ export default function GroupDetail() {
         </View>
       </InAppFullScreenModal>
 
-      <BottomTabBar activeTab="Groups" />
+      {/* Floating add button — the one primary action on this screen */}
+      {(tab === "expenses" || tab === "balances" || tab === "analytics") && (
+        <TouchableOpacity
+          onPress={() => { haptic.tap(); resetAddForm(); setShowAddExpense(true) }}
+          activeOpacity={0.85}
+          accessibilityLabel="Add expense"
+          style={{
+            position: "absolute", right: 20, bottom: 62 + insets.bottom + 18,
+            height: 56, paddingHorizontal: 20, borderRadius: 28, backgroundColor: tokens.accent,
+            flexDirection: "row", alignItems: "center", gap: 8,
+            shadowColor: tokens.accent, shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8,
+          }}
+        >
+          <Ionicons name="add" size={24} color="#fff" />
+          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>Add expense</Text>
+        </TouchableOpacity>
+      )}
+
+      <Celebration visible={celebrate} onDone={() => setCelebrate(false)} />
+      <BottomTabBar activeTab="groups" />
     </SafeAreaView>
   )
 }
@@ -2250,40 +2302,48 @@ function ExpenseFormFields({
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" nestedScrollEnabled={true}>
+      {/* Amount first — big and centred, currency as a small chip above it */}
+      <View style={{ alignItems: "center", paddingTop: 6, paddingBottom: 18 }}>
+        <TouchableOpacity
+          onPress={() => setShowCurrencyPicker(true)}
+          style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: activeCurrencyCode !== gc.code ? tokens.accentSoft : C.iconBg, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 6 }}
+          accessibilityLabel="Change currency"
+        >
+          <Text style={{ fontSize: 14 }}>{(activeCurrencyInfo as any).flag ?? ""}</Text>
+          <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "700" }}>{activeCurrencyCode}</Text>
+          <Ionicons name="chevron-down" size={12} color={C.textMuted} />
+        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: amount ? C.text : C.textMuted, fontSize: 40, fontWeight: "800", marginRight: 2 }}>{activeCurrencyInfo.symbol}</Text>
+          <TextInput
+            style={{ color: C.text, fontSize: 44, fontWeight: "800", minWidth: 60, textAlign: "center", fontVariant: ["tabular-nums"], paddingVertical: 0 }}
+            placeholder="0"
+            placeholderTextColor={C.textMuted}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            accessibilityLabel="Amount"
+          />
+        </View>
+      </View>
+
       {/* Description */}
-      <Text className="text-slate-300 text-sm font-medium mb-2">Description *</Text>
-      <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 14, flexDirection: "row", alignItems: "center" }}>
+      <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600", marginBottom: 8 }}>What was it for?</Text>
+      <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.md, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 16, flexDirection: "row", alignItems: "center" }}>
         <TextInput
           style={{ color: C.text, fontSize: 15, flex: 1 }}
-          placeholder="What was this for?"
+          placeholder="e.g. Dinner, cab, hotel"
           placeholderTextColor={C.textMuted}
           value={desc}
           onChangeText={(t) => { setDesc(t); setCategory(guessCategory(t)) }}
         />
       </View>
       {desc.trim() ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 }}>
           <Text style={{ fontSize: 16 }}>{categoryEmoji}</Text>
           <Text style={{ color: C.textMuted, fontSize: 12, textTransform: "capitalize" }}>{detectedCategory}</Text>
         </View>
       ) : null}
-
-      {/* Amount + Currency picker */}
-      <Text className="text-slate-300 text-sm font-medium mb-2">Amount *</Text>
-      <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
-        {/* Tappable currency chip */}
-        <TouchableOpacity
-          onPress={() => setShowCurrencyPicker(true)}
-          style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: activeCurrencyCode !== gc.code ? "rgba(99,102,241,0.5)" : C.border, paddingHorizontal: 12, height: 52, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 4 }}
-        >
-          <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>{activeCurrencyInfo.symbol}</Text>
-          <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600" }}>{activeCurrencyCode}</Text>
-          <Ionicons name="chevron-down" size={11} color={C.textMuted} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center" }}>
-          <TextInput style={{ color: C.text, fontSize: 20, fontWeight: "700" }} placeholder="0.00" placeholderTextColor={C.textMuted} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
-        </View>
-      </View>
 
       {/* Currency picker modal (inline within form fields component) */}
       <InAppFullScreenModal visible={showCurrencyPicker} onRequestClose={() => { setShowCurrencyPicker(false); setCurrencySearch("") }}>
@@ -2343,7 +2403,7 @@ function ExpenseFormFields({
       </InAppFullScreenModal>
 
       {/* Date */}
-      <Text className="text-slate-300 text-sm font-medium mb-2">Date</Text>
+      <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600", marginBottom: 8 }}>Date</Text>
       <TouchableOpacity
         onPress={() => openDatePicker(date, setDate)}
         style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
@@ -2353,7 +2413,7 @@ function ExpenseFormFields({
       </TouchableOpacity>
 
       {/* Paid by */}
-      <Text className="text-slate-300 text-sm font-medium mb-2">Paid by</Text>
+      <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600", marginBottom: 8 }}>Paid by</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
         {members.map((m: any) => (
           <TouchableOpacity
@@ -2361,7 +2421,7 @@ function ExpenseFormFields({
             onPress={() => setPaidBy(m.userId)}
             style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: paidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: paidBy === m.userId ? 2 : 1, borderColor: paidBy === m.userId ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
           >
-            <Avatar name={m.user?.name} email={m.user?.email} size={24} />
+            <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={24} />
             <Text style={{ color: paidBy === m.userId ? "#fff" : C.textSub, fontWeight: "600", fontSize: 13 }}>
               {m.userId === user?.id ? "You" : m.user?.name}
             </Text>
@@ -2384,8 +2444,10 @@ function ExpenseFormFields({
         const customError = splitType === "CUSTOM" && numAmount > 0 && Math.abs(customTotal - numAmount) > (isNoDec ? 0.5 : 0.01) ? `Total ${activeCurrencyInfo.symbol}${fmt(customTotal)} must equal ${activeCurrencyInfo.symbol}${fmt(numAmount)}` : null
 
         return (
-          <View style={{ marginTop: 4, marginBottom: 8, opacity: disabled ? 0.4 : 1 }}>
-            <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Split</Text>
+          <View style={{ marginTop: 4, marginBottom: 8 }}>
+            <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600", marginBottom: 8 }}>
+              Split{disabled ? <Text style={{ color: C.textMuted, fontWeight: "500" }}>  ·  enter an amount first</Text> : null}
+            </Text>
 
             {/* Tab row */}
             <View style={{ flexDirection: "row", backgroundColor: C.iconBg, borderRadius: 12, padding: 3, marginBottom: 14 }}>
