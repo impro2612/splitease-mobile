@@ -22,11 +22,6 @@ type Person = {
   groups: { id: string; name: string; emoji: string }[]
 }
 
-function greeting() {
-  const h = new Date().getHours()
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"
-}
-
 /** "₹3,475" or "₹225 + $40" — currencies are listed, never added together. */
 function joinAmounts(nets: Record<string, number>, pick: (v: number) => boolean) {
   return Object.entries(nets)
@@ -83,7 +78,8 @@ export default function Home() {
   }, [queryClient])
 
   // Overall net in the display currency; currencies without a rate are listed separately
-  let net = 0
+  let totalOwed = 0
+  let totalOwe = 0
   const unconverted: string[] = []
   for (const [cur, { owe, owed }] of Object.entries((summary?.perCurrency ?? {}) as Record<string, { owe: number; owed: number }>)) {
     const rate = cur === display.code ? 1 : (fxRates[cur] ?? null)
@@ -91,9 +87,12 @@ export default function Home() {
       if (owed - owe) unconverted.push(`${owed - owe > 0 ? "+" : "−"}${formatCurrency(owed - owe, currencySymbol(cur), cur)}`)
       continue
     }
-    net += (owed - owe) * rate
+    totalOwed += owed * rate
+    totalOwe += owe * rate
   }
-  net = Math.round(net * 100) / 100
+  totalOwed = Math.round(totalOwed * 100) / 100
+  totalOwe = Math.round(totalOwe * 100) / 100
+  const net = Math.round((totalOwed - totalOwe) * 100) / 100
   const settled = Math.abs(net) < 0.005 && unconverted.length === 0
   const people: Person[] = summary?.people ?? []
   const owesYou = people.filter((p) => Object.values(p.nets).some((v) => v > 0))
@@ -115,37 +114,57 @@ export default function Home() {
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 16, paddingBottom: 18 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>{greeting()}</Text>
-            <Text style={{ color: C.text, fontSize: 24, fontWeight: "800", marginTop: 2 }} numberOfLines={1}>
-              {user?.name?.split(" ")[0] ?? "there"}
+            <Text style={{ color: C.text, fontSize: 26, fontWeight: "800" }} numberOfLines={1}>
+              Hey, {user?.name?.split(" ")[0] ?? "there"} 👋
             </Text>
+            <Text style={{ color: C.textSub, fontSize: 14, marginTop: 2 }}>Here's your overview</Text>
           </View>
           <TouchableOpacity onPress={() => router.push("/(tabs)/profile" as any)} accessibilityLabel="Profile and settings">
             <Avatar name={user?.name} email={user?.email} image={user?.image} size={44} />
           </TouchableOpacity>
         </View>
 
-        {/* Overall position — neutral card, only the number carries colour */}
+        {/* Net balance — neutral card, only the number carries colour */}
         <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: tokens.space.xl }}>
-          <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600" }}>
-            {summaryLoading ? "Overall" : settled ? "Overall" : net < 0 ? "Overall, you owe" : "Overall, you get back"}
-          </Text>
+          <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600" }}>Net balance</Text>
           {summaryLoading ? (
-            <Skeleton width={180} height={36} style={{ marginTop: 10 }} />
-          ) : settled ? (
-            <Text style={{ color: C.text, fontSize: 30, fontWeight: "800", marginTop: 6 }}>All settled up</Text>
+            <Skeleton width={190} height={36} style={{ marginTop: 10 }} />
           ) : (
-            <View style={{ marginTop: 6 }}>
-              <Money amount={net} symbol={display.symbol} code={display.code} size={36} color={net < 0 ? tokens.negative : tokens.positive} />
+            <View style={{ flexDirection: "row", alignItems: "baseline", marginTop: 6 }}>
+              {!settled && (
+                <Text style={{ color: net < 0 ? tokens.negative : tokens.positive, fontSize: 34, fontWeight: "800" }}>{net < 0 ? "−" : "+"}</Text>
+              )}
+              <Money amount={net} symbol={display.symbol} code={display.code} size={36} color={settled ? C.text : net < 0 ? tokens.negative : tokens.positive} />
             </View>
           )}
           {!summaryLoading && (
-            <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 6 }}>
-              {settled
-                ? "Nobody owes anybody — nice."
-                : `Across ${activeGroups} group${activeGroups === 1 ? "" : "s"}${unconverted.length ? ` · plus ${unconverted.join(", ")} (no exchange rate)` : ""}`}
+            <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>
+              {settled ? "All settled up" : net < 0 ? "You owe others" : "Others owe you"}
+              {unconverted.length ? ` · plus ${unconverted.join(", ")} (no exchange rate)` : ""}
             </Text>
           )}
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+          {[
+            { label: "You're owed", icon: "trending-up" as const, value: totalOwed, color: tokens.positive, sign: "+" },
+            { label: "You owe", icon: "trending-down" as const, value: totalOwe, color: tokens.negative, sign: "−" },
+          ].map((c) => (
+            <View key={c.label} style={{ flex: 1, backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <Ionicons name={c.icon} size={14} color={c.color} />
+                <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>{c.label}</Text>
+              </View>
+              {summaryLoading ? (
+                <Skeleton width={90} height={22} />
+              ) : (
+                <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+                  {c.value > 0 && <Text style={{ color: c.color, fontSize: 20, fontWeight: "800" }}>{c.sign}</Text>}
+                  <Money amount={c.value} symbol={display.symbol} code={display.code} size={21} color={c.value > 0 ? c.color : C.textSub} />
+                </View>
+              )}
+            </View>
+          ))}
         </View>
 
         {/* People — the actionable part */}
