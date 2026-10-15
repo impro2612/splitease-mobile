@@ -14,7 +14,6 @@ import { Skeleton, SkeletonRow } from "@/components/ui/Skeleton"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { tokens, useTheme } from "@/lib/theme"
 import { getRate } from "@/lib/exchange"
-import { ActivityFeed, type ActivityItem } from "@/components/ActivityFeed"
 
 type Person = {
   user: { id: string; name: string | null; email: string; image: string | null }
@@ -46,11 +45,6 @@ export default function Home() {
     queryKey: ["balance-summary"],
     queryFn: () => dashboardApi.summary().then((r) => r.data),
   })
-  const { data: activityItems = [] } = useQuery<ActivityItem[]>({
-    queryKey: ["activity"],
-    queryFn: () => dashboardApi.activity().then((r) => r.data),
-    staleTime: 0,
-  })
 
   // Rates to express the overall position in the user's display currency
   useEffect(() => {
@@ -72,7 +66,6 @@ export default function Home() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["balance-summary"] }),
       queryClient.invalidateQueries({ queryKey: ["groups"] }),
-      queryClient.invalidateQueries({ queryKey: ["activity"] }),
     ])
     setRefreshing(false)
   }, [queryClient])
@@ -131,9 +124,6 @@ export default function Home() {
             <Skeleton width={190} height={36} style={{ marginTop: 10 }} />
           ) : (
             <View style={{ flexDirection: "row", alignItems: "baseline", marginTop: 6 }}>
-              {!settled && (
-                <Text style={{ color: net < 0 ? tokens.negative : tokens.positive, fontSize: 34, fontWeight: "800" }}>{net < 0 ? "−" : "+"}</Text>
-              )}
               <Money amount={net} symbol={display.symbol} code={display.code} size={36} color={settled ? C.text : net < 0 ? tokens.negative : tokens.positive} />
             </View>
           )}
@@ -147,8 +137,8 @@ export default function Home() {
 
         <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
           {[
-            { label: "You're owed", icon: "trending-up" as const, value: totalOwed, color: tokens.positive, sign: "+" },
-            { label: "You owe", icon: "trending-down" as const, value: totalOwe, color: tokens.negative, sign: "−" },
+            { label: "You're owed", icon: "trending-up" as const, value: totalOwed, color: tokens.positive },
+            { label: "You owe", icon: "trending-down" as const, value: totalOwe, color: tokens.negative },
           ].map((c) => (
             <View key={c.label} style={{ flex: 1, backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -159,7 +149,6 @@ export default function Home() {
                 <Skeleton width={90} height={22} />
               ) : (
                 <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                  {c.value > 0 && <Text style={{ color: c.color, fontSize: 20, fontWeight: "800" }}>{c.sign}</Text>}
                   <Money amount={c.value} symbol={display.symbol} code={display.code} size={21} color={c.value > 0 ? c.color : C.textSub} />
                 </View>
               )}
@@ -243,22 +232,6 @@ export default function Home() {
           )}
         </View>
 
-        {/* Recent activity */}
-        <View style={{ marginTop: 26 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Recent activity</Text>
-            {activityItems.length > 5 && (
-              <TouchableOpacity onPress={() => router.push("/(tabs)/activity" as any)}>
-                <Text style={{ color: tokens.accentText, fontSize: 13, fontWeight: "600" }}>See all</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          {activityItems.length === 0 ? (
-            <Text style={{ color: C.textMuted, fontSize: 13, paddingVertical: 12 }}>Nothing yet — add an expense to get started.</Text>
-          ) : (
-            <ActivityFeed items={activityItems} userId={user?.id ?? ""} limit={5} />
-          )}
-        </View>
       </ScrollView>
     </SafeAreaView>
   )

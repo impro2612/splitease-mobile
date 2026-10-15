@@ -74,8 +74,8 @@ export function MoreSheet({ visible, onClose, onSelect, disabled }: {
             activeOpacity={0.7}
             style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 11, opacity: disabled ? 0.4 : 1 }}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: tokens.accentSoft, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name={item.icon} size={20} color={tokens.accentText} />
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: item.bg, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name={item.icon} size={20} color={item.color} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontSize: 15, fontWeight: "600" }}>{item.title}</Text>

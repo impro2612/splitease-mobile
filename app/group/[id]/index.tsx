@@ -916,23 +916,25 @@ export default function GroupDetail() {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={() => { haptic.tap(); if (tab !== "members") setPrevTab(tab === "utility" ? prevTab : tab); setTab(tab === "members" ? prevTab : "members") }}
+            onPress={() => { haptic.tap(); if (tab !== "members") setPrevTab(tab); setTab(tab === "members" ? prevTab : "members") }}
             style={{ backgroundColor: tab === "members" ? tokens.accentSoft : C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
             accessibilityLabel="Members"
           >
             <Ionicons name="people-outline" size={18} color={tab === "members" ? tokens.accentText : C.text} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => { haptic.tap(); if (tab !== "utility") setPrevTab(tab === "members" ? prevTab : tab); setTab(tab === "utility" ? prevTab : "utility") }}
-            style={{ backgroundColor: tab === "utility" ? tokens.accentSoft : C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
-            accessibilityLabel="Group tools"
+            onPress={() => { haptic.tap(); openEditGroup() }}
+            style={{ backgroundColor: tokens.accentSoft, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+            accessibilityLabel="Edit group"
           >
-            <Ionicons name="ellipsis-horizontal" size={18} color={tab === "utility" ? tokens.accentText : C.text} />
+            <Ionicons name="pencil" size={16} color={tokens.accentText} />
           </TouchableOpacity>
         </View>
 
+        {/* Your balance + Add expense, side by side */}
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
         {/* Your balance — neutral card; each currency in words, only the amount carries colour */}
-        <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 12 }}>
+        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: tokens.radius.lg, paddingHorizontal: 16, paddingVertical: 14 }}>
           <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Your balance</Text>
           {balanceEntries.length === 0 ? (
             <Text style={{ color: C.text, fontWeight: "800", fontSize: 20 }}>All settled up</Text>
@@ -950,17 +952,27 @@ export default function GroupDetail() {
             </View>
           )}
         </View>
+          <TouchableOpacity
+            onPress={() => { haptic.tap(); resetAddForm(); setShowAddExpense(true) }}
+            activeOpacity={0.85}
+            accessibilityLabel="Add expense"
+            style={{ width: 84, backgroundColor: tokens.accent, borderRadius: tokens.radius.lg, alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12 }}
+          >
+            <Ionicons name="add" size={26} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700", textAlign: "center", lineHeight: 16 }}>{"Add\nexpense"}</Text>
+          </TouchableOpacity>
+        </View>
 
-        {tab === "utility" || tab === "members" ? (
+        {tab === "members" ? (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 40 }}>
-            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>{tab === "utility" ? "Group tools" : "Members"}</Text>
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Members</Text>
             <TouchableOpacity onPress={() => setTab(prevTab)} style={{ flexDirection: "row", alignItems: "center", gap: 4, padding: 6 }}>
               <Text style={{ color: tokens.accentText, fontSize: 13, fontWeight: "600" }}>Done</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={{ flexDirection: "row", backgroundColor: C.iconBg, borderRadius: 12, padding: 3, gap: 4 }}>
-            {([["expenses", "Expenses"], ["balances", "Balances"], ["analytics", "Insights"]] as [Tab, string][]).map(([t, label]) => (
+            {([["expenses", "Expenses"], ["balances", "Balances"], ["analytics", "Insights"], ["utility", "Utility"]] as [Tab, string][]).map(([t, label]) => (
               <TouchableOpacity
                 key={t}
                 onPress={() => { haptic.tap(); setTab(t) }}
@@ -985,7 +997,7 @@ export default function GroupDetail() {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1, paddingHorizontal: 20 }}
-        contentContainerStyle={{ paddingBottom: 96 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Expenses Tab */}
@@ -2254,24 +2266,6 @@ export default function GroupDetail() {
           })()}
         </View>
       </InAppFullScreenModal>
-
-      {/* Floating add button — the one primary action on this screen */}
-      {(tab === "expenses" || tab === "balances" || tab === "analytics") && (
-        <TouchableOpacity
-          onPress={() => { haptic.tap(); resetAddForm(); setShowAddExpense(true) }}
-          activeOpacity={0.85}
-          accessibilityLabel="Add expense"
-          style={{
-            position: "absolute", right: 20, bottom: 62 + insets.bottom + 18,
-            height: 56, paddingHorizontal: 20, borderRadius: 28, backgroundColor: tokens.accent,
-            flexDirection: "row", alignItems: "center", gap: 8,
-            shadowColor: tokens.accent, shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8,
-          }}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>Add expense</Text>
-        </TouchableOpacity>
-      )}
 
       <Celebration visible={celebrate} onDone={() => setCelebrate(false)} />
       <BottomTabBar activeTab="groups" />
