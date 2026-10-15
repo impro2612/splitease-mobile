@@ -19,7 +19,7 @@ import Toast from "react-native-toast-message"
 import { groupsApi } from "@/lib/api"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
-import { GROUP_COLORS, GROUP_EMOJIS } from "@/lib/utils"
+import { GROUP_COLORS, GROUP_EMOJIS, toLocalDateKey } from "@/lib/utils"
 import { useAuthStore } from "@/store/auth"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 
@@ -115,8 +115,8 @@ export default function CreateGroup() {
       location: location.trim() || undefined,
       lat: locationLat ?? undefined,
       lng: locationLng ?? undefined,
-      startDate: startDate?.toISOString().slice(0, 10),
-      endDate: endDate?.toISOString().slice(0, 10),
+      startDate: startDate ? toLocalDateKey(startDate) : undefined,
+      endDate: endDate ? toLocalDateKey(endDate) : undefined,
     }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["groups"] })

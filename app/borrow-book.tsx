@@ -4,6 +4,7 @@ import {
   Modal, ActivityIndicator, Pressable, RefreshControl, Platform,
   Animated, PanResponder, useWindowDimensions, AppState, AppStateStatus, Keyboard,
 } from "react-native"
+import { parseAmountInput } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -174,7 +175,9 @@ function SwipeDownSheet({
   const panResponder = useRef(
     PanResponder.create({
       // Blank-area drags claimed on start; buttons/inputs deeper in the tree still win.
-      onStartShouldSetPanResponder: () => true,
+      // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
+      // the sheet only takes over once a downward drag is recognised.
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: shouldStartDrag,
       // Capture from ScrollView only when it is scrolled to the top
       onMoveShouldSetPanResponderCapture: (_, g) =>
@@ -296,7 +299,7 @@ export default function BorrowBook() {
   const createMutation = useMutation({
     mutationFn: () => borrowBookApi.create({
       friendId: addFriendId,
-      amount: parseFloat(addAmount),
+      amount: parseAmountInput(addAmount),
       note: addNote.trim() || undefined,
       iAmLender: addIAmLender,
       currency: addCurrency,
@@ -320,7 +323,7 @@ export default function BorrowBook() {
 
   const paymentMutation = useMutation({
     mutationFn: () => borrowBookApi.addPayment(payingEntry!.id, {
-      amount: parseFloat(payAmount),
+      amount: parseAmountInput(payAmount),
       date: payDate.toISOString(),
       note: payNote.trim() || undefined,
     }),
@@ -745,8 +748,8 @@ export default function BorrowBook() {
 
             <TouchableOpacity
               onPress={() => paymentMutation.mutate()}
-              disabled={!payAmount || parseFloat(payAmount || "0") <= 0 || paymentMutation.isPending}
-              style={{ height: 52, borderRadius: 16, backgroundColor: (!payAmount || parseFloat(payAmount || "0") <= 0) ? "rgba(74,222,128,0.3)" : "#4ade80", alignItems: "center", justifyContent: "center" }}>
+              disabled={!payAmount || !(parseAmountInput(payAmount || "0") > 0) || paymentMutation.isPending}
+              style={{ height: 52, borderRadius: 16, backgroundColor: (!payAmount || !(parseAmountInput(payAmount || "0") > 0)) ? "rgba(74,222,128,0.3)" : "#4ade80", alignItems: "center", justifyContent: "center" }}>
               {paymentMutation.isPending
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save Payment</Text>
@@ -849,8 +852,8 @@ export default function BorrowBook() {
 
             <TouchableOpacity
               onPress={() => createMutation.mutate()}
-              disabled={!addFriendId || !addAmount || parseFloat(addAmount || "0") <= 0 || createMutation.isPending}
-              style={{ height: 52, borderRadius: 16, backgroundColor: (!addFriendId || !addAmount || parseFloat(addAmount || "0") <= 0) ? "rgba(245,158,11,0.3)" : ACCENT, alignItems: "center", justifyContent: "center" }}>
+              disabled={!addFriendId || !addAmount || !(parseAmountInput(addAmount || "0") > 0) || createMutation.isPending}
+              style={{ height: 52, borderRadius: 16, backgroundColor: (!addFriendId || !addAmount || !(parseAmountInput(addAmount || "0") > 0)) ? "rgba(245,158,11,0.3)" : ACCENT, alignItems: "center", justifyContent: "center" }}>
               {createMutation.isPending
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save IOU</Text>

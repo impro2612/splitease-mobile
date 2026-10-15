@@ -4,6 +4,7 @@ import {
   Modal, ActivityIndicator, Pressable, RefreshControl,
   Platform, Animated, PanResponder, useWindowDimensions, Keyboard,
 } from "react-native"
+import { parseAmountInput } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -96,7 +97,9 @@ function BottomSheet({
   const shouldStartDrag = (_: any, g: { dy: number; dx: number }) => g.dy > 8 && g.dy > Math.abs(g.dx)
 
   const panResponder = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
+    // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
+    // the sheet only takes over once a downward drag is recognised.
+    onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: shouldStartDrag,
     onMoveShouldSetPanResponderCapture: shouldStartDrag,
     onPanResponderMove: (_: any, g: any) => { if (g.dy > 0) panY.setValue(g.dy) },
@@ -200,7 +203,7 @@ export default function SpendDiary() {
   const addEntry = useMutation({
     mutationFn: () => spendDiaryApi.addEntry(activeDiary!.id, {
       title: entryTitle.trim(),
-      amount: parseFloat(entryAmount),
+      amount: parseAmountInput(entryAmount),
       currency: entryCurrency,
       date: entryDate.toISOString(),
     }),
@@ -217,7 +220,7 @@ export default function SpendDiary() {
   const editEntry = useMutation({
     mutationFn: () => spendDiaryApi.editEntry(activeDiary!.id, editingEntry!.id, {
       title: entryTitle.trim(),
-      amount: parseFloat(entryAmount),
+      amount: parseAmountInput(entryAmount),
       currency: entryCurrency,
       date: entryDate.toISOString(),
     }),
@@ -438,10 +441,10 @@ export default function SpendDiary() {
 
             <TouchableOpacity
               onPress={() => isEditMode ? editEntry.mutate() : addEntry.mutate()}
-              disabled={!entryTitle.trim() || !entryAmount || parseFloat(entryAmount || "0") <= 0 || addEntry.isPending || editEntry.isPending}
+              disabled={!entryTitle.trim() || !entryAmount || !(parseAmountInput(entryAmount || "0") > 0) || addEntry.isPending || editEntry.isPending}
               style={{
                 height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: 4,
-                backgroundColor: (!entryTitle.trim() || !entryAmount || parseFloat(entryAmount || "0") <= 0) ? `${ACCENT}55` : ACCENT,
+                backgroundColor: (!entryTitle.trim() || !entryAmount || !(parseAmountInput(entryAmount || "0") > 0)) ? `${ACCENT}55` : ACCENT,
               }}
             >
               {(addEntry.isPending || editEntry.isPending)

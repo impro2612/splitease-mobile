@@ -4,6 +4,7 @@ import {
   Modal, ActivityIndicator, Pressable, RefreshControl, Platform,
   Animated, PanResponder, useWindowDimensions, Keyboard,
 } from "react-native"
+import { parseAmountInput, startOfLocalDay, endOfLocalDay, currencySymbol } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -108,9 +109,10 @@ function SwipeSheet({
   }
 
   const pan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
+    // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
+    // the sheet only takes over once a downward drag is recognised.
+    onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: shouldDrag,
-    onMoveShouldSetPanResponderCapture: shouldDrag,
     onPanResponderMove: onMove,
     onPanResponderTerminationRequest: () => false,
     onPanResponderRelease: onRelease,
@@ -160,9 +162,10 @@ export default function TripPlanner() {
     mutationFn: () => tripsApi.create({
       name: name.trim(),
       emoji,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      totalBudget: parseFloat(budget),
+      // Whole days: expenses any time on the first or last day count towards the trip
+      startDate: startOfLocalDay(startDate).toISOString(),
+      endDate: endOfLocalDay(endDate).toISOString(),
+      totalBudget: parseAmountInput(budget),
       currency,
       groupId: groupId || undefined,
     }),
@@ -179,7 +182,6 @@ export default function TripPlanner() {
     setStartDate(new Date()); const d = new Date(); d.setDate(d.getDate() + 7); setEndDate(d)
   }
 
-  const symbols: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" }
 
   const planning = trips.filter(t => tripStatus(t) === "PLANNING")
   const active = trips.filter(t => tripStatus(t) === "ACTIVE")
@@ -221,10 +223,10 @@ export default function TripPlanner() {
         {/* Budget progress */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
           <Text style={{ color: C.textSub, fontSize: 12 }}>
-            {symbols[trip.currency]}{(trip.actualSpent ?? 0).toLocaleString("en-IN")} spent
+            {currencySymbol(trip.currency)}{(trip.actualSpent ?? 0).toLocaleString("en-IN")} spent
           </Text>
           <Text style={{ color: C.textSub, fontSize: 12 }}>
-            of {symbols[trip.currency]}{trip.totalBudget.toLocaleString("en-IN")}
+            of {currencySymbol(trip.currency)}{trip.totalBudget.toLocaleString("en-IN")}
           </Text>
         </View>
         <View style={{ height: 6, backgroundColor: C.border, borderRadius: 3, overflow: "hidden" }}>
@@ -232,7 +234,7 @@ export default function TripPlanner() {
         </View>
         {trip.totalBudget > 0 && (
           <Text style={{ color: barColor, fontSize: 11, fontWeight: "700", marginTop: 4, textAlign: "right" }}>
-            {symbols[trip.currency]}{Math.max(0, trip.totalBudget - (trip.actualSpent ?? 0)).toLocaleString("en-IN")} left · {Math.round(pct * 100)}%
+            {currencySymbol(trip.currency)}{Math.max(0, trip.totalBudget - (trip.actualSpent ?? 0)).toLocaleString("en-IN")} left · {Math.round(pct * 100)}%
           </Text>
         )}
       </TouchableOpacity>
@@ -358,7 +360,7 @@ export default function TripPlanner() {
         <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>TOTAL BUDGET</Text>
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
           <View style={{ flex: 1, height: 48, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 14 }}>
-            <Text style={{ color: C.textSub, fontSize: 16, marginRight: 4 }}>{symbols[currency]}</Text>
+            <Text style={{ color: C.textSub, fontSize: 16, marginRight: 4 }}>{currencySymbol(currency)}</Text>
             <TextInput
               style={{ flex: 1, color: C.text, fontSize: 17, fontWeight: "700" }}
               placeholder="0" placeholderTextColor={C.textMuted}
@@ -399,9 +401,9 @@ export default function TripPlanner() {
 
         <TouchableOpacity
           onPress={() => createMutation.mutate()}
-          disabled={!name.trim() || !budget || parseFloat(budget || "0") <= 0 || createMutation.isPending}
+          disabled={!name.trim() || !budget || !(parseAmountInput(budget || "0") > 0) || createMutation.isPending}
           style={{ height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center",
-            backgroundColor: (!name.trim() || !budget || parseFloat(budget || "0") <= 0) ? `${TEAL}55` : TEAL }}>
+            backgroundColor: (!name.trim() || !budget || !(parseAmountInput(budget || "0") > 0)) ? `${TEAL}55` : TEAL }}>
           {createMutation.isPending
             ? <ActivityIndicator color="#fff" />
             : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Create Trip</Text>

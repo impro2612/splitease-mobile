@@ -19,7 +19,7 @@ import Toast from "react-native-toast-message"
 import { groupsApi } from "@/lib/api"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
-import { GROUP_COLORS, GROUP_EMOJIS } from "@/lib/utils"
+import { GROUP_COLORS, GROUP_EMOJIS, toLocalDateKey } from "@/lib/utils"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 
 type GroupFormSnapshot = {
@@ -35,7 +35,7 @@ type GroupFormSnapshot = {
 }
 
 function toDateOnly(date: Date | null) {
-  return date ? date.toISOString().slice(0, 10) : null
+  return date ? toLocalDateKey(date) : null
 }
 
 function dateFromApi(value?: string | null) {
@@ -81,8 +81,8 @@ export default function EditGroup() {
       location: group.location ?? "",
       lat: group.lat ?? null,
       lng: group.lng ?? null,
-      startDate: group.startDate ? new Date(group.startDate).toISOString().slice(0, 10) : null,
-      endDate: group.endDate ? new Date(group.endDate).toISOString().slice(0, 10) : null,
+      startDate: group.startDate ? toLocalDateKey(new Date(group.startDate)) : null,
+      endDate: group.endDate ? toLocalDateKey(new Date(group.endDate)) : null,
     }
     setInitialSnapshot(snapshot)
     setName(snapshot.name)

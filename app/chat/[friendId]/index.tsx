@@ -141,9 +141,10 @@ function SwipeDownSheet({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
+      // the sheet only takes over once a downward drag is recognised.
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: shouldStartDrag,
-      onMoveShouldSetPanResponderCapture: shouldStartDrag,
       onPanResponderMove: handleDragMove,
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: handleDragRelease,

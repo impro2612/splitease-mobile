@@ -1,3 +1,4 @@
+import { CURRENCIES } from "@/lib/currencies"
 /**
  * Formats the MAGNITUDE of an amount (callers render the +/- sign themselves).
  * INR uses Indian digit grouping (₹12,34,567.00); everything else groups by thousands.
@@ -375,3 +376,53 @@ export const GROUP_COLORS = [
   "#f97316", "#eab308", "#22c55e", "#06b6d4",
   "#3b82f6", "#a855f7",
 ]
+
+/**
+ * Parses an amount typed by the user. Handles keyboards whose decimal key is a comma
+ * ("12,50" → 12.5) and grouped numbers ("1,234.50" / "1.234,50" / "12,34,567" → plain).
+ * With both separators present, the last one is the decimal point. A lone comma followed
+ * by exactly three digits is treated as a thousands separator ("1,234" → 1234).
+ * Returns NaN for anything that isn't a number.
+ */
+export function parseAmountInput(raw: string | number | null | undefined): number {
+  if (typeof raw === "number") return raw
+  let s = String(raw ?? "").trim().replace(/[\s'₹$€£¥]/g, "")
+  if (!s) return NaN
+  const lastComma = s.lastIndexOf(",")
+  const lastDot = s.lastIndexOf(".")
+  if (lastComma !== -1 && lastDot !== -1) {
+    const decimalSep = lastComma > lastDot ? "," : "."
+    const groupSep = decimalSep === "," ? "." : ","
+    s = s.split(groupSep).join("").replace(decimalSep, ".")
+  } else if (lastComma !== -1) {
+    const parts = s.split(",")
+    const looksGrouped = parts.length > 2 || parts[parts.length - 1].length === 3
+    s = looksGrouped ? parts.join("") : parts.join(".")
+  }
+  if (!/^-?\d*\.?\d+$|^-?\d+\.$/.test(s)) return NaN
+  return parseFloat(s)
+}
+
+/**
+ * "YYYY-MM-DD" for the date as the user sees it on their phone. Never use
+ * toISOString().slice(0, 10) for this — that converts to UTC first, which turns a date
+ * picked between 00:00 and 05:30 IST into the previous day.
+ */
+export function toLocalDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+/** 00:00:00.000 local time on the given day. */
+export function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
+}
+
+/** 23:59:59.999 local time on the given day. */
+export function endOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+}
+
+/** Symbol for a currency code ("INR" → "₹"); unknown codes fall back to "CODE ", never to another currency's sign. */
+export function currencySymbol(code: string): string {
+  return CURRENCIES.find((c) => c.code === code)?.symbol ?? `${code} `
+}

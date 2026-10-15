@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuthStore } from "@/store/auth"
 import { groupsApi, dashboardApi } from "@/lib/api"
-import { formatCurrency, formatRelativeTime, getExpenseEmoji } from "@/lib/utils"
+import { formatCurrency, formatRelativeTime, getExpenseEmoji, currencySymbol } from "@/lib/utils"
 import { CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -333,11 +333,17 @@ export default function Dashboard() {
 
   let totalOwed = 0
   let totalOwe = 0
+  // Currencies whose rate isn't available yet (or failed) are listed separately rather than
+  // silently dropped from the totals.
+  const unconverted: string[] = []
   if (summary?.perCurrency) {
     const displayCode = currency ?? "USD"
     for (const [cur, { owe, owed }] of Object.entries(summary.perCurrency as Record<string, { owe: number; owed: number }>)) {
       const rate = cur === displayCode ? 1 : (fxRates[cur] ?? null)
-      if (rate === null) continue
+      if (rate === null) {
+        if (owe || owed) unconverted.push(`${owed - owe >= 0 ? "+" : "-"}${formatCurrency(Math.abs(owed - owe), currencySymbol(cur), cur)}`)
+        continue
+      }
       totalOwe += owe * rate
       totalOwed += owed * rate
     }
@@ -365,8 +371,13 @@ export default function Dashboard() {
             {net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(net), currencyInfo.symbol, currencyInfo.code)}
           </Text>
           <Text style={{ color: C.textSub, fontSize: 11, marginTop: 2 }}>
-            {net > 0 ? "Others owe you" : net < 0 ? "You owe others" : "All settled up! ✅"}
+            {net > 0 ? "Others owe you" : net < 0 ? "You owe others" : unconverted.length ? "" : "All settled up! ✅"}
           </Text>
+          {unconverted.length > 0 && (
+            <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>
+              Not included (exchange rate unavailable): {unconverted.join(" · ")}
+            </Text>
+          )}
         </View>
         <View style={{ flexDirection: "row", gap: 12 }}>
           <View style={{ flex: 1, backgroundColor: "rgba(34,197,94,0.08)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(34,197,94,0.15)", padding: 12 }}>

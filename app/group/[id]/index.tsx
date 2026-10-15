@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi, reactionsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
-import { formatCurrency, formatDate, guessCategory, getExpenseEmoji } from "@/lib/utils"
+import { formatCurrency, formatDate, guessCategory, getExpenseEmoji, parseAmountInput, toLocalDateKey } from "@/lib/utils"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
@@ -303,9 +303,11 @@ export default function GroupDetail() {
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set())
   const [inlineSettleKey, setInlineSettleKey] = useState<string | null>(null)
   const [inlineSettleAmount, setInlineSettleAmount] = useState("")
+  const [inlineSettling, setInlineSettling] = useState(false) // blocks double-tap duplicate settlements
 
   // Currency conversion in Balances tab: { "USD": 84.52 } means 1 USD = 84.52 INR
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
+  const [fxAttempted, setFxAttempted] = useState(false)
   const [convertedSections, setConvertedSections] = useState<Record<string, boolean>>({})
 
   // Custom confirm dialog (replaces native Alert.alert)
@@ -498,13 +500,13 @@ export default function GroupDetail() {
         for (const r of results) if (r.rate !== null) next[r.currency] = r.rate
         return next
       })
-    })
+    }).finally(() => setFxAttempted(true))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fxRateEffect_tab, fxRateEffect_balances, fxRateEffect_groupCurrency])
 
   const addExpenseMutation = useMutation({
     mutationFn: async () => {
-      const numAmount = parseFloat(expAmount)
+      const numAmount = parseAmountInput(expAmount)
       const memberIds = members.map((m: any) => m.userId)
       const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
       const activeCurrency = expCurrency || gc.code
@@ -538,13 +540,13 @@ export default function GroupDetail() {
       } else if (splitType === "PERCENTAGE") {
         apiSplitType = "PERCENTAGE"
         splits = memberIds
-          .filter((uid: string) => parseFloat(percentageSplits[uid] || "0") > 0)
-          .map((uid: string) => ({ userId: uid, percentage: parseFloat(percentageSplits[uid] || "0") }))
+          .filter((uid: string) => parseAmountInput(percentageSplits[uid] || "0") > 0)
+          .map((uid: string) => ({ userId: uid, percentage: parseAmountInput(percentageSplits[uid] || "0") }))
       } else {
         apiSplitType = "EXACT"
         splits = memberIds
-          .filter((uid: string) => parseFloat(customSplits[uid] || "0") > 0)
-          .map((uid: string) => ({ userId: uid, amount: parseFloat(customSplits[uid] || "0") }))
+          .filter((uid: string) => parseAmountInput(customSplits[uid] || "0") > 0)
+          .map((uid: string) => ({ userId: uid, amount: parseAmountInput(customSplits[uid] || "0") }))
       }
 
       // Same id for the online attempt and any offline retry → the server dedupes it
@@ -592,7 +594,7 @@ export default function GroupDetail() {
 
   const editExpenseMutation = useMutation({
     mutationFn: () => {
-      const numAmount = parseFloat(editAmount)
+      const numAmount = parseAmountInput(editAmount)
       const memberIds = members.map((m: any) => m.userId)
       const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
       const activeCurrency = editCurrency || gc.code
@@ -623,17 +625,17 @@ export default function GroupDetail() {
         apiSplitType = "EXACT"
         const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrency)
         splits = memberIds
-          .filter((uid: string) => parseFloat(percentageSplits[uid] || "0") > 0)
+          .filter((uid: string) => parseAmountInput(percentageSplits[uid] || "0") > 0)
           .map((uid: string) => {
-            const pct = parseFloat(percentageSplits[uid] || "0")
+            const pct = parseAmountInput(percentageSplits[uid] || "0")
             const raw = numAmount * pct / 100
             return { userId: uid, amount: isNoDec ? Math.round(raw) : Math.round(raw * 100) / 100 }
           })
       } else {
         apiSplitType = "EXACT"
         splits = memberIds
-          .filter((uid: string) => parseFloat(customSplits[uid] || "0") > 0)
-          .map((uid: string) => ({ userId: uid, amount: parseFloat(customSplits[uid] || "0") }))
+          .filter((uid: string) => parseAmountInput(customSplits[uid] || "0") > 0)
+          .map((uid: string) => ({ userId: uid, amount: parseAmountInput(customSplits[uid] || "0") }))
       }
 
       return expensesApi.update(id, editTarget.id, {
@@ -683,7 +685,8 @@ export default function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ["groups"] })
       Toast.show({ type: "success", text1: "Member removed" })
     },
-    onError: () => Toast.show({ type: "error", text1: "Failed to remove member" }),
+    // Server explains why (e.g. the member still has an unsettled balance)
+    onError: (e: any) => Toast.show({ type: "error", text1: "Couldn't remove member", text2: e?.response?.data?.error }),
   })
 
   const makeAdminMutation = useMutation({
@@ -1294,8 +1297,10 @@ export default function GroupDetail() {
                                               Toast.show({ type: "error", text1: "No connection", text2: "Settle requires internet" })
                                               return
                                             }
-                                            const amt = parseFloat(inlineSettleAmount)
+                                            if (inlineSettling) return
+                                            const amt = parseAmountInput(inlineSettleAmount)
                                             if (!amt || amt <= 0) return
+                                            setInlineSettling(true)
                                             // Amounts shown may be FX-converted — always settle in the section's own currency
                                             const capped = Math.min(amt, d.amount)
                                             const payerId = d.dir === "owes" ? m.userId : d.otherId
@@ -1312,10 +1317,14 @@ export default function GroupDetail() {
                                                 Toast.show({ type: "success", text1: amt >= d.amount ? "Fully settled! 🎉" : "Partial settlement recorded!" })
                                               })
                                               .catch((e: any) => Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Failed to record settlement" }))
+                                              .finally(() => setInlineSettling(false))
                                           }}
-                                          style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, height: 40, alignItems: "center", justifyContent: "center" }}
+                                          disabled={inlineSettling}
+                                          style={{ backgroundColor: "#6366f1", borderRadius: 10, paddingHorizontal: 14, height: 40, alignItems: "center", justifyContent: "center", opacity: inlineSettling ? 0.6 : 1 }}
                                         >
-                                          <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>Confirm</Text>
+                                          {inlineSettling
+                                            ? <ActivityIndicator color="#fff" size="small" />
+                                            : <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>Confirm</Text>}
                                         </TouchableOpacity>
                                         <TouchableOpacity onPress={() => { setInlineSettleKey(null); setInlineSettleAmount("") }} style={{ padding: 6 }}>
                                           <Ionicons name="close" size={18} color={C.textMuted} />
@@ -1446,7 +1455,9 @@ export default function GroupDetail() {
             const rate = fxRates[c]
             return sum + (rate ? amt * rate : 0)
           }, 0)
-          const ratesLoaded = !isMultiCurrency || currencyOrder.slice(1).every(c => !!fxRates[c])
+          const missingRates = currencyOrder.slice(1).filter(c => !fxRates[c])
+          // After the fetch attempt has finished, show what we can instead of spinning forever
+          const ratesLoaded = !isMultiCurrency || missingRates.length === 0 || fxAttempted
 
           // Per-member share — convert all currencies to default gc before summing
           const memberShareMap: Record<string, number> = {}
@@ -1479,6 +1490,11 @@ export default function GroupDetail() {
                     {ratesLoaded ? formatCurrency(totalGroupExpense, gc.symbol, gc.code) : "…"}
                   </Text>
                   <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}>{expenses.length} expenses</Text>
+                  {ratesLoaded && missingRates.length > 0 && (
+                    <Text style={{ color: "#f59e0b", fontSize: 10, marginTop: 4 }}>
+                      Excludes {missingRates.join(", ")} (exchange rate unavailable)
+                    </Text>
+                  )}
                   {isMultiCurrency && (
                     <View style={{ marginTop: 10, gap: 4, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 8 }}>
                       {currencyOrder.filter(c => (totalByCurrency[c] ?? 0) > 0).map(c => {
@@ -1531,7 +1547,7 @@ export default function GroupDetail() {
                   {pieData.length > 0 && (
                     <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 20, alignItems: "center" }}>
                       <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, marginBottom: 20 }}>Expense Distribution</Text>
-                      <AnimatedPieChart data={pieData} size={240} symbol={gc.symbol} />
+                      <AnimatedPieChart key={pieData.length} data={pieData} size={240} symbol={gc.symbol} />
                       {/* Legend */}
                       <View style={{ width: "100%", marginTop: 20, gap: 10 }}>
                         {pieData.map((d, i) => (
@@ -2012,15 +2028,15 @@ export default function GroupDetail() {
             <TouchableOpacity
               onPress={() => addExpenseMutation.mutate()}
               disabled={(() => {
-                if (!expDesc.trim() || !expAmount || isNaN(parseFloat(expAmount)) || addExpenseMutation.isPending) return true
-                const numAmt = parseFloat(expAmount)
+                if (!expDesc.trim() || !expAmount || isNaN(parseAmountInput(expAmount)) || addExpenseMutation.isPending) return true
+                const numAmt = parseAmountInput(expAmount)
                 const memberIds = members.map((m: any) => m.userId)
                 if (splitType === "PERCENTAGE") {
-                  const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
+                  const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseAmountInput(percentageSplits[uid] || "0")), 0)
                   if (Math.abs(pctTotal - 100) > 0.01) return true
                 }
                 if (splitType === "CUSTOM") {
-                  const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
+                  const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseAmountInput(customSplits[uid] || "0")), 0)
                   if (Math.abs(customTotal - numAmt) > 0.01) return true
                 }
                 return false
@@ -2080,10 +2096,10 @@ export default function GroupDetail() {
                 editCurrency !== orig.currency ||
                 editCategory !== orig.category ||
                 editPaidBy !== orig.paidBy ||
-                editDate.toISOString().slice(0, 10) !== orig.date.slice(0, 10) ||
+                toLocalDateKey(editDate) !== toLocalDateKey(new Date(orig.date)) ||
                 splitChanged
               )
-              const canSave = isDirty && !!editDesc.trim() && !!editAmount && !isNaN(parseFloat(editAmount)) && !editExpenseMutation.isPending
+              const canSave = isDirty && !!editDesc.trim() && !!editAmount && !isNaN(parseAmountInput(editAmount)) && !editExpenseMutation.isPending
               return (
                 <TouchableOpacity
                   onPress={() => editExpenseMutation.mutate()}
@@ -2355,13 +2371,13 @@ function ExpenseFormFields({
 
       {/* ── Split section ── */}
       {(() => {
-        const numAmount = parseFloat(amount) || 0
+        const numAmount = parseAmountInput(amount) || 0
         const disabled = numAmount <= 0
         const memberIds = members.map((m: any) => m.userId)
         const included = equallyIncluded.length > 0 ? equallyIncluded : memberIds
 
-        const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(percentageSplits[uid] || "0")), 0)
-        const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseFloat(customSplits[uid] || "0")), 0)
+        const pctTotal = memberIds.reduce((s: number, uid: string) => s + (parseAmountInput(percentageSplits[uid] || "0")), 0)
+        const customTotal = memberIds.reduce((s: number, uid: string) => s + (parseAmountInput(customSplits[uid] || "0")), 0)
         const pctError = splitType === "PERCENTAGE" && numAmount > 0 && Math.abs(pctTotal - 100) > 0.01 ? `${pctTotal.toFixed(1)}% of 100%` : null
         const isNoDec = NO_DECIMAL_CURRENCIES.has(activeCurrencyCode)
         const fmt = (n: number) => isNoDec ? Math.round(n).toString() : n.toFixed(2)
@@ -2430,7 +2446,7 @@ function ExpenseFormFields({
               <View style={{ gap: 8 }}>
                 {members.map((m: any) => {
                   const pct = percentageSplits[m.userId] ?? ""
-                  const pctNum = parseFloat(pct) || 0
+                  const pctNum = parseAmountInput(pct) || 0
                   const perPerson = (pctNum / 100) * numAmount
                   return (
                     <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", height: 52, backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: C.border }}>

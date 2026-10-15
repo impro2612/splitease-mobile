@@ -1,9 +1,10 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   Modal, ActivityIndicator, RefreshControl, Alert,
-  Animated, PanResponder, useWindowDimensions, Pressable,
+  Animated, PanResponder, useWindowDimensions, Pressable, Keyboard,
 } from "react-native"
+import { parseAmountInput, currencySymbol } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, useLocalSearchParams } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -39,10 +40,9 @@ type TripDetail = {
   recentExpenses?: { id: string; description: string; amount: number; category: string; date: string; paidBy: { name?: string; email: string } }[]
 }
 
-const symbols: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" }
 
 function fmt(amount: number, currency = "INR") {
-  return `${symbols[currency] ?? currency}${Math.abs(amount).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
+  return `${currencySymbol(currency)}${Math.abs(amount).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
 }
 
 function fmtDate(iso: string) {
@@ -63,6 +63,13 @@ function SwipeSheet({
   const { height } = useWindowDimensions()
   const hidden = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
+  // Modals don't get Android's adjustResize, so lift the sheet above the keyboard manually
+  const [kbHeight, setKbHeight] = useState(0)
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height))
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
+    return () => { show.remove(); hide.remove() }
+  }, [])
   const slideAnim = useRef(new Animated.Value(hidden)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
@@ -91,7 +98,9 @@ function SwipeSheet({
 
   const shouldDrag = (_: any, g: any) => g.dy > 8 && g.dy > Math.abs(g.dx)
   const pan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
+    // Don't claim on touch-down — taps and scrolling go to the sheet's content first;
+    // the sheet only takes over once a downward drag is recognised.
+    onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: shouldDrag,
     onMoveShouldSetPanResponderCapture: shouldDrag,
     onPanResponderMove: (_: any, g: any) => { if (g.dy > 0) panY.setValue(g.dy) },
@@ -108,7 +117,7 @@ function SwipeSheet({
       <Animated.View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={close} />
       </Animated.View>
-      <Animated.View {...pan.panHandlers} style={[{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY }] }, sheetStyle]}>
+      <Animated.View {...pan.panHandlers} style={[{ position: "absolute", left: 0, right: 0, bottom: kbHeight, transform: [{ translateY }] }, sheetStyle]}>
         {children}
       </Animated.View>
     </Modal>
@@ -329,7 +338,7 @@ export default function TripDetail() {
           // headroom = total budget minus every OTHER category's allocation
           const otherAllocated = allocatedTotal - currentAmount
           const maxAllowed = trip.totalBudget - otherAllocated
-          const entered = parseFloat(catAmount || "0")
+          const entered = catAmount.trim() === "" ? 0 : parseAmountInput(catAmount)
           const isOverLimit = entered > maxAllowed
           const inputBorderColor = isOverLimit ? "#ef4444" : C.border
           return (
@@ -347,7 +356,7 @@ export default function TripDetail() {
               </View>
               <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>PLANNED AMOUNT</Text>
               <View style={{ height: 52, backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: inputBorderColor, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, marginBottom: isOverLimit ? 6 : 20 }}>
-                <Text style={{ color: C.textSub, fontSize: 18, marginRight: 4 }}>{symbols[trip.currency] ?? "₹"}</Text>
+                <Text style={{ color: C.textSub, fontSize: 18, marginRight: 4 }}>{currencySymbol(trip.currency)}</Text>
                 <TextInput
                   style={{ flex: 1, color: C.text, fontSize: 20, fontWeight: "700" }}
                   placeholder="0"
@@ -365,8 +374,8 @@ export default function TripDetail() {
               )}
               <TouchableOpacity
                 onPress={() => saveCatMutation.mutate(entered)}
-                disabled={saveCatMutation.isPending || isOverLimit || entered <= 0}
-                style={{ height: 52, borderRadius: 16, backgroundColor: isOverLimit || entered <= 0 ? `${TEAL}55` : TEAL, alignItems: "center", justifyContent: "center" }}>
+                disabled={saveCatMutation.isPending || isOverLimit || !(entered >= 0)}
+                style={{ height: 52, borderRadius: 16, backgroundColor: isOverLimit || !(entered >= 0) ? `${TEAL}55` : TEAL, alignItems: "center", justifyContent: "center" }}>
                 {saveCatMutation.isPending
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Save Budget</Text>

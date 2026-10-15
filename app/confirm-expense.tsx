@@ -9,7 +9,7 @@ import { useTheme } from "@/lib/theme"
 import { useAuthStore } from "@/store/auth"
 import { groupsApi, expensesApi } from "@/lib/api"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
-import { formatDate, guessCategory } from "@/lib/utils"
+import { formatDate, guessCategory, parseAmountInput } from "@/lib/utils"
 import { getNativePendingSuggestionById, clearNativePendingSuggestionById } from "@/lib/nativeTrackExpense"
 import Toast from "react-native-toast-message"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
@@ -64,7 +64,7 @@ export default function ConfirmExpense() {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const numAmount = parseFloat(amount)
+      const numAmount = parseAmountInput(amount)
       if (!numAmount || numAmount <= 0) throw new Error("Invalid amount")
       const memberIds = members.map((m: any) => m.userId)
       const n = memberIds.length
