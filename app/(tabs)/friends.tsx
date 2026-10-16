@@ -13,7 +13,7 @@ import { friendsApi, usersApi, blocksApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
-import { useTheme } from "@/lib/theme"
+import { tokens, useTheme } from "@/lib/theme"
 import { useOffline } from "@/context/OfflineContext"
 
 const SIGNUP_URL = "https://splitwithease.vercel.app/signup"
@@ -35,7 +35,7 @@ function normalizePhone(raw: string): string {
   return raw.replace(/[^\d+]/g, "").replace(/^00/, "+")
 }
 
-type ConfirmDialog = { title: string; message: string; onConfirm: () => void }
+type ConfirmDialog = { title: string; message: string; confirmLabel: string; icon: keyof typeof Ionicons.glyphMap; onConfirm: () => void }
 
 export default function Friends() {
   const { user } = useAuthStore()
@@ -64,7 +64,7 @@ export default function Friends() {
   const [liveUpdatesPaused, setLiveUpdatesPaused] = useState(false)
 
   // Friend action menu (3-dot)
-  const [actionFriend, setActionFriend] = useState<{ friendshipId: string; userId: string; name: string } | null>(null)
+  const [actionFriend, setActionFriend] = useState<{ friendshipId: string; userId: string; name: string; email?: string; image?: string | null } | null>(null)
 
   // Search auto-focus
   const searchInputRef = useRef<any>(null)
@@ -282,16 +282,20 @@ export default function Friends() {
 
   function confirmRemove(friendId: string, name: string) {
     setConfirmDialog({
-      title: "Remove Friend",
-      message: `Remove ${name} from your friends? You can always add them back later.`,
+      title: `Remove ${name}?`,
+      message: "They'll be removed from your friends list. You can always add them back later.",
+      confirmLabel: "Remove",
+      icon: "person-remove-outline",
       onConfirm: () => removeMutation.mutate(friendId),
     })
   }
 
   function confirmBlock(userId: string, name: string) {
     setConfirmDialog({
-      title: "Block User",
-      message: `Block ${name}? They won't be able to message or find you. Their group data remains unchanged.`,
+      title: `Block ${name}?`,
+      message: "They won't be able to message or find you, and they'll be removed from your friends. Shared group data stays as it is.",
+      confirmLabel: "Block",
+      icon: "ban-outline",
       onConfirm: () => blockMutation.mutate(userId),
     })
   }
@@ -473,7 +477,7 @@ export default function Friends() {
                     </TouchableOpacity>
                     {/* 3-dot menu */}
                     <TouchableOpacity
-                      onPress={() => setActionFriend({ friendshipId: f.id, userId: other?.id, name: other?.name ?? "this user" })}
+                      onPress={() => setActionFriend({ friendshipId: f.id, userId: other?.id, name: other?.name ?? "this user", email: other?.email, image: other?.image })}
                       style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
                     >
                       <Ionicons name="ellipsis-vertical" size={18} color={C.textSub} />
@@ -534,8 +538,10 @@ export default function Friends() {
                         </View>
                         <TouchableOpacity
                           onPress={() => setConfirmDialog({
-                            title: "Cancel Request",
-                            message: `Cancel your friend request to ${r.addressee?.name ?? "this person"}?`,
+                            title: "Withdraw request?",
+                            message: `Your friend request to ${r.addressee?.name ?? "this person"} will be withdrawn.`,
+                            confirmLabel: "Withdraw",
+                            icon: "close-circle-outline",
                             onConfirm: () => removeMutation.mutate(r.id),
                           })}
                           disabled={removeMutation.isPending}
@@ -731,60 +737,60 @@ export default function Friends() {
         </View>
       )}
 
-      {/* Friend action bottom sheet (3-dot) */}
-      <Modal visible={!!actionFriend} transparent animationType="slide" onRequestClose={() => setActionFriend(null)}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} activeOpacity={1} onPress={() => setActionFriend(null)} />
-        <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Math.max(40, insets.bottom + 24), borderTopWidth: 1, borderColor: C.border }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.15)", alignSelf: "center", marginBottom: 20 }} />
-          <Text style={{ color: C.text, fontWeight: "700", fontSize: 16, marginBottom: 16, textAlign: "center" }}>{actionFriend?.name}</Text>
-          <TouchableOpacity
-            onPress={() => { setActionFriend(null); if (actionFriend) confirmRemove(actionFriend.friendshipId, actionFriend.name) }}
-            style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, backgroundColor: "rgba(244,63,94,0.08)", borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: "rgba(244,63,94,0.15)" }}
-          >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(244,63,94,0.12)", alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="person-remove" size={18} color={C.negative} />
-            </View>
-            <View>
-              <Text style={{ color: C.negative, fontWeight: "600", fontSize: 15 }}>Remove Friend</Text>
-              <Text style={{ color: C.textMuted, fontSize: 12 }}>Remove from your friends list</Text>
+      {/* Friend actions (3-dot) — centred card, like the other confirm dialogs */}
+      <Modal visible={!!actionFriend} transparent animationType="fade" onRequestClose={() => setActionFriend(null)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setActionFriend(null)} style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: 24 }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: 24, alignItems: "center" }}>
+            <Avatar name={actionFriend?.name} email={actionFriend?.email} image={actionFriend?.image} size={60} />
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", textAlign: "center", marginTop: 12 }} numberOfLines={1}>{actionFriend?.name}</Text>
+            {actionFriend?.email ? <Text style={{ color: C.textSub, fontSize: 13, textAlign: "center", marginTop: 2 }} numberOfLines={1}>{actionFriend.email}</Text> : null}
+            <View style={{ alignSelf: "stretch", gap: 10, marginTop: 22 }}>
+              <TouchableOpacity
+                onPress={() => { const f = actionFriend; setActionFriend(null); if (f) confirmRemove(f.friendshipId, f.name) }}
+                style={{ height: 48, borderRadius: tokens.radius.md, backgroundColor: tokens.negativeSoft, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                <Ionicons name="person-remove-outline" size={18} color={C.negative} />
+                <Text style={{ color: C.negative, fontWeight: "700", fontSize: 15 }}>Remove friend</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { const f = actionFriend; setActionFriend(null); if (f) confirmBlock(f.userId, f.name) }}
+                style={{ height: 48, borderRadius: tokens.radius.md, backgroundColor: "#dc2626", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                <Ionicons name="ban-outline" size={18} color="#fff" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Block user</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActionFriend(null)}
+                style={{ height: 48, borderRadius: tokens.radius.md, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => { setActionFriend(null); if (actionFriend) confirmBlock(actionFriend.userId, actionFriend.name) }}
-            style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, backgroundColor: "rgba(239,68,68,0.08)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(239,68,68,0.15)" }}
-          >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(239,68,68,0.12)", alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="ban" size={18} color="#ef4444" />
-            </View>
-            <View>
-              <Text style={{ color: "#ef4444", fontWeight: "600", fontSize: 15 }}>Block User</Text>
-              <Text style={{ color: C.textMuted, fontSize: 12 }}>Block and remove from friends</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
-      {/* Remove Friend Confirm Dialog */}
+      {/* Remove / block confirm dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
-        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
-          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
-            <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Ionicons name="person-remove-outline" size={26} color={C.negative} />
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: 24 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: 24 }}>
+            <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: tokens.negativeSoft, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 }}>
+              <Ionicons name={confirmDialog?.icon ?? "alert-circle-outline"} size={24} color={C.negative} />
             </View>
-            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>{confirmDialog?.title}</Text>
-            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>{confirmDialog?.message}</Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", textAlign: "center" }}>{confirmDialog?.title}</Text>
+            <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: 8 }}>{confirmDialog?.message}</Text>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 22 }}>
               <TouchableOpacity
                 onPress={() => setConfirmDialog(null)}
-                style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, alignItems: "center", justifyContent: "center" }}
+                style={{ flex: 1, height: 48, borderRadius: tokens.radius.md, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
               >
-                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>Cancel</Text>
+                <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => { confirmDialog?.onConfirm(); setConfirmDialog(null) }}
-                style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
+                style={{ flex: 1, height: 48, borderRadius: tokens.radius.md, backgroundColor: "#dc2626", alignItems: "center", justifyContent: "center" }}
               >
-                <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Remove</Text>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>{confirmDialog?.confirmLabel}</Text>
               </TouchableOpacity>
             </View>
           </View>
