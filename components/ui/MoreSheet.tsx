@@ -44,10 +44,13 @@ export function MoreSheet({ visible, onClose, onSelect, disabled }: {
     ]).start(() => { panY.setValue(0); setMounted(false); onClose(); then?.() })
   }
 
-  // Only the handle/header area takes drag gestures; menu rows keep normal taps.
+  // A downward drag anywhere on the sheet closes it; menu rows still get taps first.
+  const shouldDrag = (_: any, g: any) => g.dy > 8 && g.dy > Math.abs(g.dx)
   const drag = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: (_, g) => g.dy > 6,
+    onMoveShouldSetPanResponder: shouldDrag,
+    onMoveShouldSetPanResponderCapture: shouldDrag,
+    onPanResponderTerminationRequest: () => false,
     onPanResponderMove: (_, g) => { if (g.dy > 0) panY.setValue(g.dy) },
     onPanResponderRelease: (_, g) => {
       if (g.dy > 80 || g.vy > 0.5) close()
@@ -61,8 +64,8 @@ export function MoreSheet({ visible, onClose, onSelect, disabled }: {
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: C.overlay, opacity: overlay }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => close()} />
       </Animated.View>
-      <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: C.card, borderTopLeftRadius: tokens.radius.xl, borderTopRightRadius: tokens.radius.xl, paddingHorizontal: tokens.space.xl, paddingBottom: bottom + 16, transform: [{ translateY }] }}>
-        <View {...drag.panHandlers} style={{ paddingTop: 12, paddingBottom: 14 }}>
+      <Animated.View {...drag.panHandlers} style={{ position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: C.card, borderTopLeftRadius: tokens.radius.xl, borderTopRightRadius: tokens.radius.xl, paddingHorizontal: tokens.space.xl, paddingBottom: bottom + 16, transform: [{ translateY }] }}>
+        <View style={{ paddingTop: 12, paddingBottom: 14 }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.borderStrong, alignSelf: "center", marginBottom: 14 }} />
           <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>More</Text>
         </View>
