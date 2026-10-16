@@ -234,7 +234,7 @@ export default function EditGroup() {
                 <Ionicons name="close" size={20} color={C.text} />
               </TouchableOpacity>
             </View>
-            <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ fontSize: 22 }}>{emoji}</Text>
               </View>
@@ -378,7 +378,7 @@ export default function EditGroup() {
         {/* Delete confirmation */}
         <Modal transparent visible={confirmDelete} animationType="fade" onRequestClose={() => !deleteMutation.isPending && setConfirmDelete(false)}>
           <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: 24 }}>
-            <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: 24 }}>
+            <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.xl, padding: 24 }}>
               <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: tokens.negativeSoft, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 }}>
                 <Ionicons name="trash-outline" size={24} color={C.negative} />
               </View>

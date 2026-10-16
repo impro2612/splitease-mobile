@@ -120,7 +120,7 @@ export default function Home() {
         </View>
 
         {/* Net balance — neutral card, only the number carries colour */}
-        <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.xl, padding: tokens.space.xl }}>
+        <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.xl, padding: tokens.space.xl }}>
           <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600" }}>Net balance</Text>
           {summaryLoading ? (
             <Skeleton width={190} height={36} style={{ marginTop: 10 }} />
@@ -148,7 +148,7 @@ export default function Home() {
             { label: "You're owed", icon: "trending-up" as const, value: totalOwed, color: C.positive },
             { label: "You owe", icon: "trending-down" as const, value: totalOwe, color: C.negative },
           ].map((c) => (
-            <View key={c.label} style={{ flex: 1, backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}>
+            <View key={c.label} style={{ flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
                 <Ionicons name={c.icon} size={14} color={c.color} />
                 <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>{c.label}</Text>
@@ -179,7 +179,7 @@ export default function Home() {
                   key={p.user.id}
                   onPress={() => openPerson(p)}
                   activeOpacity={0.75}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.md + 2, marginBottom: 8 }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.md + 2, marginBottom: 8 }}
                 >
                   <Avatar name={p.user.name} email={p.user.email} image={p.user.image} size={42} />
                   <View style={{ flex: 1 }}>
@@ -216,7 +216,7 @@ export default function Home() {
           ) : groups.length === 0 ? (
             <TouchableOpacity
               onPress={() => router.push("/create-group" as any)}
-              style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg, flexDirection: "row", alignItems: "center", gap: 12 }}
+              style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg, flexDirection: "row", alignItems: "center", gap: 12 }}
             >
               <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: tokens.accentSoft, alignItems: "center", justifyContent: "center" }}>
                 <Ionicons name="add" size={22} color={C.accentText} />
@@ -229,7 +229,7 @@ export default function Home() {
                 <TouchableOpacity
                   key={g.id}
                   onPress={() => router.push(`/group/${g.id}` as any)}
-                  style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.md + 2, width: 140 }}
+                  style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.md + 2, width: 140 }}
                 >
                   <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: (g.color ?? tokens.accent) + "26", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
                     <Text style={{ fontSize: 20 }}>{g.emoji}</Text>

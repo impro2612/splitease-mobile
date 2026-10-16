@@ -130,7 +130,7 @@ export default function CreateGroup() {
                 <Ionicons name="close" size={20} color={C.text} />
               </TouchableOpacity>
             </View>
-            <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ fontSize: 22 }}>{emoji}</Text>
               </View>

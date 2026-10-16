@@ -405,12 +405,12 @@ export default function BorrowBook() {
 
           {/* Summary cards */}
           <View style={{ flexDirection: "row", gap: 12, marginTop: 8, marginBottom: 20 }}>
-            <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 16 }}>
+            <View style={{ flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
               <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>They owe you</Text>
               <Text style={{ color: C.positive, fontSize: 20, fontWeight: "800" }}>{fmtTotals(lentByCur)}</Text>
               <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{theyOweMe.length} {theyOweMe.length === 1 ? "person" : "people"}</Text>
             </View>
-            <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 16 }}>
+            <View style={{ flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
               <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>You owe</Text>
               <Text style={{ color: C.negative, fontSize: 20, fontWeight: "800" }}>{fmtTotals(borrowedByCur)}</Text>
               <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{iOweThem.length} {iOweThem.length === 1 ? "person" : "people"}</Text>

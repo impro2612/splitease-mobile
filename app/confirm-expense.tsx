@@ -322,7 +322,7 @@ export default function ConfirmExpense() {
               <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP DEFAULT</Text>
               <TouchableOpacity
                 onPress={() => { setCurrency(gc.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
               >
                 <Text style={{ fontSize: 24 }}>{gc.flag}</Text>
                 <View style={{ flex: 1 }}>
@@ -351,7 +351,7 @@ export default function ConfirmExpense() {
             renderItem={({ item }) => (
               <TouchableOpacity
                 onPress={() => { setCurrency(item.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
               >
                 <Text style={{ fontSize: 24 }}>{item.flag}</Text>
                 <View style={{ flex: 1 }}>

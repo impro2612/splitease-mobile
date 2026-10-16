@@ -256,6 +256,8 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
 
 const rowStyle = (C: any) => ({
   backgroundColor: C.card,
+  borderWidth: 1,
+  borderColor: C.border,
   borderRadius: tokens.radius.lg,
   padding: tokens.space.md + 2,
   marginBottom: 8,

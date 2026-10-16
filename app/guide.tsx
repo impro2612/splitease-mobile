@@ -42,7 +42,7 @@ export default function Guide() {
     setOpenFaq((cur) => (cur === i ? null : i))
   }
 
-  const card = { backgroundColor: C.card, borderRadius: tokens.radius.lg }
+  const card = { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>

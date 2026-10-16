@@ -23,7 +23,7 @@ export function Skeleton({ width = "100%", height = 16, radius = 8, style }: {
 export function SkeletonRow() {
   const C = useTheme()
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: tokens.space.lg, backgroundColor: C.card, borderRadius: tokens.radius.lg, marginBottom: 10 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: tokens.space.lg, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, marginBottom: 10 }}>
       <Skeleton width={42} height={42} radius={12} />
       <View style={{ flex: 1, gap: 8 }}>
         <Skeleton width="60%" height={13} />

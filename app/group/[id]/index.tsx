@@ -934,7 +934,7 @@ export default function GroupDetail() {
         {/* Your balance + Add expense, side by side */}
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
         {/* Your balance — neutral card; each currency in words, only the amount carries colour */}
-        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: tokens.radius.lg, paddingHorizontal: 16, paddingVertical: 14 }}>
+        <View style={{ flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, paddingHorizontal: 16, paddingVertical: 14 }}>
           <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Your balance</Text>
           {balanceEntries.length === 0 ? (
             <Text style={{ color: C.text, fontWeight: "800", fontSize: 20 }}>All settled up</Text>
@@ -1047,7 +1047,7 @@ export default function GroupDetail() {
                     onLongPress={() => openReactionPicker(exp)}
                     delayLongPress={350}
                     activeOpacity={0.75}
-                    style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: 14, gap: 10 }}
+                    style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: 14, gap: 10 }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
@@ -1264,7 +1264,7 @@ export default function GroupDetail() {
                               const otherName = d.otherUser?.name ?? "Someone"
                               const displayAmt = convertAmt(d.amount)
                               return (
-                                <View key={di} style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.05)" }}>
+                                <View key={di} style={{ borderTopWidth: 1, borderTopColor: C.border }}>
                                   <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
                                     <Avatar name={d.otherUser?.name} email={d.otherUser?.email} image={d.otherUser?.image} size={28} />
                                     <View style={{ flex: 1 }}>
@@ -1539,7 +1539,7 @@ export default function GroupDetail() {
                     </Text>
                   )}
                   {isMultiCurrency && (
-                    <View style={{ marginTop: 10, gap: 4, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 8 }}>
+                    <View style={{ marginTop: 10, gap: 4, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 8 }}>
                       {currencyOrder.filter(c => (totalByCurrency[c] ?? 0) > 0).map(c => {
                         const ci = CURRENCIES.find(x => x.code === c) ?? { symbol: c, code: c, flag: "" }
                         return (
@@ -2323,7 +2323,7 @@ function ExpenseFormFields({
 
       {/* Description */}
       <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600", marginBottom: 8 }}>What was it for?</Text>
-      <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.md, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 16, flexDirection: "row", alignItems: "center" }}>
+      <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.md, paddingHorizontal: 16, height: 52, justifyContent: "center", marginBottom: desc.trim() ? 8 : 16, flexDirection: "row", alignItems: "center" }}>
         <TextInput
           style={{ color: C.text, fontSize: 15, flex: 1 }}
           placeholder="e.g. Dinner, cab, hotel"
@@ -2359,7 +2359,7 @@ function ExpenseFormFields({
               <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 6 }}>GROUP DEFAULT</Text>
               <TouchableOpacity
                 onPress={() => { setCurrency(gc.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
               >
                 <Text style={{ fontSize: 24 }}>{gc.flag}</Text>
                 <View style={{ flex: 1 }}>
@@ -2382,7 +2382,7 @@ function ExpenseFormFields({
             renderItem={({ item }) => (
               <TouchableOpacity
                 onPress={() => { setCurrency(item.code); setShowCurrencyPicker(false); setCurrencySearch("") }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)" }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
               >
                 <Text style={{ fontSize: 24 }}>{item.flag}</Text>
                 <View style={{ flex: 1 }}>
@@ -2413,7 +2413,7 @@ function ExpenseFormFields({
           <TouchableOpacity
             key={m.userId}
             onPress={() => setPaidBy(m.userId)}
-            style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: paidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: paidBy === m.userId ? 2 : 1, borderColor: paidBy === m.userId ? "#6366f1" : "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: paidBy === m.userId ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", borderRadius: 12, borderWidth: paidBy === m.userId ? 2 : 1, borderColor: paidBy === m.userId ? "#6366f1" : C.border, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
           >
             <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={24} />
             <Text style={{ color: paidBy === m.userId ? "#fff" : C.textSub, fontWeight: "600", fontSize: 13 }}>
@@ -2477,7 +2477,7 @@ function ExpenseFormFields({
                         if (isIncluded && current.length === 1) return
                         setEquallyIncluded(isIncluded ? current.filter((id: string) => id !== m.userId) : [...current, m.userId])
                       }}
-                      style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isIncluded ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)" }}
+                      style={{ flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isIncluded ? "rgba(99,102,241,0.3)" : C.border }}
                     >
                       <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={32} />
                       <Text style={{ flex: 1, color: C.text, fontWeight: "600", fontSize: 13, marginLeft: 10 }}>

@@ -88,7 +88,7 @@ export default function Groups() {
 
         {/* Search bar */}
         <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
-          <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.md, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
+          <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.md, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
             <Ionicons name="search-outline" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
             <TextInput
               style={{ flex: 1, color: C.text, fontSize: 14 }}
@@ -131,7 +131,7 @@ export default function Groups() {
                   <TouchableOpacity
                     key={group.id}
                     onPress={() => router.push(`/group/${group.id}`)}
-                    style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}
+                    style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}
                     activeOpacity={0.7}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>

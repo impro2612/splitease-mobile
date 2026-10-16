@@ -143,7 +143,7 @@ export default function CompleteProfile() {
             renderItem={({ item }) => (
               <TouchableOpacity
                 onPress={() => { setCountryCode(item.code); setShowPicker(false) }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.04)", backgroundColor: item.code === countryCode ? "rgba(99,102,241,0.1)" : "transparent" }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: item.code === countryCode ? "rgba(99,102,241,0.1)" : "transparent" }}
               >
                 <Text style={{ fontSize: 26 }}>{item.flag}</Text>
                 <View style={{ flex: 1 }}>

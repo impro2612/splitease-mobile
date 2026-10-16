@@ -689,7 +689,7 @@ export default function Friends() {
                 const alreadyFriend = splitEaseUser && friends.some((f: any) => f.requesterId === splitEaseUser.id || f.addresseeId === splitEaseUser.id)
                 const sentRequest = splitEaseUser && outgoing.some((r: any) => r.addresseeId === splitEaseUser.id)
                 return (
-                  <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: splitEaseUser ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.06)", padding: 12, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                  <View style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: splitEaseUser ? "rgba(99,102,241,0.2)" : C.border, padding: 12, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
                     <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: splitEaseUser ? "rgba(99,102,241,0.15)" : "#6366f122", alignItems: "center", justifyContent: "center" }}>
                       <Text style={{ color: C.accentText, fontWeight: "700", fontSize: 15 }}>{item.initials}</Text>
                     </View>

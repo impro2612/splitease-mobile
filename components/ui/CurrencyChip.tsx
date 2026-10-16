@@ -40,7 +40,7 @@ export function CurrencyChip({ value, onChange, height = 52 }: { value: string; 
               <Ionicons name="close" size={18} color={C.text} />
             </TouchableOpacity>
           </View>
-          <View style={{ marginHorizontal: 20, marginBottom: 8, backgroundColor: C.card, borderRadius: tokens.radius.md, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
+          <View style={{ marginHorizontal: 20, marginBottom: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.md, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, height: 46 }}>
             <Ionicons name="search" size={16} color={C.textMuted} style={{ marginRight: 8 }} />
             <TextInput style={{ flex: 1, color: C.text, fontSize: 15 }} placeholder="Search currency" placeholderTextColor={C.textMuted} value={q} onChangeText={setQ} autoCapitalize="none" />
           </View>
