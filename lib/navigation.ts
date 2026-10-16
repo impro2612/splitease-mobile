@@ -21,6 +21,6 @@ export const MORE_ITEMS: { key: string; icon: IconName; color: string; bg: strin
   { key: "borrow-book", icon: "book-outline", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", title: "Borrow Book", subtitle: "Personal IOUs with friends", route: "/borrow-book" },
   { key: "trip-planner", icon: "airplane-outline", color: "#10b981", bg: "rgba(16,185,129,0.12)", title: "Trip Planner", subtitle: "Plan and track trip budgets", route: "/trip-planner" },
   { key: "timeline", icon: "images-outline", color: "#a78bfa", bg: "rgba(167,139,250,0.12)", title: "Timeline", subtitle: "Your trips on a map", route: "/timeline" },
-  { key: "scrapbook", icon: "sparkles-outline", color: "#f43f5e", bg: "rgba(244,63,94,0.12)", title: "ScrapBook", subtitle: "Your year in money — shareable", route: "/scrapbook" },
+  { key: "scrapbook", icon: "sparkles-outline", color: "#f43f5e", bg: "rgba(244,63,94,0.12)", title: "ScrapBook", subtitle: "Relive your year", route: "/scrapbook" },
   { key: "spend-diary", icon: "journal-outline", color: "#06b6d4", bg: "rgba(6,182,212,0.12)", title: "Spend Diary", subtitle: "Private notes of what you spend", route: "/spend-diary" },
 ]
