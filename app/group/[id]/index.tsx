@@ -1812,7 +1812,8 @@ export default function GroupDetail() {
               )}
             </View>
 
-            {/* Track Expense */}
+            {/* Track Expense — Android only; iOS can't read payment notifications */}
+            {Platform.OS === "android" && (
             <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: isTracking ? "rgba(99,102,241,0.4)" : C.border, padding: 18, gap: 14, opacity: otherGroupTracking ? 0.6 : 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: isTracking ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)", alignItems: "center", justifyContent: "center" }}>
@@ -1864,6 +1865,7 @@ export default function GroupDetail() {
                 </TouchableOpacity>
               )}
             </View>
+            )}
           </View>
         )}
 

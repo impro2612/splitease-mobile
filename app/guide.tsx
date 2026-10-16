@@ -6,7 +6,10 @@ import { Ionicons } from "@expo/vector-icons"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { tokens, useTheme } from "@/lib/theme"
 import { haptic } from "@/lib/haptics"
-import { GUIDE_FAQ, GUIDE_SECTIONS, QUICK_START, type GuideSection } from "@/lib/guide"
+import { GUIDE_FAQ, GUIDE_SECTIONS as ALL_SECTIONS, QUICK_START, type GuideSection } from "@/lib/guide"
+
+// Auto expense tracking only exists on Android
+const GUIDE_SECTIONS = Platform.OS === "android" ? ALL_SECTIONS : ALL_SECTIONS.filter((s) => s.key !== "track")
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
