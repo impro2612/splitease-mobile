@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth"
 import { api } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
 import { GoogleLogo } from "@/components/ui/GoogleLogo"
+import { AppleSignInButton } from "@/components/AppleSignInButton"
 
 const signInLogo = require("@/assets/Photoroom.png")
 
@@ -146,6 +147,18 @@ export default function SignIn() {
                 </>
               )}
             </TouchableOpacity>
+
+            {/* Sign in with Apple — iPhone only */}
+            <AppleSignInButton
+              mode="signin"
+              disabled={loading || googleLoading}
+              onStart={() => setError("")}
+              onSuccess={(needsPhone) => {
+                queryClient.clear()
+                router.replace(needsPhone ? "/(auth)/complete-profile" : "/(tabs)/dashboard")
+              }}
+              onError={setError}
+            />
 
             <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 32 }}>
               <Text style={{ color: C.textSub }}>Don't have an account? </Text>

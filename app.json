@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "SplitIT uses your photo library to set your profile photo.",
         "NSCameraUsageDescription": "SplitIT uses your camera to take a profile photo."
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -99,7 +100,8 @@
       ],
       "@react-native-community/datetimepicker",
       "./plugins/notification-listener",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true
