@@ -22,7 +22,7 @@
       },
       "usesAppleSignIn": true,
       "appleTeamId": "4V82QJ7BD5",
-      "icon": "./assets/adaptive-icon.png"
+      "icon": "./assets/icon-ios.png"
     },
     "android": {
       "adaptiveIcon": {
