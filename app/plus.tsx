@@ -78,7 +78,7 @@ export default function PlusScreen() {
   }
 
   const headline = isPlus
-    ? `Yeyy!! 🎉 You're on Plus${status?.plusUntil ? ` until ${formatDate(status.plusUntil)}` : ""}`
+    ? `Yeyy!! 🎉 You're on Plus${status?.plusUntil ? `\nuntil ${formatDate(status.plusUntil)}` : ""}`
     : status?.plan === "free"
       ? "Your free trial has ended"
       : status?.daysLeft != null
