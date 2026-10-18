@@ -21,6 +21,7 @@ import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
 import { LaunchIntro } from "@/components/LaunchIntro"
 import { OfflineProvider, useOffline } from "@/context/OfflineContext"
 import queryClient from "@/lib/query-client"
+import { usePlusSync } from "@/lib/plus"
 
 // ── Custom Toast UI ───────────────────────────────────────────────────────────
 function ToastBase({
@@ -304,6 +305,7 @@ class ErrorBoundary extends React.Component<
 
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
+  usePlusSync(user?.id)
   const scheme = useColorScheme()
   // Full intro on every launch (the animation needs ~2.8 s to reach its last line,
   // plus time to read it); tap anywhere to skip
