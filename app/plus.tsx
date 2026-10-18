@@ -125,8 +125,25 @@ export default function PlusScreen() {
           <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: tokens.accentSoft, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="sparkles" size={30} color={C.accentText} />
           </View>
-          <Text style={{ color: C.text, fontSize: 22, fontWeight: "800", marginTop: 14, textAlign: "center" }}>{headline}</Text>
-          <Text style={{ color: C.textSub, fontSize: 14, marginTop: 6, textAlign: "center" }}>{sub}</Text>
+          {isPlus ? (
+            // Members get a quieter, friendlier header than the sales pitch below
+            <>
+              <Text style={{ color: C.text, fontSize: 17, fontWeight: "600", marginTop: 14, textAlign: "center" }}>
+                <Text style={{ color: C.accentText, fontStyle: "italic" }}>Yeyy!</Text> You're on Plus until
+              </Text>
+              {status?.plusUntil && (
+                <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}>
+                  <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "600", letterSpacing: 0.3 }}>{formatDate(status.plusUntil)}</Text>
+                </View>
+              )}
+              <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 10, textAlign: "center" }}>{sub}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={{ color: C.text, fontSize: 22, fontWeight: "800", marginTop: 14, textAlign: "center" }}>{headline}</Text>
+              <Text style={{ color: C.textSub, fontSize: 14, marginTop: 6, textAlign: "center" }}>{sub}</Text>
+            </>
+          )}
         </View>
 
         <View style={{ backgroundColor: C.card, borderRadius: tokens.radius.lg, borderWidth: 1, borderColor: C.border, padding: 16 }}>
