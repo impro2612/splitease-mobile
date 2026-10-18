@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { View, TouchableOpacity, ScrollView, ActivityIndicator, Linking, Platform } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { router } from "expo-router"
@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useQueryClient } from "@tanstack/react-query"
 import Toast from "react-native-toast-message"
 import { Text } from "@/components/ui/Typography"
+import { Celebration } from "@/components/ui/Celebration"
 import { tokens, useTheme } from "@/lib/theme"
 import { MORE_ITEMS } from "@/lib/navigation"
 import { plusApi } from "@/lib/api"
@@ -34,6 +35,13 @@ export default function PlusScreen() {
 
   const features = MORE_ITEMS.filter((i) => PLUS_FEATURES.has(i.key))
   const isPlus = status?.plan === "plus"
+
+  // Confetti each time a Plus member opens this page (and right after subscribing)
+  const [celebrate, setCelebrate] = useState(false)
+  const celebrated = useRef(false)
+  useEffect(() => {
+    if (isPlus && !celebrated.current) { celebrated.current = true; setCelebrate(true) }
+  }, [isPlus])
   const selected = plans[choice]
   const canBuy = paymentsReady && !!selected && !isPlus
 
@@ -44,7 +52,6 @@ export default function PlusScreen() {
       if (await buyPlan(userId, selected)) {
         await qc.invalidateQueries({ queryKey: ["plus-status"] })
         Toast.show({ type: "success", text1: "Welcome to SplitIT Plus!" })
-        router.back()
       }
     } catch (e: any) {
       Toast.show({ type: "error", text1: e?.message ?? "Purchase failed" })
@@ -71,7 +78,7 @@ export default function PlusScreen() {
   }
 
   const headline = isPlus
-    ? `You're on Plus${status?.plusUntil ? ` until ${formatDate(status.plusUntil)}` : ""}`
+    ? `Yeyy!! 🎉 You're on Plus${status?.plusUntil ? ` until ${formatDate(status.plusUntil)}` : ""}`
     : status?.plan === "free"
       ? "Your free trial has ended"
       : status?.daysLeft != null
@@ -187,6 +194,7 @@ export default function PlusScreen() {
           Plus renews automatically until you cancel. Cancel any time in your {Platform.OS === "ios" ? "App Store" : "Google Play"} subscriptions at least 24 hours before the renewal date. Your data is never deleted if Plus ends.
         </Text>
       </ScrollView>
+      <Celebration visible={celebrate} onDone={() => setCelebrate(false)} message="Yeyy!! You're on Plus" />
     </SafeAreaView>
   )
 }
