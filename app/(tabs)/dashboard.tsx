@@ -30,6 +30,32 @@ function joinAmounts(nets: Record<string, number>, pick: (v: number) => boolean)
     .join(" + ")
 }
 
+/** Small plan badge tucked under the profile photo; tapping it opens the Plus page. */
+function PlanPill({ plan }: { plan: "plus" | "trial" | "free" }) {
+  const C = useTheme()
+  const look = plan === "plus"
+    ? { label: "SplitIT Plus", icon: "sparkles" as const, bg: tokens.accent, fg: "#ffffff", border: tokens.accent }
+    : plan === "trial"
+      ? { label: "Free trial", icon: "sparkles-outline" as const, bg: C.isDark ? "#25264a" : "#eef0ff", fg: C.accentText, border: tokens.accentBorder }
+      : { label: "Free", icon: "lock-open-outline" as const, bg: C.card, fg: C.textSub, border: C.borderStrong }
+  return (
+    <TouchableOpacity
+      onPress={() => router.push("/plus" as any)}
+      activeOpacity={0.8}
+      accessibilityLabel={`${look.label}. Open SplitIT Plus`}
+      style={{
+        flexDirection: "row", alignItems: "center", gap: 3, marginTop: -8,
+        paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999,
+        backgroundColor: look.bg, borderWidth: 1, borderColor: look.border,
+        shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+      }}
+    >
+      <Ionicons name={look.icon} size={9} color={look.fg} />
+      <Text style={{ color: look.fg, fontSize: 9, fontWeight: "800" }} numberOfLines={1}>{look.label}</Text>
+    </TouchableOpacity>
+  )
+}
+
 export default function Home() {
   const { user, currency } = useAuthStore()
   const C = useTheme()
@@ -117,9 +143,12 @@ export default function Home() {
             </Text>
             <Text style={{ color: C.textSub, fontSize: 14, marginTop: 2 }}>Here's your overview</Text>
           </View>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/profile" as any)} accessibilityLabel="Profile and settings">
-            <Avatar name={user?.name} email={user?.email} image={user?.image} size={44} />
-          </TouchableOpacity>
+          <View style={{ alignItems: "center" }}>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/profile" as any)} accessibilityLabel="Profile and settings">
+              <Avatar name={user?.name} email={user?.email} image={user?.image} size={44} />
+            </TouchableOpacity>
+            {plus && <PlanPill plan={plus.plan} />}
+          </View>
         </View>
 
         {trialEndingSoon && (
