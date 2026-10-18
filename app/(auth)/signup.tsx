@@ -11,6 +11,7 @@ import { useTheme } from "@/lib/theme"
 import { GoogleLogo } from "@/components/ui/GoogleLogo"
 import { AppleSignInButton } from "@/components/AppleSignInButton"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
+import { openPrivacy, openTerms } from "@/lib/legal"
 
 const signInLogo = require("@/assets/Photoroom.png")
 
@@ -258,6 +259,13 @@ export default function SignUp() {
                 <Text style={{ color: "#6366f1", fontWeight: "600" }}>Sign in</Text>
               </TouchableOpacity>
             </View>
+
+            <Text style={{ color: C.textMuted, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 20 }}>
+              By signing up you agree to our{" "}
+              <Text onPress={openTerms} style={{ color: C.textSub, fontWeight: "600", textDecorationLine: "underline" }}>Terms of Use</Text>
+              {" "}and{" "}
+              <Text onPress={openPrivacy} style={{ color: C.textSub, fontWeight: "600", textDecorationLine: "underline" }}>Privacy Policy</Text>.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -19,47 +19,9 @@ import Toast from "react-native-toast-message"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
 import { usePlus } from "@/lib/plus"
+import { openPrivacy, openTerms } from "@/lib/legal"
 
 const NOTIF_PREF_KEY = "notifications_enabled"
-
-const PRIVACY_POLICY = `SPLITEASE PRIVACY POLICY
-Last updated: April 18, 2026
-
-1. INFORMATION WE COLLECT
-We collect information you provide directly: name, email address, phone number, and profile photo. We also collect expense data, group memberships, and payment settlement records you create within the app.
-
-2. HOW WE USE YOUR INFORMATION
-Your information is used solely to operate the SplitIT service — to calculate balances, send notifications about shared expenses, and facilitate settlements between group members. We do not sell, rent, or share your personal data with third parties for marketing purposes.
-
-3. DATA STORAGE & SECURITY
-All data is stored on secured servers. Passwords are hashed using bcrypt and never stored in plain text. Profile photos are stored as encrypted data within our database. We use industry-standard TLS encryption for all data in transit.
-
-4. PUSH NOTIFICATIONS
-With your permission, we send push notifications for new expenses, payment requests, and settlement confirmations. You can disable notifications at any time from the Profile screen or your device settings.
-
-5. CHAT & MESSAGES
-Direct messages are sent over TLS and stored encrypted with AES-256. They are not end-to-end encrypted: SplitIT staff do not read your messages, but our systems could technically access them, for example to comply with a lawful request.
-
-6. DATA SHARING
-We share data only with:
-• Service providers necessary to operate the app (hosting, notification delivery)
-• Other group members — only the information required for expense splitting (name, profile photo)
-We never share your data with advertisers or data brokers.
-
-7. DATA RETENTION
-Your data is retained as long as your account is active. You may request deletion of your account and all associated data by contacting support. Deleted data is permanently removed within 30 days.
-
-8. YOUR RIGHTS
-You have the right to: access your personal data, correct inaccurate data, request deletion, and withdraw consent for notifications at any time.
-
-9. CHILDREN'S PRIVACY
-SplitIT is not directed to children under 13. We do not knowingly collect information from children under 13.
-
-10. CHANGES TO THIS POLICY
-We will notify you of material changes to this policy via in-app notification. Continued use of the app after changes constitutes acceptance.
-
-11. CONTACT
-For privacy questions or data requests, contact us at: privacy@splitit.app`
 
 export default function Profile() {
   const { user, signOut, setUser, currency, setCurrency, theme, setTheme } = useAuthStore()
@@ -97,7 +59,6 @@ export default function Profile() {
   const [showAppearance, setShowAppearance] = useState(false)
 
   // Privacy Policy modal
-  const [showPrivacy, setShowPrivacy] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
 
   // Sign out confirm
@@ -363,12 +324,20 @@ export default function Profile() {
               <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setShowPrivacy(true)} style={{ ...rowStyle, ...divider }}>
+            <TouchableOpacity onPress={openPrivacy} style={{ ...rowStyle, ...divider }}>
               <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(139,92,246,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 <Ionicons name="shield-checkmark" size={18} color="#c084fc" />
               </View>
               <Text style={{ color: C.text, flex: 1 }}>Privacy Policy</Text>
-              <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
+              <Ionicons name="open-outline" size={14} color={C.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={openTerms} style={{ ...rowStyle, ...divider }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(148,163,184,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="document-text" size={18} color="#94a3b8" />
+              </View>
+              <Text style={{ color: C.text, flex: 1 }}>Terms of Use</Text>
+              <Ionicons name="open-outline" size={14} color={C.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setShowSupport(true)} style={{ ...rowStyle, ...divider }}>
@@ -589,20 +558,6 @@ export default function Profile() {
       </InAppFullScreenModal>
 
       {/* ── Privacy Policy Modal ─────────────────────────────────────────────────── */}
-      <InAppFullScreenModal visible={showPrivacy} onRequestClose={() => setShowPrivacy(false)}>
-        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
-            <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Privacy Policy</Text>
-            <TouchableOpacity onPress={() => setShowPrivacy(false)} style={{ backgroundColor: C.card, borderRadius: 20, padding: 8 }}>
-              <Ionicons name="close" size={18} color={C.text} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(40, insets.bottom + 16) }} showsVerticalScrollIndicator={false}>
-            <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 22 }}>{PRIVACY_POLICY}</Text>
-          </ScrollView>
-        </View>
-      </InAppFullScreenModal>
-
       {/* ── Support Modal ───────────────────────────────────────────────────────── */}
       <Modal visible={showSupport} transparent animationType="fade" onRequestClose={() => setShowSupport(false)}>
         <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>

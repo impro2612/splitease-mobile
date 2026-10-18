@@ -37,7 +37,7 @@ export function AppleSignInButton({ mode, disabled, onStart, onSuccess, onError 
       })
       if (!cred.identityToken) throw new Error("No identity token returned")
       const fullName = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(" ")
-      const { needsPhone } = await appleSignIn(cred.identityToken, fullName, mode)
+      const { needsPhone } = await appleSignIn(cred.identityToken, fullName, mode, cred.authorizationCode)
       onSuccess(needsPhone)
     } catch (e: any) {
       if (e?.code === "ERR_REQUEST_CANCELED") { onError(""); return }

@@ -23,7 +23,7 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (name: string, email: string, password: string, phone: string) => Promise<void>
   googleSignIn: (idToken: string, mode?: "signin" | "signup") => Promise<{ needsPhone: boolean }>
-  appleSignIn: (identityToken: string, fullName: string, mode?: "signin" | "signup") => Promise<{ needsPhone: boolean }>
+  appleSignIn: (identityToken: string, fullName: string, mode?: "signin" | "signup", authorizationCode?: string | null) => Promise<{ needsPhone: boolean }>
   signOut: () => Promise<void>
   loadSession: () => Promise<void>
   setUser: (user: User) => void
@@ -92,8 +92,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     return { needsPhone: !!needsPhone }
   },
 
-  appleSignIn: async (identityToken: string, fullName: string, mode: "signin" | "signup" = "signup") => {
-    const res = await authApi.appleSignIn(identityToken, fullName, mode)
+  appleSignIn: async (identityToken: string, fullName: string, mode: "signin" | "signup" = "signup", authorizationCode?: string | null) => {
+    const res = await authApi.appleSignIn(identityToken, fullName, mode, authorizationCode)
     const { token, refreshToken, user, needsPhone } = res.data
     await SecureStore.setItemAsync("session_token", token)
     if (refreshToken) await SecureStore.setItemAsync("refresh_token", refreshToken)

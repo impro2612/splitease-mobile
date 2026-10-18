@@ -96,8 +96,8 @@ export const authApi = {
 
   googleSignIn: (idToken: string, mode: "signin" | "signup" = "signup") =>
     api.post("/api/auth/google", { idToken, mode }),
-  appleSignIn: (identityToken: string, fullName: string, mode: "signin" | "signup" = "signup") =>
-    api.post("/api/auth/apple", { identityToken, fullName, mode }),
+  appleSignIn: (identityToken: string, fullName: string, mode: "signin" | "signup" = "signup", authorizationCode?: string | null) =>
+    api.post("/api/auth/apple", { identityToken, fullName, mode, authorizationCode }),
 
   savePhone: (phone: string) =>
     api.post("/api/auth/phone", { phone }),

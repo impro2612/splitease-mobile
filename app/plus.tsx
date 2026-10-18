@@ -10,6 +10,7 @@ import { Celebration } from "@/components/ui/Celebration"
 import { tokens, useTheme } from "@/lib/theme"
 import { MORE_ITEMS } from "@/lib/navigation"
 import { plusApi } from "@/lib/api"
+import { openPrivacy, openTerms } from "@/lib/legal"
 import { useAuthStore } from "@/store/auth"
 import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, paymentsReady, restorePurchases, usePlus, type PlusPlans } from "@/lib/plus"
 
@@ -210,6 +211,14 @@ export default function PlusScreen() {
         <Text style={{ color: C.textMuted, fontSize: 11, lineHeight: 16, textAlign: "center", marginTop: 8 }}>
           Plus renews automatically until you cancel. Cancel any time in your {Platform.OS === "ios" ? "App Store" : "Google Play"} subscriptions at least 24 hours before the renewal date. Your data is never deleted if Plus ends.
         </Text>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 10 }}>
+          <TouchableOpacity onPress={openTerms} hitSlop={8}>
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textDecorationLine: "underline" }}>Terms of Use</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={openPrivacy} hitSlop={8}>
+            <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textDecorationLine: "underline" }}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
       <Celebration visible={celebrate} onDone={() => setCelebrate(false)} message="Yeyy!! You're on Plus" />
     </SafeAreaView>
