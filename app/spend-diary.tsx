@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { spendDiaryApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
+import { withPlus } from "@/components/PlusGate"
 
 // One app-wide accent (see lib/theme tokens) — features no longer have their own colours
 const ACCENT = "#6366f1"
@@ -136,7 +137,7 @@ function BottomSheet({
   )
 }
 
-export default function SpendDiary() {
+function SpendDiary() {
   const C = useTheme()
   const qc = useQueryClient()
   const insets = useSafeAreaInsets()
@@ -579,3 +580,5 @@ export default function SpendDiary() {
     </SafeAreaView>
   )
 }
+
+export default withPlus(SpendDiary, "Spend Diary")

@@ -15,6 +15,7 @@ import { transactionsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
 import { CATEGORIES } from "@/lib/categorize-client"
+import { withPlus } from "@/components/PlusGate"
 
 const CATEGORY_ICONS: Record<string, string> = {
   "Salary / Income":  "💰",
@@ -74,7 +75,7 @@ function monthLabel(m: string) {
   return new Date(parseInt(y), parseInt(mo) - 1).toLocaleString("en-IN", { month: "short", year: "2-digit" })
 }
 
-export default function Expenses() {
+function Expenses() {
   // Lime, matching the My Spending icon in the More menu
   const A = useFeatureAccent("spending")
   const C = useTheme()
@@ -1107,3 +1108,5 @@ function SuggestionsTab({ C, suggestion, loading }: {
     </View>
   )
 }
+
+export default withPlus(Expenses, "My Spending")

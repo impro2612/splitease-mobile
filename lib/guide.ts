@@ -363,9 +363,34 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     route: "/(tabs)/profile",
     routeLabel: "Open settings",
   },
+  {
+    key: "plus",
+    icon: "sparkles-outline",
+    color: "#818cf8",
+    title: "SplitIT Plus",
+    summary: "3 months of everything free, then splitting stays free forever",
+    about: "Every new account gets the whole app free for 3 months. After that, splitting stays free forever and SplitIT Plus unlocks the rest.",
+    steps: [
+      "Always free: groups, unlimited expenses, balances, settle up, friends, chat and activity.",
+      "With Plus: My Spending, Borrow Book, Trip Planner, Timeline, ScrapBook and Spend Diary.",
+      "Plus costs ₹49 a month or ₹499 a year. Subscribe from Profile & settings → SplitIT Plus.",
+      "We remind you 15 days, 7 days and 1 day before your free months end.",
+    ],
+    tips: [
+      "Nothing is deleted when the free months end. Locked features keep your data and come back as they were when you subscribe.",
+      "Without Plus, Borrow Book stays view-only: you can still see, pay and confirm IOUs your friends recorded.",
+      "Changed phones? Tap Restore purchases on the Plus page.",
+    ],
+    route: "/plus",
+    routeLabel: "See Plus",
+  },
 ]
 
 export const GUIDE_FAQ: GuideFaq[] = [
+  {
+    q: "Is SplitIT free?",
+    a: "Splitting is free forever: groups, unlimited expenses, settle up, friends and chat. Everything else is free for your first 3 months, then part of SplitIT Plus (₹49 a month or ₹499 a year).",
+  },
   {
     q: "Why can't I delete a group or remove a member?",
     a: "Not while money is still owed in that group — it would wipe out what people owe each other. Settle up all balances first (Balances tab → Settle up), then try again. Only admins can delete a group or remove members.",

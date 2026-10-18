@@ -14,6 +14,7 @@ import { Skeleton, SkeletonRow } from "@/components/ui/Skeleton"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { tokens, useTheme } from "@/lib/theme"
 import { getRate } from "@/lib/exchange"
+import { usePlus } from "@/lib/plus"
 
 type Person = {
   user: { id: string; name: string | null; email: string; image: string | null }
@@ -36,6 +37,8 @@ export default function Home() {
   const display = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0]
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
   const [refreshing, setRefreshing] = useState(false)
+  const { status: plus } = usePlus()
+  const trialEndingSoon = plus?.plan === "trial" && plus.daysLeft != null && plus.daysLeft <= 7
 
   const { data: groups = [], isLoading: groupsLoading } = useQuery({
     queryKey: ["groups"],
@@ -118,6 +121,23 @@ export default function Home() {
             <Avatar name={user?.name} email={user?.email} image={user?.image} size={44} />
           </TouchableOpacity>
         </View>
+
+        {trialEndingSoon && (
+          <TouchableOpacity
+            onPress={() => router.push("/plus" as any)}
+            activeOpacity={0.8}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, marginBottom: 14, borderRadius: tokens.radius.lg, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}
+          >
+            <Ionicons name="sparkles" size={20} color={C.accentText} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.text, fontSize: 14, fontWeight: "700" }}>
+                {plus!.daysLeft === 1 ? "Free Plus ends tomorrow" : `Free Plus ends in ${plus!.daysLeft} days`}
+              </Text>
+              <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>Splitting stays free. Keep everything else from ₹49/month.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={C.accentText} />
+          </TouchableOpacity>
+        )}
 
         {/* Net balance — neutral card, only the number carries colour */}
         <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.xl, padding: tokens.space.xl }}>

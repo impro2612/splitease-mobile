@@ -9,6 +9,7 @@ import { useTheme, featureAccents, useFeatureAccent } from "@/lib/theme"
 import { useQuery } from "@tanstack/react-query"
 import { timelineApi } from "@/lib/api"
 import WebView from "react-native-webview"
+import { withPlus } from "@/components/PlusGate"
 
 
 type Pin = {
@@ -159,7 +160,7 @@ else if (pins.length > 1) {
 </html>`
 }
 
-export default function Timeline() {
+function Timeline() {
   const C = useTheme()
   // Violet, matching the Timeline icon in the More menu
   const PURPLE = useFeatureAccent("timeline").text
@@ -282,3 +283,5 @@ export default function Timeline() {
     </SafeAreaView>
   )
 }
+
+export default withPlus(Timeline, "Timeline")

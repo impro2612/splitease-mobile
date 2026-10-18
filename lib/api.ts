@@ -76,6 +76,12 @@ api.interceptors.response.use(
       await useAuthStore.getState().signOut()
       router.replace("/(auth)/signin")
     }
+    // Trial ended / subscription lapsed while the app had stale status: refresh it so the
+    // Plus locks show. Lazy require: query-client is created after this module.
+    if (error.response?.status === 402 && error.response?.data?.code === "PLUS_REQUIRED") {
+      const qc = (require("@/lib/query-client") as typeof import("@/lib/query-client")).default
+      qc.invalidateQueries({ queryKey: ["plus-status"] })
+    }
     return Promise.reject(error)
   }
 )
@@ -285,6 +291,11 @@ export const budgetsApi = {
 
 export const timelineApi = {
   pins: () => api.get("/api/timeline"),
+}
+
+export const plusApi = {
+  status: () => api.get("/api/plus/status"),
+  sync: () => api.post("/api/plus/sync"),
 }
 
 export const wrappedApi = {

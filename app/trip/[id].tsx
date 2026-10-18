@@ -9,6 +9,7 @@ import { useTheme, featureAccents, useFeatureAccent } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
+import { withPlus } from "@/components/PlusGate"
 
 
 const TRIP_CATEGORIES = [
@@ -118,7 +119,7 @@ function SwipeSheet({
   )
 }
 
-export default function TripDetail() {
+function TripDetail() {
   const C = useTheme()
   // Emerald, matching the Trip Planner icon in the More menu
   const A = useFeatureAccent("trips")
@@ -444,3 +445,5 @@ export default function TripDetail() {
     </SafeAreaView>
   )
 }
+
+export default withPlus(TripDetail, "Trip Planner")

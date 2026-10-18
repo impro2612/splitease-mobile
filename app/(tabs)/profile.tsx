@@ -18,6 +18,7 @@ import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 import Toast from "react-native-toast-message"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
+import { usePlus } from "@/lib/plus"
 
 const NOTIF_PREF_KEY = "notifications_enabled"
 
@@ -65,6 +66,8 @@ export default function Profile() {
   const queryClient = useQueryClient()
   const insets = useSafeAreaInsets()
   const C = useTheme()
+  const { status: plus } = usePlus()
+  const plusLabel = plus?.plan === "plus" ? "Active" : plus?.plan === "free" ? "Get Plus" : plus?.daysLeft != null ? `Free trial · ${plus.daysLeft} days left` : "Free trial"
 
   // Notifications
   const [notifications, setNotifications] = useState(true)
@@ -266,6 +269,23 @@ export default function Profile() {
             >
               <Ionicons name="pencil" size={14} color={C.accentText} />
               <Text style={{ color: C.accentText, fontWeight: "600", fontSize: 13 }}>Edit Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Subscription */}
+        <View style={{ ...pagePadding, marginBottom: 16 }}>
+          <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginLeft: 4 }}>Subscription</Text>
+          <View style={cardStyle}>
+            <TouchableOpacity onPress={() => router.push("/plus" as any)} style={rowStyle}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(99,102,241,0.15)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="sparkles" size={18} color={C.accentText} />
+              </View>
+              <Text style={{ color: C.text, flex: 1 }}>SplitIT Plus</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
+                <Text style={{ color: plus?.plan === "free" ? C.accentText : C.textSub, fontSize: 13, fontWeight: plus?.plan === "free" ? "700" : "400" }} numberOfLines={1}>{plusLabel}</Text>
+                <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
+              </View>
             </TouchableOpacity>
           </View>
         </View>

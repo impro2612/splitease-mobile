@@ -6,6 +6,7 @@ import { Text } from "@/components/ui/Typography"
 import { tokens, useTheme } from "@/lib/theme"
 import { MORE_ITEMS } from "@/lib/navigation"
 import { haptic } from "@/lib/haptics"
+import { PLUS_FEATURES, usePlus } from "@/lib/plus"
 
 /** The More menu, shared by the tab layout and the stacked-screen tab bar. */
 export function MoreSheet({ visible, onClose, onSelect, disabled }: {
@@ -15,6 +16,7 @@ export function MoreSheet({ visible, onClose, onSelect, disabled }: {
   disabled?: boolean
 }) {
   const C = useTheme()
+  const { locked } = usePlus()
   const { bottom } = useSafeAreaInsets()
   const { height } = useWindowDimensions()
   const hiddenY = Math.max(300, height)
@@ -69,24 +71,48 @@ export function MoreSheet({ visible, onClose, onSelect, disabled }: {
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.borderStrong, alignSelf: "center", marginBottom: 14 }} />
           <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>More</Text>
         </View>
-        {MORE_ITEMS.map((item) => (
+        {locked && (
           <TouchableOpacity
-            key={item.key}
             disabled={disabled}
-            onPress={() => { haptic.tap(); close(() => onSelect(item.route)) }}
-            activeOpacity={0.7}
-            style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 11, opacity: disabled ? 0.4 : 1 }}
+            onPress={() => { haptic.tap(); close(() => onSelect("/plus")) }}
+            activeOpacity={0.8}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, marginBottom: 6, borderRadius: tokens.radius.md, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: item.bg, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name={item.icon} size={20} color={item.color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: C.text, fontSize: 15, fontWeight: "600" }}>{item.title}</Text>
-              <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 1 }}>{item.subtitle}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
+            <Ionicons name="sparkles" size={18} color={C.accentText} />
+            <Text style={{ color: C.text, fontSize: 13, fontWeight: "600", flex: 1 }}>Your free trial has ended. Get Plus to unlock all features.</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.accentText} />
           </TouchableOpacity>
-        ))}
+        )}
+        {MORE_ITEMS.map((item) => {
+          const gated = locked && PLUS_FEATURES.has(item.key)
+          // Borrow Book still opens view-only, so friends' IOUs can be seen and confirmed
+          const route = gated && item.key !== "borrow-book" ? "/plus" : item.route
+          return (
+            <TouchableOpacity
+              key={item.key}
+              disabled={disabled}
+              onPress={() => { haptic.tap(); close(() => onSelect(route)) }}
+              activeOpacity={0.7}
+              style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 11, opacity: disabled ? 0.4 : 1 }}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: gated ? C.iconBg : item.bg, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name={item.icon} size={20} color={gated ? C.textMuted : item.color} />
+              </View>
+              <View style={{ flex: 1, opacity: gated ? 0.5 : 1 }}>
+                <Text style={{ color: C.text, fontSize: 15, fontWeight: "600" }}>{item.title}</Text>
+                <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 1 }}>{item.subtitle}</Text>
+              </View>
+              {gated ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: tokens.accentSoft }}>
+                  <Ionicons name="lock-closed" size={11} color={C.accentText} />
+                  <Text style={{ color: C.accentText, fontSize: 11, fontWeight: "700" }}>Plus</Text>
+                </View>
+              ) : (
+                <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
+              )}
+            </TouchableOpacity>
+          )
+        })}
       </Animated.View>
     </Modal>
   )

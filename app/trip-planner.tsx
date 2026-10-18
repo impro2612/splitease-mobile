@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
+import { withPlus } from "@/components/PlusGate"
 
 
 const TRIP_EMOJIS = ["✈️", "🏖️", "🏔️", "🗺️", "🌍", "🏕️", "🚢", "🏛️", "🎪", "🌄", "🏝️", "🗼", "🎡", "🌋", "🏜️", "🛳️"]
@@ -130,7 +131,7 @@ function SwipeSheet({
   )
 }
 
-export default function TripPlanner() {
+function TripPlanner() {
   const C = useTheme()
   // Emerald, matching the Trip Planner icon in the More menu
   const A = useFeatureAccent("trips")
@@ -428,3 +429,5 @@ export default function TripPlanner() {
     </SafeAreaView>
   )
 }
+
+export default withPlus(TripPlanner, "Trip Planner")

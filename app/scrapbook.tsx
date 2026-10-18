@@ -14,6 +14,7 @@ import { wrappedApi } from "@/lib/api"
 import { CURRENCIES } from "@/lib/currencies"
 import { LinearGradient } from "expo-linear-gradient"
 import { useTheme, useFeatureAccent } from "@/lib/theme"
+import { withPlus } from "@/components/PlusGate"
 
 const { width: SCREEN_W } = Dimensions.get("window")
 
@@ -293,7 +294,7 @@ function SlideOutro({ data, year }: { data: WrappedData; year: number }) {
   )
 }
 
-export default function ScrapBook() {
+function ScrapBook() {
   const C = useTheme()
   // Rose, matching the ScrapBook icon in the More menu (the slides keep their own palettes)
   const A = useFeatureAccent("scrapbook")
@@ -619,3 +620,5 @@ const frameStyle = StyleSheet.create({
   left:   { position: "absolute", top: 0,    left: 0, bottom: 0, width: 20 },
   right:  { position: "absolute", top: 0,    right: 0, bottom: 0, width: 20 },
 })
+
+export default withPlus(ScrapBook, "ScrapBook")

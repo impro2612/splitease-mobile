@@ -10,7 +10,8 @@ import { parseAmountInput } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import { useTheme, useFeatureAccent } from "@/lib/theme"
+import { tokens, useTheme, useFeatureAccent } from "@/lib/theme"
+import { usePlus } from "@/lib/plus"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { borrowBookApi, friendsApi } from "@/lib/api"
@@ -228,6 +229,14 @@ export default function BorrowBook() {
 
   const [selectedFriend, setSelectedFriend] = useState<FriendSummary | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+  // After the trial, Borrow Book is view-only: IOUs friends recorded can still be seen,
+  // paid and confirmed, but recording new ones needs Plus.
+  const { locked } = usePlus()
+  function openAdd(prepare: () => void = resetAddForm) {
+    if (locked) { router.push("/plus" as any); return }
+    prepare()
+    setShowAdd(true)
+  }
 
   // Blur overlay: fades in when any sheet is open
   const blurAnim = useRef(new Animated.Value(0)).current
@@ -391,7 +400,7 @@ export default function BorrowBook() {
           <Ionicons name="book-outline" size={20} color={ACCENT} />
         </View>
         <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>The Borrow Book</Text>
-        <TouchableOpacity onPress={() => { resetAddForm(); setShowAdd(true) }}
+        <TouchableOpacity onPress={() => openAdd()}
           style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="add" size={22} color={ACCENT} />
         </TouchableOpacity>
@@ -402,6 +411,18 @@ export default function BorrowBook() {
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={ACCENT} />}>
+
+          {locked && (
+            <TouchableOpacity
+              onPress={() => router.push("/plus" as any)}
+              activeOpacity={0.8}
+              style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, marginTop: 8, borderRadius: 14, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}
+            >
+              <Ionicons name="lock-closed" size={16} color={C.accentText} />
+              <Text style={{ color: C.text, fontSize: 13, fontWeight: "600", flex: 1 }}>View only. Get Plus to record new IOUs.</Text>
+              <Ionicons name="chevron-forward" size={16} color={C.accentText} />
+            </TouchableOpacity>
+          )}
 
           {/* Summary cards */}
           <View style={{ flexDirection: "row", gap: 12, marginTop: 8, marginBottom: 20 }}>
@@ -424,7 +445,7 @@ export default function BorrowBook() {
               subtitle="Lent someone cash or borrowed some? Keep track of it here."
               actionLabel="Record an IOU"
               actionIcon="add"
-              onAction={() => { resetAddForm(); setShowAdd(true) }}
+              onAction={() => openAdd()}
               accent={A}
             />
           )}
@@ -526,7 +547,7 @@ export default function BorrowBook() {
                     {Object.keys(netsOf(liveFriend)).length === 0 && <Text style={{ color: C.positive, fontSize: 13, fontWeight: "600", marginTop: 2 }}>All settled ✓</Text>}
                   </View>
                   <TouchableOpacity
-                    onPress={() => { setSelectedFriend(null); setAddFriendId(liveFriend.friend.id); setShowAdd(true) }}
+                    onPress={() => { setSelectedFriend(null); openAdd(() => setAddFriendId(liveFriend.friend.id)) }}
                     style={{ backgroundColor: ACCENT_BG, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: ACCENT_BORDER }}>
                     <Text style={{ color: ACCENT, fontWeight: "700", fontSize: 13 }}>+ Add Amount</Text>
                   </TouchableOpacity>
