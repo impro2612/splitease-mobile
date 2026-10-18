@@ -30,16 +30,6 @@ function joinAmounts(nets: Record<string, number>, pick: (v: number) => boolean)
     .join(" + ")
 }
 
-function greeting() {
-  const h = new Date().getHours()
-  return h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"
-}
-
-/** "Sunday, 19 Oct" */
-function todayLabel() {
-  return new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })
-}
-
 /** Small plan badge tucked under the profile photo; tapping it opens the Plus page. */
 function PlanPill({ plan }: { plan: "plus" | "trial" | "free" }) {
   const C = useTheme()
@@ -148,10 +138,10 @@ export default function Home() {
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 16, paddingBottom: 18 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: C.textSub, fontSize: 14 }}>{todayLabel()}</Text>
-            <Text style={{ color: C.text, fontSize: 26, fontWeight: "800", marginTop: 2 }} numberOfLines={1}>
-              {greeting()}, {user?.name?.split(" ")[0] ?? "there"}
+            <Text style={{ color: C.text, fontSize: 26, fontWeight: "800" }} numberOfLines={1}>
+              Hey, {user?.name?.split(" ")[0] ?? "there"} 👋
             </Text>
+            <Text style={{ color: C.textSub, fontSize: 14, marginTop: 2 }}>Here's your overview</Text>
           </View>
           <View style={{ alignItems: "center" }}>
             <TouchableOpacity onPress={() => router.push("/(tabs)/profile" as any)} accessibilityLabel="Profile and settings">
