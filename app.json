@@ -65,6 +65,23 @@
                     "weight": 800
                   }
                 ]
+              },
+              {
+                "fontFamily": "PlusJakartaSans",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/plus-jakarta-sans/600SemiBold/PlusJakartaSans_600SemiBold.ttf",
+                    "weight": 600
+                  },
+                  {
+                    "path": "./node_modules/@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf",
+                    "weight": 700
+                  },
+                  {
+                    "path": "./node_modules/@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf",
+                    "weight": 800
+                  }
+                ]
               }
             ]
           },
@@ -74,7 +91,10 @@
               "./node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf",
               "./node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
               "./node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf",
-              "./node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf"
+              "./node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf",
+              "./node_modules/@expo-google-fonts/plus-jakarta-sans/600SemiBold/PlusJakartaSans_600SemiBold.ttf",
+              "./node_modules/@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf",
+              "./node_modules/@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf"
             ]
           }
         }

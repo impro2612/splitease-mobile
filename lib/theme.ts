@@ -1,4 +1,4 @@
-import { useColorScheme } from "react-native"
+import { Platform, useColorScheme } from "react-native"
 import { useAuthStore } from "@/store/auth"
 
 export const dark = {
@@ -65,6 +65,8 @@ export const tokens = {
   radius: { sm: 10, md: 14, lg: 16, xl: 24 },
   space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 },
   font: "Inter",
+  /** Display face for page titles and big amounts (see components/ui/Typography) */
+  fontDisplay: Platform.OS === "ios" ? "Plus Jakarta Sans" : "PlusJakartaSans",
 } as const
 
 export type Accent = {

@@ -12,7 +12,9 @@ import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { groupsApi, expensesApi, balancesApi, membersApi, friendsApi, reactionsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
-import { formatCurrency, formatDate, guessCategory, getExpenseEmoji, parseAmountInput, toLocalDateKey } from "@/lib/utils"
+import { formatCurrency, formatDate, guessCategory, parseAmountInput, toLocalDateKey } from "@/lib/utils"
+import { getExpenseIcon } from "@/lib/expense-icons"
+import { ExpenseIcon } from "@/components/ExpenseIcon"
 import { CURRENCIES, NO_DECIMAL_CURRENCIES } from "@/lib/currencies"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
@@ -1050,9 +1052,7 @@ export default function GroupDetail() {
                     style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: 14, gap: 10 }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                      <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ fontSize: 18 }}>{getExpenseEmoji(exp.description)}</Text>
-                      </View>
+                      <ExpenseIcon description={exp.description} />
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{exp.description}</Text>
                         <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
@@ -2292,7 +2292,7 @@ function ExpenseFormFields({
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [currencySearch, setCurrencySearch] = useState("")
   const detectedCategory = guessCategory(desc)
-  const categoryEmoji = getExpenseEmoji(desc)
+  const categoryIcon = getExpenseIcon(desc)
   const activeCurrencyCode = currency || gc.code
   const activeCurrencyInfo = CURRENCIES.find(c => c.code === activeCurrencyCode) ?? gc
 
@@ -2336,7 +2336,7 @@ function ExpenseFormFields({
       </View>
       {desc.trim() ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 }}>
-          <Text style={{ fontSize: 16 }}>{categoryEmoji}</Text>
+          <Ionicons name={categoryIcon.icon} size={15} color={categoryIcon.color} />
           <Text style={{ color: C.textMuted, fontSize: 12, textTransform: "capitalize" }}>{detectedCategory}</Text>
         </View>
       ) : null}

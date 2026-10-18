@@ -17,21 +17,21 @@ import Toast from "react-native-toast-message"
 import { CATEGORIES } from "@/lib/categorize-client"
 import { withPlus } from "@/components/PlusGate"
 
-const CATEGORY_ICONS: Record<string, string> = {
-  "Salary / Income":  "💰",
-  "Food / Dining":    "🍕",
-  "Transport":        "🚕",
-  "Travel":           "✈️",
-  "Shopping":         "🛒",
-  "Subscriptions":    "📺",
-  "UPI Payments":     "📱",
-  "Transfers":        "↔️",
-  "Bills / Utilities":"💡",
-  "EMI / Loans":      "🏦",
-  "Credit Card Payments":"💳",
-  "Medical / Pharmacy":"💊",
-  "Bank Charges":     "🧾",
-  "Miscellaneous":    "📦",
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  "Salary / Income":  "wallet-outline",
+  "Food / Dining":    "restaurant-outline",
+  "Transport":        "car-outline",
+  "Travel":           "airplane-outline",
+  "Shopping":         "bag-handle-outline",
+  "Subscriptions":    "tv-outline",
+  "UPI Payments":     "phone-portrait-outline",
+  "Transfers":        "swap-horizontal-outline",
+  "Bills / Utilities":"flash-outline",
+  "EMI / Loans":      "business-outline",
+  "Credit Card Payments":"card-outline",
+  "Medical / Pharmacy":"medkit-outline",
+  "Bank Charges":     "receipt-outline",
+  "Miscellaneous":    "cube-outline",
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -726,7 +726,7 @@ function OverviewTab({ summary, pieData, barData, selectedCategory, setSelectedC
           return (
             <TouchableOpacity key={c.category} onPress={() => setSelectedCategory(selectedCategory === c.category ? null : c.category)} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                <Text style={{ fontSize: 16, marginRight: 8 }}>{CATEGORY_ICONS[c.category]}</Text>
+                <Ionicons name={CATEGORY_ICONS[c.category] ?? "cube-outline"} size={16} color={CATEGORY_COLORS[c.category] ?? C.textSub} style={{ marginRight: 8 }} />
                 <Text style={{ color: C.text, flex: 1, fontSize: 13 }}>{c.category}</Text>
                 <Text style={{ color: C.text, fontWeight: "700", fontSize: 13 }}>{formatINR(c.amount)}</Text>
               </View>
@@ -808,7 +808,7 @@ function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore,
   const filterPills: Array<{
     key: string;
     label: string;
-    icon?: string;
+    icon?: keyof typeof Ionicons.glyphMap;
     selected: boolean;
     onPress: () => void;
   }> = [
@@ -872,7 +872,7 @@ function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore,
               gap: pill.icon ? 4 : 0,
             }}
           >
-            {pill.icon ? <Text style={{ fontSize: 12 }}>{pill.icon}</Text> : null}
+            {pill.icon ? <Ionicons name={pill.icon} size={12} color={pill.selected ? A.onSolid : C.textSub} /> : null}
             <Text style={{ color: pill.selected ? A.onSolid : C.textSub, fontSize: pill.icon ? 11 : 12, fontWeight: "600" }}>{pill.label}</Text>
           </TouchableOpacity>
         ))}
@@ -894,7 +894,7 @@ function TransactionsTab({ grouped, txLoading, hasMore, loadingMore, onLoadMore,
                   style={{ flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: i < txns.length - 1 ? 1 : 0, borderBottomColor: C.border }}
                 >
                   <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: (CATEGORY_COLORS[t.category] ?? "#6366f1") + "22", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                    <Text style={{ fontSize: 18 }}>{CATEGORY_ICONS[t.category] ?? "📦"}</Text>
+                    <Ionicons name={CATEGORY_ICONS[t.category] ?? "cube-outline"} size={18} color={CATEGORY_COLORS[t.category] ?? "#6366f1"} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{t.description}</Text>
@@ -944,7 +944,7 @@ function InsightsTab({ insights, C }: {
       {insights.aiSummary ? (
         <View style={{ backgroundColor: A.soft, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: A.border }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <Text style={{ fontSize: 18 }}>✨</Text>
+            <Ionicons name="sparkles" size={16} color={A.text} />
             <Text style={{ color: A.text, fontWeight: "700", fontSize: 13 }}>AI Summary</Text>
           </View>
           <Text style={{ color: C.text, fontSize: 13, lineHeight: 20 }}>{insights.aiSummary}</Text>
@@ -954,10 +954,13 @@ function InsightsTab({ insights, C }: {
       {/* Top categories */}
       {insights.topCategories.length > 0 && (
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.border }}>
-          <Text style={{ color: C.text, fontWeight: "700", fontSize: 14, marginBottom: 12 }}>🏆 Top Spending</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <Ionicons name="trophy-outline" size={15} color={A.text} />
+            <Text style={{ color: C.text, fontWeight: "700", fontSize: 14 }}>Top Spending</Text>
+          </View>
           {insights.topCategories.map((c, i) => (
             <View key={c.category} style={{ flexDirection: "row", alignItems: "center", marginBottom: i < insights.topCategories.length - 1 ? 12 : 0 }}>
-              <Text style={{ fontSize: 20, marginRight: 10 }}>{CATEGORY_ICONS[c.category]}</Text>
+              <Ionicons name={CATEGORY_ICONS[c.category] ?? "cube-outline"} size={20} color={CATEGORY_COLORS[c.category] ?? C.textSub} style={{ marginRight: 10 }} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }}>{c.category}</Text>
                 {c.changePercent !== null && (
@@ -990,11 +993,17 @@ function InsightsTab({ insights, C }: {
       {/* Budget alerts */}
       {insights.budgetAlerts.length > 0 && (
         <View style={{ backgroundColor: "rgba(248,113,113,0.1)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(248,113,113,0.3)" }}>
-          <Text style={{ color: C.negative, fontWeight: "700", fontSize: 14, marginBottom: 12 }}>⚠️ Over Budget</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <Ionicons name="warning-outline" size={15} color={C.negative} />
+            <Text style={{ color: C.negative, fontWeight: "700", fontSize: 14 }}>Over Budget</Text>
+          </View>
           {insights.budgetAlerts.map((a) => (
             <View key={a.category} style={{ marginBottom: 8 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }}>{CATEGORY_ICONS[a.category]} {a.category}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name={CATEGORY_ICONS[a.category] ?? "cube-outline"} size={14} color={CATEGORY_COLORS[a.category] ?? C.textSub} />
+                  <Text style={{ color: C.text, fontWeight: "600", fontSize: 13 }}>{a.category}</Text>
+                </View>
                 <Text style={{ color: C.negative, fontWeight: "700", fontSize: 13 }}>+₹{a.overspent.toFixed(0)} over</Text>
               </View>
               <Text style={{ color: C.textSub, fontSize: 11 }}>Spent ₹{a.spent.toFixed(0)} · Budget ₹{a.budget.toFixed(0)}</Text>

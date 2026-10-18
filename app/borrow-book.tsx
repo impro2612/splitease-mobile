@@ -399,7 +399,7 @@ export default function BorrowBook() {
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="book-outline" size={20} color={ACCENT} />
         </View>
-        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>The Borrow Book</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>Borrow Book</Text>
         <TouchableOpacity onPress={() => openAdd()}
           style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="add" size={22} color={ACCENT} />

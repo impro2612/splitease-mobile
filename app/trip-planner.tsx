@@ -253,7 +253,7 @@ function TripPlanner() {
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: TEAL_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="airplane-outline" size={20} color={TEAL} />
         </View>
-        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>Pre-Trip Planner</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>Trip Planner</Text>
         <TouchableOpacity onPress={() => { resetForm(); setShowCreate(true) }}
           style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: TEAL_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="add" size={22} color={TEAL} />

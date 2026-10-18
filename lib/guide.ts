@@ -254,7 +254,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     color: "#f59e0b",
     title: "Borrow Book",
     summary: "Track personal loans with friends, outside of groups",
-    about: "Lent someone cash or borrowed some? The Borrow Book keeps track of personal IOUs with a friend, separate from any group.",
+    about: "Lent someone cash or borrowed some? Borrow Book keeps track of personal IOUs with a friend, separate from any group.",
     steps: [
       "Open More → Borrow Book and tap + (or Record an IOU).",
       "Pick the friend, choose I Lent or I Borrowed, and enter the amount, currency, date and an optional note.",
@@ -417,6 +417,6 @@ export const GUIDE_FAQ: GuideFaq[] = [
   },
   {
     q: "What's the difference between a group expense and the Borrow Book?",
-    a: "Group expenses are shared costs split between several people. The Borrow Book is for one-to-one loans with a single friend, like lending someone cash.",
+    a: "Group expenses are shared costs split between several people. Borrow Book is for one-to-one loans with a single friend, like lending someone cash.",
   },
 ]

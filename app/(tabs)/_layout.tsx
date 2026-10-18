@@ -60,17 +60,19 @@ export default function TabsLayout() {
           name="more"
           options={{
             title: "More",
+            // Same icon/label layout as the other tabs; highlighted while the sheet is open
+            tabBarIcon: () => <Ionicons name={moreVisible ? "grid" : "grid-outline"} size={23} color={moreVisible ? tokens.accent : C.textMuted} />,
+            tabBarLabel: () => <Text style={{ color: moreVisible ? tokens.accent : C.textMuted, fontSize: 11, fontWeight: "600" }}>More</Text>,
             // Opens the More sheet instead of navigating
-            tabBarButton: (props) => (
+            tabBarButton: ({ children, style }) => (
               <TouchableOpacity
-                style={[props.style as any, { alignItems: "center", justifyContent: "center", gap: 3, paddingTop: 5 }]}
+                style={style as any}
                 onPress={() => { haptic.tap(); setMoreVisible(true) }}
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="More"
               >
-                <Ionicons name={moreVisible ? "grid" : "grid-outline"} size={23} color={moreVisible ? tokens.accent : C.textMuted} />
-                <Text style={{ color: moreVisible ? tokens.accent : C.textMuted, fontSize: 11, fontWeight: "600" }}>More</Text>
+                {children}
               </TouchableOpacity>
             ),
           }}

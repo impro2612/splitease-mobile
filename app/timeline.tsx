@@ -203,7 +203,7 @@ function Timeline() {
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="earth-outline" size={20} color={PURPLE} />
         </View>
-        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>Your Timeline</Text>
+        <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", flex: 1 }}>Timeline</Text>
         {!isLoading && (
           <View style={{ backgroundColor: PURPLE_BG, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
             <Text style={{ color: PURPLE, fontSize: 12, fontWeight: "700" }}>{visiblePins.length} place{visiblePins.length !== 1 ? "s" : ""}</Text>

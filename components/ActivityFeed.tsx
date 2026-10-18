@@ -1,7 +1,8 @@
 import { View } from "react-native"
 import { Text } from "@/components/ui/Typography"
 import { Ionicons } from "@expo/vector-icons"
-import { formatCurrency, formatRelativeTime, getExpenseEmoji } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
+import { ExpenseIcon } from "@/components/ExpenseIcon"
 import { CURRENCIES } from "@/lib/currencies"
 import { tokens, useTheme } from "@/lib/theme"
 
@@ -22,16 +23,15 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
   const m = item.meta
   const isMe = item.actorId === userId
   const actorName = isMe ? "You" : (item.actor.name ?? "Someone")
-  const time = formatRelativeTime(item.createdAt)
+  // The day is already the section heading, so each row only shows its time ("4:32 pm")
+  const time = new Date(item.createdAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })
 
   switch (item.type) {
     case "expense_added": {
       const curr = CURRENCIES.find(c => c.code === m.currency) ?? CURRENCIES[0]
       return (
         <View style={rowStyle(C)}>
-          <View style={[iconBox, { backgroundColor: C.iconBg }]}>
-            <Text style={{ fontSize: 18 }}>{getExpenseEmoji(m.description ?? "")}</Text>
-          </View>
+          <ExpenseIcon description={m.description} size={iconBox.width} radius={iconBox.borderRadius} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
               {actorName} added "{m.description}"
@@ -254,13 +254,10 @@ export function ActivityRow({ item, userId, C }: { item: ActivityItem; userId: s
   }
 }
 
-const rowStyle = (C: any) => ({
-  backgroundColor: C.card,
-  borderWidth: 1,
-  borderColor: C.border,
-  borderRadius: tokens.radius.lg,
-  padding: tokens.space.md + 2,
-  marginBottom: 8,
+// Rows sit inside one card per day (see ActivityFeed), separated by inset dividers
+const rowStyle = (_C: any) => ({
+  paddingHorizontal: tokens.space.md + 2,
+  paddingVertical: tokens.space.md,
   flexDirection: "row" as const,
   alignItems: "center" as const,
   gap: 12,
@@ -301,7 +298,14 @@ export function ActivityFeed({ items, userId, limit }: { items: ActivityItem[]; 
       {sections.map((sec) => (
         <View key={sec.label} style={{ marginBottom: 6 }}>
           <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 8, marginTop: 4 }}>{sec.label}</Text>
-          {sec.items.map((item) => <ActivityRow key={item.id} item={item} userId={userId} C={C} />)}
+          <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, overflow: "hidden", marginBottom: 8 }}>
+            {sec.items.map((item, i) => (
+              <View key={item.id}>
+                {i > 0 && <View style={{ height: 1, backgroundColor: C.border, marginLeft: 68 }} />}
+                <ActivityRow item={item} userId={userId} C={C} />
+              </View>
+            ))}
+          </View>
         </View>
       ))}
     </View>

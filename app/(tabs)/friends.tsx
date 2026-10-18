@@ -11,6 +11,7 @@ import type Pusher from "pusher-js/react-native"
 import { createPusher } from "@/lib/pusher"
 import { friendsApi, usersApi, blocksApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
+import { EmptyState } from "@/components/ui/EmptyState"
 import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { tokens, useTheme } from "@/lib/theme"
@@ -437,21 +438,23 @@ export default function Friends() {
           {isLoading ? (
             <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
           ) : friends.length === 0 ? (
-            <View style={{ alignItems: "center", paddingTop: 80 }}>
-              <Text style={{ fontSize: 48, marginBottom: 16 }}>🤝</Text>
-              <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 8 }}>No friends yet</Text>
-              <Text style={{ color: C.textMuted, fontSize: 14, textAlign: "center", marginBottom: 24 }}>Search for people or invite from your contacts</Text>
-              <TouchableOpacity onPress={() => setTab("search")} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}>
-                <Text style={{ color: C.text, fontWeight: "600" }}>Find friends</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="people-outline"
+              title="No friends yet"
+              subtitle="Search for people or invite from your contacts"
+              actionLabel="Find friends"
+              actionIcon="search"
+              onAction={() => setTab("search")}
+            />
           ) : (
-            <View style={{ gap: 8, paddingBottom: 32 }}>
-              {friends.map((f: any) => {
+            <View style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: "hidden", marginBottom: 32 }}>
+              {friends.map((f: any, i: number) => {
                 const other = f.requesterId === user?.id ? f.addressee : f.requester
                 const hasUnread = !!(other?.id && unreadByFriend[other.id])
                 return (
-                  <View key={f.id} style={{ backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <View key={f.id}>
+                  {i > 0 && <View style={{ height: 1, backgroundColor: C.border, marginLeft: 70 }} />}
+                  <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <Avatar name={other?.name} email={other?.email} image={other?.image} size={44} />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }} numberOfLines={1}>{other?.name ?? "Unknown"}</Text>
@@ -482,6 +485,7 @@ export default function Friends() {
                     >
                       <Ionicons name="ellipsis-vertical" size={18} color={C.textSub} />
                     </TouchableOpacity>
+                  </View>
                   </View>
                 )
               })}

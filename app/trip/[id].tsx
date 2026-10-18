@@ -13,15 +13,15 @@ import { withPlus } from "@/components/PlusGate"
 
 
 const TRIP_CATEGORIES = [
-  { key: "accommodation", label: "Stay", emoji: "🏨", color: "#6366f1" },
-  { key: "food", label: "Food", emoji: "🍔", color: "#f59e0b" },
-  { key: "transport", label: "Transport", emoji: "🚗", color: "#10b981" },
-  { key: "entertainment", label: "Activities", emoji: "🎯", color: "#ec4899" },
-  { key: "shopping", label: "Shopping", emoji: "🛍️", color: "#8b5cf6" },
-  { key: "health", label: "Medical", emoji: "💊", color: "#ef4444" },
-  { key: "travel", label: "Flights", emoji: "✈️", color: "#06b6d4" },
-  { key: "general", label: "Other", emoji: "💸", color: "#6b7280" },
-]
+  { key: "accommodation", label: "Stay", icon: "bed-outline", color: "#6366f1" },
+  { key: "food", label: "Food", icon: "restaurant-outline", color: "#f59e0b" },
+  { key: "transport", label: "Transport", icon: "car-outline", color: "#10b981" },
+  { key: "entertainment", label: "Activities", icon: "trail-sign-outline", color: "#ec4899" },
+  { key: "shopping", label: "Shopping", icon: "bag-handle-outline", color: "#8b5cf6" },
+  { key: "health", label: "Medical", icon: "medkit-outline", color: "#ef4444" },
+  { key: "travel", label: "Flights", icon: "airplane-outline", color: "#06b6d4" },
+  { key: "general", label: "Other", icon: "receipt-outline", color: "#6b7280" },
+] satisfies { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[]
 
 type TripDetail = {
   id: string; name: string; emoji: string
@@ -267,7 +267,7 @@ function TripDetail() {
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: (planned > 0 || hasActual) ? 6 : 0 }}>
                   <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: `${cat.color}22`, alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ fontSize: 18 }}>{cat.emoji}</Text>
+                    <Ionicons name={cat.icon} size={18} color={cat.color} />
                   </View>
                   <Text style={{ flex: 1, color: C.text, fontSize: 14, fontWeight: "600" }}>{cat.label}</Text>
                   <View style={{ alignItems: "flex-end" }}>
@@ -345,7 +345,7 @@ function TripDetail() {
             <>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: `${cat.color}22`, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 24 }}>{cat.emoji}</Text>
+                  <Ionicons name={cat.icon} size={24} color={cat.color} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: C.text, fontSize: 18, fontWeight: "800" }}>{cat.label} Budget</Text>
