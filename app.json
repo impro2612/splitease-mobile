@@ -15,12 +15,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.splitit.app",
+      "bundleIdentifier": "com.splititapp.ios",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "SplitIT uses your photo library to set your profile photo.",
         "NSCameraUsageDescription": "SplitIT uses your camera to take a profile photo."
       },
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "appleTeamId": "4V82QJ7BD5"
     },
     "android": {
       "adaptiveIcon": {
@@ -101,7 +102,24 @@
       "@react-native-community/datetimepicker",
       "./plugins/notification-listener",
       "@react-native-google-signin/google-signin",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {
+                "name": "GoogleUtilities",
+                "modular_headers": true
+              },
+              {
+                "name": "RecaptchaInterop",
+                "modular_headers": true
+              }
+            ]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
