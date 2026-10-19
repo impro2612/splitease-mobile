@@ -147,7 +147,15 @@
       "package": "com.splitit.app",
       "versionCode": 13,
       "googleServicesFile": "./google-services.json",
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "blockedPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -260,7 +268,8 @@
             ]
           }
         }
-      ]
+      ],
+      "./plugins/release-signing"
     ],
     "experiments": {
       "typedRoutes": true
