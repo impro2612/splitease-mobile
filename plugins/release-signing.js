@@ -20,6 +20,8 @@ const SIGNING = `
         }`
 
 module.exports = function withReleaseSigning(config) {
+  // EAS cloud builds sign with the keystore stored in the Expo account; leave Gradle alone there
+  if (process.env.EAS_BUILD) return config
   return withAppBuildGradle(config, (cfg) => {
     let g = cfg.modResults.contents
     if (!g.includes("SPLITIT_UPLOAD_PROPERTIES")) {

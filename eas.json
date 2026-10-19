@@ -12,7 +12,8 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "environment": "preview"
     },
     "apk": {
       "android": {
@@ -21,12 +22,19 @@
       }
     },
     "production": {
+      "environment": "production",
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }
