@@ -103,7 +103,7 @@ export default function PlusScreen() {
   const sub = isPlus
     ? endingSoon
       ? "Auto-renew is off. You keep every feature until then."
-      : "Thanks for supporting SplitIT. Every feature is unlocked."
+      : "Every feature is unlocked."
     : "Splitting stays free forever. Plus unlocks everything else."
 
   const planCard = (key: "yearly" | "monthly") => {
