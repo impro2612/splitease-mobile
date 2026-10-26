@@ -7,7 +7,6 @@ import * as Print from "expo-print"
 import { File, Paths } from "expo-file-system"
 import Toast from "react-native-toast-message"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useQuery } from "@tanstack/react-query"
 import { wrappedApi } from "@/lib/api"
@@ -16,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useTheme, useFeatureAccent } from "@/lib/theme"
 import { withPlus } from "@/components/PlusGate"
 import { BottomTabBar, TAB_BAR_HEIGHT } from "@/components/ui/BottomTabBar"
+import { goHome, useBackToHome } from "@/lib/go-home"
 
 const { width: SCREEN_W } = Dimensions.get("window")
 
@@ -299,6 +299,7 @@ function ScrapBook() {
   const C = useTheme()
   // Rose, matching the ScrapBook icon in the More menu (the slides keep their own palettes)
   const A = useFeatureAccent("scrapbook")
+  useBackToHome()
   const insets = useSafeAreaInsets()
   const { height: SCREEN_H } = useWindowDimensions()
 
@@ -411,7 +412,7 @@ function ScrapBook() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header row */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: A.soft, alignItems: "center", justifyContent: "center" }}>

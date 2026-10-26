@@ -3,7 +3,6 @@ import { View, TouchableOpacity, ActivityIndicator, Animated, ScrollView } from 
 import { Text } from "@/components/ui/Typography"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme, featureAccents, useFeatureAccent } from "@/lib/theme"
 import { useQuery } from "@tanstack/react-query"
@@ -11,6 +10,7 @@ import { timelineApi } from "@/lib/api"
 import WebView from "react-native-webview"
 import { withPlus } from "@/components/PlusGate"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
+import { goHome, useBackToHome } from "@/lib/go-home"
 
 
 type Pin = {
@@ -166,6 +166,7 @@ function Timeline() {
   // Violet, matching the Timeline icon in the More menu
   const PURPLE = useFeatureAccent("timeline").text
   const PURPLE_BG = featureAccents.timeline.soft
+  useBackToHome()
   const bottomInset = 0 // the tab bar below the map already clears the system inset
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
@@ -198,7 +199,7 @@ function Timeline() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center" }}>

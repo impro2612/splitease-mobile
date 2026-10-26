@@ -15,6 +15,7 @@ import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { withPlus } from "@/components/PlusGate"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
+import { goHome, useBackToHome } from "@/lib/go-home"
 
 
 const TRIP_EMOJIS = ["✈️", "🏖️", "🏔️", "🗺️", "🌍", "🏕️", "🚢", "🏛️", "🎪", "🌄", "🏝️", "🗼", "🎡", "🌋", "🏜️", "🛳️"]
@@ -139,6 +140,7 @@ function TripPlanner() {
   const TEAL = A.text
   const TEAL_BG = A.soft
   const TEAL_BORDER = A.border
+  useBackToHome()
   const insets = useSafeAreaInsets()
   const qc = useQueryClient()
 
@@ -248,7 +250,7 @@ function TripPlanner() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: TEAL_BG, alignItems: "center", justifyContent: "center" }}>

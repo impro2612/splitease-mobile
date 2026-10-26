@@ -21,6 +21,7 @@ import { CURRENCIES } from "@/lib/currencies"
 import { createPusher } from "@/lib/pusher"
 import { BlurView } from "expo-blur"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
+import { goHome, useBackToHome } from "@/lib/go-home"
 
 
 type Payment = { id: string; amount: number; date: string; note?: string }
@@ -223,6 +224,7 @@ export default function BorrowBook() {
   const ACCENT = A.text
   const ACCENT_BG = A.soft
   const ACCENT_BORDER = A.border
+  useBackToHome()
   const insets = useSafeAreaInsets()
   const { height: windowH } = useWindowDimensions()
   const { user } = useAuthStore()
@@ -394,7 +396,7 @@ export default function BorrowBook() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>

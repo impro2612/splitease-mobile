@@ -358,7 +358,7 @@ function Expenses() {
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.navigate("/(tabs)/dashboard" as any)} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Back">
+            <TouchableOpacity onPress={() => router.navigate("/(tabs)/dashboard" as any)} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Back">
               <Ionicons name="arrow-back" size={18} color={C.text} />
             </TouchableOpacity>
             <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: A.soft, alignItems: "center", justifyContent: "center" }}>

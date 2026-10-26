@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -7,7 +7,6 @@ import { CurrencyChip } from "@/components/ui/CurrencyChip"
 import { currencySymbol } from "@/lib/utils"
 import { parseAmountInput } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -16,6 +15,7 @@ import { spendDiaryApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { withPlus } from "@/components/PlusGate"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
+import { goHome, useBackToHome } from "@/lib/go-home"
 
 // One app-wide accent (see lib/theme tokens) — features no longer have their own colours
 const ACCENT = "#6366f1"
@@ -145,6 +145,9 @@ function SpendDiary() {
 
   // ── View state ────────────────────────────────────────────────────────────────
   const [activeDiary, setActiveDiary] = useState<Diary | null>(null)
+  // Back from inside a diary returns to the list; from the list it goes Home
+  const closeDiary = useCallback(() => setActiveDiary(null), [])
+  useBackToHome(activeDiary ? closeDiary : undefined)
 
   // ── Create diary sheet ────────────────────────────────────────────────────────
   const [showCreateDiary, setShowCreateDiary] = useState(false)
@@ -487,7 +490,7 @@ function SpendDiary() {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16, gap: 12 }}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={goHome}
           style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
         >
           <Ionicons name="arrow-back" size={18} color={C.text} />
