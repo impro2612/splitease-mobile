@@ -202,7 +202,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       "Search by name, email or phone number and send a friend request.",
       "Or tap Sync Contacts to see which of your contacts are already on SplitIT — invite the rest by WhatsApp or text message.",
       "Incoming requests appear under Requests — accept or decline them there.",
-      "Tap the chat icon next to a friend to message them.",
+      "Tap the chat icon next to a friend to message them (chat is part of SplitIT Plus).",
       "In a chat, long-press a message to react, copy it or delete it.",
     ],
     tips: [
@@ -371,8 +371,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     summary: "3 months of everything free, then splitting stays free forever",
     about: "Every new account gets the whole app free for 3 months. After that, splitting stays free forever and SplitIT Plus unlocks the rest.",
     steps: [
-      "Always free: groups, unlimited expenses, balances, settle up, friends, chat and activity.",
-      "With Plus: My Spending, Borrow Book, Trip Planner, Timeline, ScrapBook and Spend Diary.",
+      "Always free: groups, unlimited expenses, balances, settle up, friends and activity.",
+      "With Plus: Chat, My Spending, Borrow Book, Trip Planner, Timeline, ScrapBook and Spend Diary.",
       "Plus costs ₹49 a month or ₹499 a year. Subscribe from Profile & settings → SplitIT Plus.",
       "We remind you 15 days, 7 days and 1 day before your free months end.",
     ],
@@ -389,7 +389,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 export const GUIDE_FAQ: GuideFaq[] = [
   {
     q: "Is SplitIT free?",
-    a: "Splitting is free forever: groups, unlimited expenses, settle up, friends and chat. Everything else is free for your first 3 months, then part of SplitIT Plus (₹49 a month or ₹499 a year).",
+    a: "Splitting is free forever: groups, unlimited expenses, settle up and friends. Everything else, including chat, is free for your first 3 months, then part of SplitIT Plus (₹49 a month or ₹499 a year).",
   },
   {
     q: "Why can't I delete a group or remove a member?",

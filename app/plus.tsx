@@ -15,7 +15,9 @@ import { useAuthStore } from "@/store/auth"
 import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, loadSubscription, paymentsReady, plusEndsInDays, plusLapsed, restorePurchases, usePlus, type PlusPlans, type PlusSubscription } from "@/lib/plus"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
-const FREE_FOREVER = ["Groups & unlimited expenses", "Balances & settle up", "Friends & chat", "Activity & notifications"]
+// Chat lives on the Friends tab, not in More, so it is listed here by hand
+const CHAT_FEATURE = { key: "chat", icon: "chatbubble-ellipses-outline" as const, color: "#4ade80", bg: "rgba(74,222,128,0.12)", title: "Chat", subtitle: "Message friends privately" }
+const FREE_FOREVER = ["Groups & unlimited expenses", "Balances & settle up", "Friends", "Activity & notifications"]
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
@@ -35,7 +37,7 @@ export default function PlusScreen() {
     loadPlans(userId).then(setPlans).catch(() => {})
   }, [userId])
 
-  const features = MORE_ITEMS.filter((i) => PLUS_FEATURES.has(i.key))
+  const features = [CHAT_FEATURE, ...MORE_ITEMS.filter((i) => PLUS_FEATURES.has(i.key))]
   const isPlus = status?.plan === "plus"
   const onTrial = status?.plan === "trial"
 

@@ -16,6 +16,7 @@ import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { tokens, useTheme } from "@/lib/theme"
 import { useOffline } from "@/context/OfflineContext"
+import { usePlus } from "@/lib/plus"
 
 const SIGNUP_URL = "https://splitwithease.vercel.app/signup"
 
@@ -41,6 +42,7 @@ type ConfirmDialog = { title: string; message: string; confirmLabel: string; ico
 export default function Friends() {
   const { user } = useAuthStore()
   const C = useTheme()
+  const { locked: chatLocked } = usePlus() // chat is a Plus feature
   const { isOnline } = useOffline()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
@@ -469,10 +471,15 @@ export default function Friends() {
                           params: { friendId: other.id, name: other.name ?? "" },
                         } as unknown as Href)
                       }}
-                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", position: "relative" }}
+                      style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: chatLocked ? C.iconBg : "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center", position: "relative" }}
+                      accessibilityLabel={chatLocked ? "Chat (SplitIT Plus)" : "Chat"}
                     >
-                      <Ionicons name="chatbubble-ellipses" size={17} color={C.positive} />
-                      {hasUnread && (
+                      <Ionicons name="chatbubble-ellipses" size={17} color={chatLocked ? C.textMuted : C.positive} />
+                      {chatLocked ? (
+                        <View style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, borderRadius: 8, backgroundColor: C.card, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border }}>
+                          <Ionicons name="lock-closed" size={9} color={C.accentText} />
+                        </View>
+                      ) : hasUnread && (
                         <View style={{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: C.card, paddingHorizontal: 3 }}>
                           <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", lineHeight: 10 }}>1</Text>
                         </View>

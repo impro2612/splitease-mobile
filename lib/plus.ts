@@ -9,7 +9,7 @@ import queryClient from "@/lib/query-client"
 
 /**
  * SplitIT Plus. Everyone gets the whole app free for 3 months; after that splitting
- * (groups, expenses, settle up, friends, chat) stays free and the More-section features
+ * (groups, expenses, settle up, friends) stays free; chat and the More-section features
  * need Plus. The server decides access — this only mirrors it for the UI.
  */
 export type PlusStatus = {

@@ -23,6 +23,7 @@ function uuidv4() {
 }
 import { messagesApi, messageReactionsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
+import { withPlus } from "@/components/PlusGate"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type MsgReaction = { id: string; userId: string; emoji: string }
@@ -362,7 +363,7 @@ async function saveCache(key: string, messages: Message[]) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function ChatScreen() {
+function ChatScreen() {
   const insets = useSafeAreaInsets()
   const C = useTheme()
   const { friendId, name } = useLocalSearchParams<{ friendId: string; name?: string }>()
@@ -1017,3 +1018,5 @@ export default function ChatScreen() {
     </SafeAreaView>
   )
 }
+
+export default withPlus(ChatScreen, "Chat")
