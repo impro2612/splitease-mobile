@@ -181,7 +181,7 @@ export type PlusSubscription = {
 export async function loadSubscription(userId: string): Promise<PlusSubscription | null> {
   if (!RC_KEY) return null
   await ensurePurchases(userId)
-  const ent = (await Purchases.getCustomerInfo()).entitlements.active.plus
+  const ent = (await Purchases.getCustomerInfo()).entitlements.active.splitit_plus
   if (!ent) return null
   const id = ent.productIdentifier.toLowerCase()
   return {
