@@ -36,6 +36,7 @@ export default function PlusScreen() {
 
   const features = MORE_ITEMS.filter((i) => PLUS_FEATURES.has(i.key))
   const isPlus = status?.plan === "plus"
+  const onTrial = status?.plan === "trial"
 
   // Confetti each time a Plus member opens this page (and right after subscribing)
   const [celebrate, setCelebrate] = useState(false)
@@ -172,7 +173,20 @@ export default function PlusScreen() {
           ))}
         </View>
 
-        {!isPlus && (
+        {onTrial && (
+          // During the free trial there is nothing to buy yet: say so, rather than a sales pitch
+          <View style={{ marginTop: 24, padding: 16, borderRadius: tokens.radius.lg, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder, flexDirection: "row", gap: 12 }}>
+            <Ionicons name="checkmark-circle" size={22} color={C.accentText} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.text, fontSize: 15, fontWeight: "700" }}>No subscription needed right now</Text>
+              <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 19, marginTop: 4 }}>
+                Your free trial is active{status?.trialEndsAt ? ` until ${formatDate(status.trialEndsAt)}` : ""}, so every feature is unlocked. After that, Plus is {PLUS_PRICES.monthly} a month or {PLUS_PRICES.yearly} a year, and we'll remind you before your trial ends.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {!isPlus && !onTrial && (
           <>
             <View style={{ flexDirection: "row", gap: 12, marginTop: 24 }}>
               {planCard("yearly")}
@@ -208,9 +222,9 @@ export default function PlusScreen() {
           </TouchableOpacity>
         )}
 
-        <Text style={{ color: C.textMuted, fontSize: 11, lineHeight: 16, textAlign: "center", marginTop: 8 }}>
+        {!onTrial && <Text style={{ color: C.textMuted, fontSize: 11, lineHeight: 16, textAlign: "center", marginTop: 8 }}>
           Plus renews automatically until you cancel. Cancel any time in your {Platform.OS === "ios" ? "App Store" : "Google Play"} subscriptions at least 24 hours before the renewal date. Your data is never deleted if Plus ends.
-        </Text>
+        </Text>}
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 10 }}>
           <TouchableOpacity onPress={openTerms} hitSlop={8}>
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", textDecorationLine: "underline" }}>Terms of Use</Text>
