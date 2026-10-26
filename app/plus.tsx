@@ -12,7 +12,7 @@ import { MORE_ITEMS } from "@/lib/navigation"
 import { plusApi } from "@/lib/api"
 import { openPrivacy, openTerms } from "@/lib/legal"
 import { useAuthStore } from "@/store/auth"
-import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, loadSubscription, paymentsReady, restorePurchases, usePlus, type PlusPlans, type PlusSubscription } from "@/lib/plus"
+import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, loadSubscription, paymentsReady, plusEndsInDays, restorePurchases, usePlus, type PlusPlans, type PlusSubscription } from "@/lib/plus"
 
 const FREE_FOREVER = ["Groups & unlimited expenses", "Balances & settle up", "Friends & chat", "Activity & notifications"]
 
@@ -46,12 +46,14 @@ export default function PlusScreen() {
   }, [isPlus, userId, status?.plusUntil])
 
   // Confetti each time a Plus member opens this page (and right after subscribing)
+  const endsIn = plusEndsInDays(status)
+  const endingSoon = endsIn != null && endsIn <= 7
   const [celebrate, setCelebrate] = useState(false)
   const celebrated = useRef(false)
   useEffect(() => {
     // No party for a subscription that is on its way out
-    if (isPlus && status?.willRenew !== false && !celebrated.current) { celebrated.current = true; setCelebrate(true) }
-  }, [isPlus, status?.willRenew])
+    if (isPlus && !endingSoon && !celebrated.current) { celebrated.current = true; setCelebrate(true) }
+  }, [isPlus, endingSoon])
   const selected = plans[choice]
   const canBuy = paymentsReady && !!selected && !isPlus
 
@@ -95,10 +97,11 @@ export default function PlusScreen() {
         ? `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} of free Plus left`
         : "You have every feature free during your trial"
   const planName = subInfo?.period === "monthly" ? "Monthly plan" : subInfo?.period === "yearly" ? "Yearly plan" : null
-  const willRenew = subInfo?.willRenew ?? status?.willRenew ?? null
-  const dateLead = willRenew === false ? "Your Plus ends on" : willRenew ? "Your Plus renews on" : "You're on Plus until"
+  // "You're on Plus until" with a Yeyy! all along; only a cancelled plan's last week
+  // (when the Home banner shows too) switches to the plain "ends on"
+  const dateLead = endingSoon ? "Your Plus ends on" : "You're on Plus until"
   const sub = isPlus
-    ? willRenew === false
+    ? endingSoon
       ? "Auto-renew is off. You keep every feature until then."
       : "Thanks for supporting SplitIT. Every feature is unlocked."
     : "Splitting stays free forever. Plus unlocks everything else."
@@ -144,7 +147,7 @@ export default function PlusScreen() {
             // Members get a quieter, friendlier header than the sales pitch below
             <>
               <Text style={{ color: C.text, fontSize: 17, fontWeight: "600", marginTop: 14, textAlign: "center" }}>
-                {willRenew !== false && <Text style={{ color: C.accentText, fontStyle: "italic" }}>Yeyy! </Text>}{dateLead}
+                {!endingSoon && <Text style={{ color: C.accentText, fontStyle: "italic" }}>Yeyy! </Text>}{dateLead}
               </Text>
               {status?.plusUntil && (
                 <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}>
