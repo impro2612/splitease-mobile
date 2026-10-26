@@ -7,6 +7,7 @@ import { Text, TextInput } from "@/components/ui/Typography"
 import { tokens, useTheme } from "@/lib/theme"
 import { haptic } from "@/lib/haptics"
 import { GUIDE_FAQ, GUIDE_SECTIONS as ALL_SECTIONS, QUICK_START, type GuideSection } from "@/lib/guide"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 // Auto expense tracking only exists on Android
 const GUIDE_SECTIONS = Platform.OS === "android" ? ALL_SECTIONS : ALL_SECTIONS.filter((s) => s.key !== "track")
@@ -218,6 +219,7 @@ export default function Guide() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

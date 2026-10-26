@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { Text } from "@/components/ui/Typography"
 import { tokens, useTheme } from "@/lib/theme"
 import { plusLapsed, usePlus } from "@/lib/plus"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 /** Shown in place of a Plus screen once the trial has ended (e.g. opened from a notification). */
 function PlusLocked({ title }: { title: string }) {
@@ -36,6 +37,7 @@ function PlusLocked({ title }: { title: string }) {
           <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>See Plus</Text>
         </TouchableOpacity>
       </View>
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

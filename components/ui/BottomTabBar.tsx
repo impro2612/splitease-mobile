@@ -10,6 +10,9 @@ import { MoreSheet } from "@/components/ui/MoreSheet"
 import { haptic } from "@/lib/haptics"
 import { useOffline } from "@/context/OfflineContext"
 
+/** Height of the bar above the bottom safe-area inset. */
+export const TAB_BAR_HEIGHT = 62
+
 /**
  * Tab bar for screens pushed on top of the tabs (e.g. a group's detail page), so the bottom
  * navigation looks and behaves the same everywhere. `activeTab` is a TABS key.
@@ -23,7 +26,7 @@ export function BottomTabBar({ activeTab }: { activeTab?: string }) {
 
   return (
     <>
-      <View style={{ height: 62 + (bottom > 0 ? bottom : 0), backgroundColor: C.tabBar, borderTopWidth: 1, borderTopColor: C.tabBorder, flexDirection: "row", paddingBottom: bottom > 0 ? bottom + 4 : 10, paddingTop: 8 }}>
+      <View style={{ height: TAB_BAR_HEIGHT + (bottom > 0 ? bottom : 0), backgroundColor: C.tabBar, borderTopWidth: 1, borderTopColor: C.tabBorder, flexDirection: "row", paddingBottom: bottom > 0 ? bottom + 4 : 10, paddingTop: 8 }}>
         {TABS.map((tab) => {
           const isMore = tab.key === "more"
           const active = isMore ? moreVisible : activeTab ? tab.key === activeTab : pathname.startsWith(`/${tab.key}`)

@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query"
 import { timelineApi } from "@/lib/api"
 import WebView from "react-native-webview"
 import { withPlus } from "@/components/PlusGate"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 
 type Pin = {
@@ -165,7 +166,7 @@ function Timeline() {
   // Violet, matching the Timeline icon in the More menu
   const PURPLE = useFeatureAccent("timeline").text
   const PURPLE_BG = featureAccents.timeline.soft
-  const { bottom: bottomInset } = useSafeAreaInsets()
+  const bottomInset = 0 // the tab bar below the map already clears the system inset
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
 
@@ -280,6 +281,7 @@ function Timeline() {
           )}
         </Animated.View>
       )}
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

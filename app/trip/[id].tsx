@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { withPlus } from "@/components/PlusGate"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 
 const TRIP_CATEGORIES = [
@@ -442,6 +443,7 @@ function TripDetail() {
           </View>
         </View>
       </Modal>
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

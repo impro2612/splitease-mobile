@@ -14,6 +14,7 @@ import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/d
 import { tripsApi, groupsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { withPlus } from "@/components/PlusGate"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 
 const TRIP_EMOJIS = ["✈️", "🏖️", "🏔️", "🗺️", "🌍", "🏕️", "🚢", "🏛️", "🎪", "🌄", "🏝️", "🗼", "🎡", "🌋", "🏜️", "🛳️"]
@@ -426,6 +427,7 @@ function TripPlanner() {
           </View>
         </Modal>
       )}
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

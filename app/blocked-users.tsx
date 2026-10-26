@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import { useState } from "react"
 import { Modal, Pressable } from "react-native"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 export default function BlockedUsers() {
   const C = useTheme()
@@ -121,6 +122,7 @@ export default function BlockedUsers() {
           </Pressable>
         </Pressable>
       </Modal>
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

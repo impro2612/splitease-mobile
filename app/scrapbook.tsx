@@ -15,6 +15,7 @@ import { CURRENCIES } from "@/lib/currencies"
 import { LinearGradient } from "expo-linear-gradient"
 import { useTheme, useFeatureAccent } from "@/lib/theme"
 import { withPlus } from "@/components/PlusGate"
+import { BottomTabBar, TAB_BAR_HEIGHT } from "@/components/ui/BottomTabBar"
 
 const { width: SCREEN_W } = Dimensions.get("window")
 
@@ -314,9 +315,9 @@ function ScrapBook() {
   const activeYear = selectedYear ?? data?.availableYears?.[0] ?? new Date().getFullYear()
   const availableYears = data?.availableYears ?? []
 
-  // Header ≈ 54px, year pills row ≈ 46px, dot bar ≈ 34px, bottom nav bar = insets.bottom
+  // Header ≈ 54px, year pills row ≈ 46px, dot bar ≈ 34px, tab bar = TAB_BAR_HEIGHT + insets.bottom
   const yearRowH = !isLoading && availableYears.length > 0 ? 46 : 0
-  const SLIDE_H = SCREEN_H - insets.top - 54 - yearRowH - 34 - insets.bottom
+  const SLIDE_H = SCREEN_H - insets.top - 54 - yearRowH - 34 - TAB_BAR_HEIGHT - insets.bottom
 
   // Only populate slides once data has loaded
   const visibleSlides: SlideId[] = !data ? [] : (
@@ -516,7 +517,7 @@ function ScrapBook() {
           </View>
 
           {/* Dot indicator */}
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingTop: 14, paddingBottom: 14 + insets.bottom, backgroundColor: C.bg }}>
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, paddingTop: 14, paddingBottom: 14, backgroundColor: C.bg }}>
             {visibleSlides.map((_, i) => (
               <TouchableOpacity
                 key={i}
@@ -532,6 +533,7 @@ function ScrapBook() {
           </View>
         </View>
       )}
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

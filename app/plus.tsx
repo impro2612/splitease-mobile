@@ -13,6 +13,7 @@ import { plusApi } from "@/lib/api"
 import { openPrivacy, openTerms } from "@/lib/legal"
 import { useAuthStore } from "@/store/auth"
 import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, loadSubscription, paymentsReady, plusEndsInDays, plusLapsed, restorePurchases, usePlus, type PlusPlans, type PlusSubscription } from "@/lib/plus"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 const FREE_FOREVER = ["Groups & unlimited expenses", "Balances & settle up", "Friends & chat", "Activity & notifications"]
 
@@ -130,7 +131,7 @@ export default function PlusScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top", "bottom"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
         <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
@@ -259,6 +260,7 @@ export default function PlusScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <BottomTabBar />
       <Celebration visible={celebrate} onDone={() => setCelebrate(false)} message="Yeyy!! You're on Plus" />
     </SafeAreaView>
   )

@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "@/lib/theme"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 type SummaryItem = {
   description: string
@@ -104,6 +105,7 @@ export default function GroupBalanceSummary() {
             </View>
           )}
         </ScrollView>
+        <BottomTabBar activeTab="groups" />
       </SafeAreaView>
     </View>
   )

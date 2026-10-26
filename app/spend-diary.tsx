@@ -15,6 +15,7 @@ import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/d
 import { spendDiaryApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { withPlus } from "@/components/PlusGate"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 // One app-wide accent (see lib/theme tokens) — features no longer have their own colours
 const ACCENT = "#6366f1"
@@ -475,6 +476,7 @@ function SpendDiary() {
             </View>
           </View>
         </Modal>
+        <BottomTabBar />
       </SafeAreaView>
     )
   }
@@ -577,6 +579,7 @@ function SpendDiary() {
           </TouchableOpacity>
         </View>
       </BottomSheet>
+      <BottomTabBar />
     </SafeAreaView>
   )
 }

@@ -20,6 +20,7 @@ import Toast from "react-native-toast-message"
 import { CURRENCIES } from "@/lib/currencies"
 import { createPusher } from "@/lib/pusher"
 import { BlurView } from "expo-blur"
+import { BottomTabBar } from "@/components/ui/BottomTabBar"
 
 
 type Payment = { id: string; amount: number; date: string; note?: string }
@@ -515,6 +516,7 @@ export default function BorrowBook() {
         </ScrollView>
       )}
 
+      <BottomTabBar />
       {/* Blur overlay — covers the borrow book content while any sheet is open */}
       <Animated.View
         pointerEvents="none"
