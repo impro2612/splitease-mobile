@@ -14,7 +14,7 @@ import { Skeleton, SkeletonRow } from "@/components/ui/Skeleton"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { tokens, useTheme } from "@/lib/theme"
 import { getRate } from "@/lib/exchange"
-import { usePlus } from "@/lib/plus"
+import { usePlus, plusEndsInDays } from "@/lib/plus"
 
 type Person = {
   user: { id: string; name: string | null; email: string; image: string | null }
@@ -65,6 +65,10 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false)
   const { status: plus } = usePlus()
   const trialEndingSoon = plus?.plan === "trial" && plus.daysLeft != null && plus.daysLeft <= 7
+  // Cancelled subscriptions get the same last-week countdown as the trial
+  const subEndsIn = plusEndsInDays(plus)
+  const subEndingSoon = subEndsIn != null && subEndsIn <= 7
+  const endingDays = trialEndingSoon ? plus!.daysLeft! : subEndsIn
 
   const { data: groups = [], isLoading: groupsLoading } = useQuery({
     queryKey: ["groups"],
@@ -151,7 +155,7 @@ export default function Home() {
           </View>
         </View>
 
-        {trialEndingSoon && (
+        {(trialEndingSoon || subEndingSoon) && (
           <TouchableOpacity
             onPress={() => router.push("/plus" as any)}
             activeOpacity={0.8}
@@ -160,9 +164,11 @@ export default function Home() {
             <Ionicons name="sparkles" size={20} color={C.accentText} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontSize: 14, fontWeight: "700" }}>
-                {plus!.daysLeft === 1 ? "Free Plus ends tomorrow" : `Free Plus ends in ${plus!.daysLeft} days`}
+                {`${trialEndingSoon ? "Free Plus" : "Your Plus"} ends ${endingDays === 1 ? "tomorrow" : `in ${endingDays} days`}`}
               </Text>
-              <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>Splitting stays free. Keep everything else from ₹49/month.</Text>
+              <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }}>
+                {trialEndingSoon ? "Splitting stays free. Keep everything else from ₹49/month." : "Auto-renew is off. Renew to keep every feature."}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={C.accentText} />
           </TouchableOpacity>

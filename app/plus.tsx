@@ -94,9 +94,10 @@ export default function PlusScreen() {
         ? `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} of free Plus left`
         : "You have every feature free during your trial"
   const planName = subInfo?.period === "monthly" ? "Monthly plan" : subInfo?.period === "yearly" ? "Yearly plan" : null
-  const dateLead = subInfo?.willRenew === false ? "Your Plus ends on" : subInfo?.willRenew ? "Your Plus renews on" : "You're on Plus until"
+  const willRenew = subInfo?.willRenew ?? status?.willRenew ?? null
+  const dateLead = willRenew === false ? "Your Plus ends on" : willRenew ? "Your Plus renews on" : "You're on Plus until"
   const sub = isPlus
-    ? subInfo?.willRenew === false
+    ? willRenew === false
       ? "Auto-renew is off. You keep every feature until then."
       : "Thanks for supporting SplitIT. Every feature is unlocked."
     : "Splitting stays free forever. Plus unlocks everything else."

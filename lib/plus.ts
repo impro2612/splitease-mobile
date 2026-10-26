@@ -18,6 +18,7 @@ export type PlusStatus = {
   trialEndsAt: string | null
   plusUntil: string | null
   daysLeft: number | null
+  willRenew: boolean | null // plus only: false once the subscription is cancelled
 }
 
 /** More-menu keys (lib/navigation MORE_ITEMS) that need Plus once the trial ends. */
@@ -26,6 +27,13 @@ export const PLUS_FEATURES = new Set(["spending", "borrow-book", "trip-planner",
 export const PLUS_PRICES = { monthly: "₹49", yearly: "₹499" }
 
 const DAY = 24 * 60 * 60 * 1000
+
+/** Whole days until a cancelled Plus subscription ends, or null if it renews / isn't Plus. */
+export function plusEndsInDays(s: PlusStatus | undefined, now = Date.now()): number | null {
+  if (s?.plan !== "plus" || s.willRenew !== false || !s.plusUntil) return null
+  const left = Date.parse(s.plusUntil) - now
+  return left > 0 ? Math.ceil(left / DAY) : null
+}
 
 /**
  * Re-derives access from the end dates against the current clock, so a trial or
@@ -50,6 +58,10 @@ function nextChange(s: PlusStatus, now: number): number | null {
   if (s.trialEndsAt) {
     const end = Date.parse(s.trialEndsAt)
     if (end > now) times.push(end - Math.floor((end - now) / DAY) * DAY) // daysLeft ticks down
+  }
+  if (s.willRenew === false && s.plusUntil) {
+    const end = Date.parse(s.plusUntil)
+    if (end > now) times.push(end - Math.floor((end - now) / DAY) * DAY) // ending countdown ticks down
   }
   return times.length ? Math.min(...times) : null
 }
