@@ -49,8 +49,9 @@ export default function PlusScreen() {
   const [celebrate, setCelebrate] = useState(false)
   const celebrated = useRef(false)
   useEffect(() => {
-    if (isPlus && !celebrated.current) { celebrated.current = true; setCelebrate(true) }
-  }, [isPlus])
+    // No party for a subscription that is on its way out
+    if (isPlus && status?.willRenew !== false && !celebrated.current) { celebrated.current = true; setCelebrate(true) }
+  }, [isPlus, status?.willRenew])
   const selected = plans[choice]
   const canBuy = paymentsReady && !!selected && !isPlus
 
@@ -143,7 +144,7 @@ export default function PlusScreen() {
             // Members get a quieter, friendlier header than the sales pitch below
             <>
               <Text style={{ color: C.text, fontSize: 17, fontWeight: "600", marginTop: 14, textAlign: "center" }}>
-                <Text style={{ color: C.accentText, fontStyle: "italic" }}>Yeyy!</Text> {dateLead}
+                {willRenew !== false && <Text style={{ color: C.accentText, fontStyle: "italic" }}>Yeyy! </Text>}{dateLead}
               </Text>
               {status?.plusUntil && (
                 <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}>
