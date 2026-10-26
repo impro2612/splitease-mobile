@@ -35,6 +35,9 @@ const DAY = 24 * 60 * 60 * 1000
 function liveStatus(s: PlusStatus, now: number): PlusStatus {
   const plusUntil = s.plusUntil ? Date.parse(s.plusUntil) : null
   if (plusUntil && plusUntil > now) return { ...s, access: true, plan: "plus", daysLeft: null }
+  // A subscription reaching its end date has usually just renewed: keep the server's
+  // "plus" until it says otherwise (usePlus re-checks right at that moment)
+  if (plusUntil && s.plan === "plus") return s
   if (!s.trialEndsAt) return s // paywall not launched yet: the server's answer stands
   const end = Date.parse(s.trialEndsAt)
   if (end > now) return { ...s, access: true, plan: "trial", daysLeft: Math.ceil((end - now) / DAY) }
@@ -64,7 +67,10 @@ export function usePlus() {
   useEffect(() => {
     if (next === null) return
     // setTimeout caps at ~24.8 days; re-arm in hourly steps for anything further out
-    const t = setTimeout(() => setNow(Date.now()), Math.min(next - Date.now() + 500, 60 * 60 * 1000))
+    const t = setTimeout(() => {
+      setNow(Date.now())
+      if (Date.now() >= next) q.refetch() // something just ended: ask the server
+    }, Math.min(next - Date.now() + 500, 60 * 60 * 1000))
     return () => clearTimeout(t)
   }, [next, now])
   const status = q.data ? liveStatus(q.data, now) : undefined
@@ -146,4 +152,24 @@ export async function restorePurchases(userId: string) {
   await ensurePurchases(userId)
   await Purchases.restorePurchases()
   await plusApi.sync()
+}
+
+export type PlusSubscription = {
+  period: "monthly" | "yearly" | null
+  willRenew: boolean
+  billingIssue: boolean
+}
+
+/** The store side of an active Plus subscription: plan length, auto-renew, payment trouble. */
+export async function loadSubscription(userId: string): Promise<PlusSubscription | null> {
+  if (!RC_KEY) return null
+  await ensurePurchases(userId)
+  const ent = (await Purchases.getCustomerInfo()).entitlements.active.plus
+  if (!ent) return null
+  const id = ent.productIdentifier.toLowerCase()
+  return {
+    period: /year|annual/.test(id) ? "yearly" : /month/.test(id) ? "monthly" : null,
+    willRenew: ent.willRenew,
+    billingIssue: !!ent.billingIssueDetectedAt,
+  }
 }

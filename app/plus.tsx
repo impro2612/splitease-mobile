@@ -12,7 +12,7 @@ import { MORE_ITEMS } from "@/lib/navigation"
 import { plusApi } from "@/lib/api"
 import { openPrivacy, openTerms } from "@/lib/legal"
 import { useAuthStore } from "@/store/auth"
-import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, paymentsReady, restorePurchases, usePlus, type PlusPlans } from "@/lib/plus"
+import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, loadSubscription, paymentsReady, restorePurchases, usePlus, type PlusPlans, type PlusSubscription } from "@/lib/plus"
 
 const FREE_FOREVER = ["Groups & unlimited expenses", "Balances & settle up", "Friends & chat", "Activity & notifications"]
 
@@ -37,6 +37,13 @@ export default function PlusScreen() {
   const features = MORE_ITEMS.filter((i) => PLUS_FEATURES.has(i.key))
   const isPlus = status?.plan === "plus"
   const onTrial = status?.plan === "trial"
+
+  // Monthly or yearly, renewing or cancelled — only the store knows, so ask RevenueCat
+  const [subInfo, setSubInfo] = useState<PlusSubscription | null>(null)
+  useEffect(() => {
+    if (!isPlus || !paymentsReady || !userId) return
+    loadSubscription(userId).then(setSubInfo).catch(() => {})
+  }, [isPlus, userId, status?.plusUntil])
 
   // Confetti each time a Plus member opens this page (and right after subscribing)
   const [celebrate, setCelebrate] = useState(false)
@@ -86,8 +93,12 @@ export default function PlusScreen() {
       : status?.daysLeft != null
         ? `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} of free Plus left`
         : "You have every feature free during your trial"
+  const planName = subInfo?.period === "monthly" ? "Monthly plan" : subInfo?.period === "yearly" ? "Yearly plan" : null
+  const dateLead = subInfo?.willRenew === false ? "Your Plus ends on" : subInfo?.willRenew ? "Your Plus renews on" : "You're on Plus until"
   const sub = isPlus
-    ? "Thanks for supporting SplitIT. Every feature is unlocked."
+    ? subInfo?.willRenew === false
+      ? "Auto-renew is off. You keep every feature until then."
+      : "Thanks for supporting SplitIT. Every feature is unlocked."
     : "Splitting stays free forever. Plus unlocks everything else."
 
   const planCard = (key: "yearly" | "monthly") => {
@@ -131,14 +142,23 @@ export default function PlusScreen() {
             // Members get a quieter, friendlier header than the sales pitch below
             <>
               <Text style={{ color: C.text, fontSize: 17, fontWeight: "600", marginTop: 14, textAlign: "center" }}>
-                <Text style={{ color: C.accentText, fontStyle: "italic" }}>Yeyy!</Text> You're on Plus until
+                <Text style={{ color: C.accentText, fontStyle: "italic" }}>Yeyy!</Text> {dateLead}
               </Text>
               {status?.plusUntil && (
                 <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}>
                   <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "600", letterSpacing: 0.3 }}>{formatDate(status.plusUntil)}</Text>
                 </View>
               )}
-              <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 10, textAlign: "center" }}>{sub}</Text>
+              {planName && <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", letterSpacing: 0.4, marginTop: 10 }}>{planName.toUpperCase()}</Text>}
+              <Text style={{ color: C.textMuted, fontSize: 13, marginTop: planName ? 4 : 10, textAlign: "center" }}>{sub}</Text>
+              {subInfo?.billingIssue && (
+                <View style={{ marginTop: 14, padding: 12, borderRadius: tokens.radius.md, backgroundColor: C.card, borderWidth: 1, borderColor: C.negative, flexDirection: "row", gap: 10 }}>
+                  <Ionicons name="alert-circle" size={18} color={C.negative} />
+                  <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 18, flex: 1 }}>
+                    We couldn't renew your Plus. Update your payment method in {Platform.OS === "ios" ? "the App Store" : "Google Play"} to keep it.
+                  </Text>
+                </View>
+              )}
             </>
           ) : (
             <>
