@@ -5,11 +5,12 @@ import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { Text } from "@/components/ui/Typography"
 import { tokens, useTheme } from "@/lib/theme"
-import { usePlus } from "@/lib/plus"
+import { plusLapsed, usePlus } from "@/lib/plus"
 
 /** Shown in place of a Plus screen once the trial has ended (e.g. opened from a notification). */
 function PlusLocked({ title }: { title: string }) {
   const C = useTheme()
+  const { status } = usePlus()
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
@@ -23,7 +24,9 @@ function PlusLocked({ title }: { title: string }) {
         </View>
         <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", marginTop: 16, textAlign: "center" }}>{title} is part of SplitIT Plus</Text>
         <Text style={{ color: C.textSub, fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
-          Your free trial has ended. Your data is safe. Subscribe to Plus to use it again.
+          {plusLapsed(status)
+            ? "Your Plus has ended. Your data is safe. Renew Plus to use it again."
+            : "Your free trial has ended. Your data is safe. Subscribe to Plus to use it again."}
         </Text>
         <TouchableOpacity
           onPress={() => router.replace("/plus" as any)}

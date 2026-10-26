@@ -28,6 +28,11 @@ export const PLUS_PRICES = { monthly: "₹49", yearly: "₹499" }
 
 const DAY = 24 * 60 * 60 * 1000
 
+/** Locked after a paid Plus ran out (as opposed to a free trial that ended). */
+export function plusLapsed(s: PlusStatus | undefined): boolean {
+  return s?.plan === "free" && !!s.plusUntil
+}
+
 /** Whole days until a cancelled Plus subscription ends, or null if it renews / isn't Plus. */
 export function plusEndsInDays(s: PlusStatus | undefined, now = Date.now()): number | null {
   if (s?.plan !== "plus" || s.willRenew !== false || !s.plusUntil) return null

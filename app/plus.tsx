@@ -12,7 +12,7 @@ import { MORE_ITEMS } from "@/lib/navigation"
 import { plusApi } from "@/lib/api"
 import { openPrivacy, openTerms } from "@/lib/legal"
 import { useAuthStore } from "@/store/auth"
-import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, loadSubscription, paymentsReady, plusEndsInDays, restorePurchases, usePlus, type PlusPlans, type PlusSubscription } from "@/lib/plus"
+import { PLUS_FEATURES, PLUS_PRICES, buyPlan, loadPlans, loadSubscription, paymentsReady, plusEndsInDays, plusLapsed, restorePurchases, usePlus, type PlusPlans, type PlusSubscription } from "@/lib/plus"
 
 const FREE_FOREVER = ["Groups & unlimited expenses", "Balances & settle up", "Friends & chat", "Activity & notifications"]
 
@@ -92,7 +92,7 @@ export default function PlusScreen() {
   const headline = isPlus
     ? `Yeyy!! 🎉 You're on Plus${status?.plusUntil ? ` until\n${formatDate(status.plusUntil)}` : ""}`
     : status?.plan === "free"
-      ? "Your free trial has ended"
+      ? plusLapsed(status) ? "Your Plus has ended" : "Your free trial has ended"
       : status?.daysLeft != null
         ? `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} of free Plus left`
         : "You have every feature free during your trial"

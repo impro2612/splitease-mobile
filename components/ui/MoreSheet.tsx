@@ -6,7 +6,7 @@ import { Text } from "@/components/ui/Typography"
 import { tokens, useTheme } from "@/lib/theme"
 import { MORE_ITEMS } from "@/lib/navigation"
 import { haptic } from "@/lib/haptics"
-import { PLUS_FEATURES, usePlus } from "@/lib/plus"
+import { PLUS_FEATURES, plusLapsed, usePlus } from "@/lib/plus"
 
 /** The More menu, shared by the tab layout and the stacked-screen tab bar. */
 export function MoreSheet({ visible, onClose, onSelect, disabled }: {
@@ -16,7 +16,7 @@ export function MoreSheet({ visible, onClose, onSelect, disabled }: {
   disabled?: boolean
 }) {
   const C = useTheme()
-  const { locked } = usePlus()
+  const { locked, status } = usePlus()
   const { bottom } = useSafeAreaInsets()
   const { height } = useWindowDimensions()
   const hiddenY = Math.max(300, height)
@@ -79,7 +79,7 @@ export function MoreSheet({ visible, onClose, onSelect, disabled }: {
             style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, marginBottom: 6, borderRadius: tokens.radius.md, backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accentBorder }}
           >
             <Ionicons name="sparkles" size={18} color={C.accentText} />
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: "600", flex: 1 }}>Your free trial has ended. Get Plus to unlock all features.</Text>
+            <Text style={{ color: C.text, fontSize: 13, fontWeight: "600", flex: 1 }}>{plusLapsed(status) ? "Your Plus has ended. Renew to unlock all features." : "Your free trial has ended. Get Plus to unlock all features."}</Text>
             <Ionicons name="chevron-forward" size={16} color={C.accentText} />
           </TouchableOpacity>
         )}
