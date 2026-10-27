@@ -727,7 +727,7 @@ function ChatScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{friendName}</Text>
-              <Text style={{ color: C.positive, fontSize: 11, fontWeight: "500" }}>Encrypted in transit and at rest</Text>
+              <Text style={{ color: C.positive, fontSize: 11, fontWeight: "500" }}>Encrypted</Text>
             </View>
           </>
         )}
