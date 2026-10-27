@@ -387,8 +387,6 @@ export default function RootLayout() {
                   <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: scheme === "light" ? "#f8fafc" : "#0a0a1a" } }}>
                     <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-                    <Stack.Screen name="chat/[friendId]" options={{ headerShown: false }} />
                     <Stack.Screen name="confirm-expense" options={{ headerShown: false, presentation: "modal" }} />
                   </Stack>
                 </>
