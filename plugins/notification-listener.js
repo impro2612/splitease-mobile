@@ -2,6 +2,9 @@ const { withAndroidManifest, withDangerousMod } = require("@expo/config-plugins"
 const fs = require("fs")
 const path = require("path")
 
+// Native classes live in the app's own package (android.package in app.json)
+const appPackage = (config) => config.android?.package ?? "com.splititapp.android"
+
 function withNotificationListenerManifest(config) {
   return withAndroidManifest(config, (config) => {
     const manifest = config.modResults.manifest
@@ -9,7 +12,7 @@ function withNotificationListenerManifest(config) {
 
     // ── NotificationListenerService ──────────────────────────────────────────
     if (!app.service) app.service = []
-    const serviceName = "com.splitit.app.ExpenseNotificationListener"
+    const serviceName = `${appPackage(config)}.ExpenseNotificationListener`
     if (!app.service.find((s) => s.$["android:name"] === serviceName)) {
       app.service.push({
         $: {
@@ -30,7 +33,7 @@ function withNotificationListenerManifest(config) {
 
     // ── Action receiver (approve / reject notification buttons) ───────────────
     if (!app.receiver) app.receiver = []
-    const actionReceiverName = "com.splitit.app.ExpenseActionReceiver"
+    const actionReceiverName = `${appPackage(config)}.ExpenseActionReceiver`
     if (!app.receiver.find((r) => r.$["android:name"] === actionReceiverName)) {
       app.receiver.push({
         $: {
@@ -57,9 +60,11 @@ function withNotificationListenerKotlinFiles(config) {
   return withDangerousMod(config, [
     "android",
     async (config) => {
+      const pkg = appPackage(config)
       const packageDir = path.join(
         config.modRequest.platformProjectRoot,
-        "app/src/main/java/com/splitit/app"
+        "app/src/main/java",
+        ...pkg.split(".")
       )
       fs.mkdirSync(packageDir, { recursive: true })
 
@@ -71,7 +76,9 @@ function withNotificationListenerKotlinFiles(config) {
         "TrackExpensePackage.kt",
       ]
       for (const f of files) {
-        fs.copyFileSync(path.join(kotlinSrc, f), path.join(packageDir, f))
+        // Sources are written for com.splitit.app; retarget them to the real package
+        const src = fs.readFileSync(path.join(kotlinSrc, f), "utf8").replace(/^package com\.splitit\.app$/m, `package ${pkg}`)
+        fs.writeFileSync(path.join(packageDir, f), src)
       }
 
       // Patch MainApplication.kt to register TrackExpensePackage
