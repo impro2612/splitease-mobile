@@ -93,7 +93,6 @@ export default function Friends() {
     enabled: !chatLocked,
   })
   const groupChats = chatLocked ? [] : groupChatsData ?? []
-  const groupUnread = groupChats.reduce((n, c) => n + (c.left || c.muted ? 0 : c.unread), 0)
 
   const friends: any[] = friendsData?.friends ?? []
   const incoming: any[] = friendsData?.incoming ?? []
@@ -392,8 +391,8 @@ export default function Friends() {
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "friends", label: "Friends", badge: friends.length },
-    { key: "requests", label: "Requests", badge: incoming.length || undefined },
-    { key: "groups", label: "Group Chats", badge: groupUnread || undefined },
+    { key: "requests", label: "Requests", badge: incoming.length },
+    { key: "groups", label: "Group Chats", badge: groupChats.length },
   ]
 
   return (
@@ -448,7 +447,7 @@ export default function Friends() {
             }}
           >
             <Text style={{ color: tab === t.key ? "#fff" : C.textSub, fontWeight: "600", fontSize: 13 }}>{t.label}</Text>
-            {t.badge ? (
+            {t.badge !== undefined ? (
               <View style={{ backgroundColor: tab === t.key ? "rgba(255,255,255,0.3)" : "#6366f1", borderRadius: 10, minWidth: 18, height: 18, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
                 <Text style={{ color: C.text, fontSize: 10, fontWeight: "700" }}>{t.badge}</Text>
               </View>

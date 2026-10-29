@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { View, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Keyboard, Animated } from "react-native"
+import { View, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Keyboard, Animated, ScrollView } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import * as Clipboard from "expo-clipboard"
@@ -101,6 +101,7 @@ function GroupChatScreen() {
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
   const [actionState, setActionState] = useState<{ msg: Message; anchor: MenuAnchor } | null>(null)
   const actionMsg = actionState?.msg ?? null
   const reactionTargetRef = useRef<Message | null>(null)
@@ -136,13 +137,26 @@ function GroupChatScreen() {
       const res = await groupChatsApi.history(groupId, { after: lastFetchRef.current ?? undefined, limit: 50 })
       const { messages: raw, hasMore: more } = res.data
       const decrypted: Message[] = raw.map((m: any) => ({ ...m, content: decrypt(m.content, key) }))
-      if (!lastFetchRef.current) setHasMore(more) // first page decides whether older ones exist
-      if (decrypted.length > 0) {
+      const firstPage = !lastFetchRef.current
+      if (firstPage) setHasMore(more) // first page decides whether older ones exist
+      if (firstPage) {
+        // The server's latest page is the truth: drop cached messages in that window it no
+        // longer has (deleted by their sender while this chat was closed)
+        const oldest = decrypted.length ? decrypted[decrypted.length - 1].createdAt : null
+        setMessages((prev) => {
+          const kept = prev.filter((m) => m.pending || (more && oldest && m.createdAt < oldest))
+          const merged = mergeMessages(kept, decrypted)
+          saveCache(ck, merged)
+          return merged
+        })
+      } else if (decrypted.length > 0) {
         setMessages((prev) => {
           const merged = mergeMessages(prev, decrypted)
           saveCache(ck, merged)
           return merged
         })
+      }
+      if (decrypted.length > 0) {
         lastFetchRef.current = decrypted[0].createdAt // newest first
       }
     } catch (err) {
@@ -596,6 +610,10 @@ function GroupChatScreen() {
               onPress={() => { setMenuOpen(false); router.push(`/group/${groupId}` as any) }}
             />
             <MenuRow
+              icon="person-circle-outline" label="View members" color={C.text}
+              onPress={() => { setMenuOpen(false); setMembersOpen(true) }}
+            />
+            <MenuRow
               icon={info?.muted ? "notifications-outline" : "notifications-off-outline"}
               label={info?.muted ? "Unmute notifications" : "Mute notifications"}
               color={C.text}
@@ -622,6 +640,46 @@ function GroupChatScreen() {
               />
             )}
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* Members of the group (= members of the chat) */}
+      <Modal visible={membersOpen} transparent animationType="fade" onRequestClose={() => setMembersOpen(false)}>
+        <Pressable onPress={() => setMembersOpen(false)} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
+          <Pressable onPress={() => {}} style={{ backgroundColor: C.card, borderRadius: 24, borderWidth: 1, borderColor: C.border, paddingVertical: 20, maxHeight: "75%" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.text, fontSize: 18, fontWeight: "800" }}>Members</Text>
+                <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{info?.members.length ?? 0} in {title}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setMembersOpen(false)} style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="close" size={18} color={C.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {[...(info?.members ?? [])]
+                .sort((a, b) => (a.id === myId ? -1 : b.id === myId ? 1 : (a.role === "ADMIN" ? 0 : 1) - (b.role === "ADMIN" ? 0 : 1)))
+                .map((m) => {
+                  const display = m.name || m.email
+                  return (
+                    <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: nameColor(m.id), alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>{display.charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }} numberOfLines={1}>{m.id === myId ? `${display} (You)` : display}</Text>
+                        <Text style={{ color: C.textMuted, fontSize: 12 }} numberOfLines={1}>{m.left ? "Left the chat" : m.email}</Text>
+                      </View>
+                      {m.role === "ADMIN" && (
+                        <View style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <Text style={{ color: C.accentText, fontSize: 11, fontWeight: "700" }}>Admin</Text>
+                        </View>
+                      )}
+                    </View>
+                  )
+                })}
+            </ScrollView>
+          </Pressable>
         </Pressable>
       </Modal>
 
