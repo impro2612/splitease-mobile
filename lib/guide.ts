@@ -67,7 +67,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     ],
     tips: [
       "Only people on your friends list can be added, so add friends first.",
-      "You can change the name, emoji, currency and location later with the pencil button inside the group.",
+      "You can change the name, picture, currency and location later — just tap the group's name at the top.",
     ],
     route: "/(tabs)/groups",
     routeLabel: "Go to Groups",
@@ -161,7 +161,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       "Inside a group, tap the people icon at the top to see members. Tap it again (or Done) to go back.",
       "Tap Add members to add more friends.",
       "Admins can make another member an admin or remove a member.",
-      "Tap the pencil icon to edit the group's name, emoji, currency and location.",
+      "Tap the group's name at the top to edit its name, picture, currency and location.",
+      "Tap the chat button next to it to open the group's chat (SplitIT Plus).",
       "Admins can delete the whole group at the bottom of the edit screen.",
     ],
     tips: [
@@ -302,7 +303,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     summary: "Your trips on a world map",
     about: "Timeline puts every group that has a location on a map, so you can look back at where you've been.",
     steps: [
-      "Add a location to a group when creating it, or later with the group's pencil button.",
+      "Add a location to a group when creating it, or later by tapping the group's name.",
       "Open More → Timeline to see a pin for each place.",
       "Tap a year at the top to show only that year's trips.",
       "Tap a pin to see the group name and dates. Pinch or use + / − to zoom.",

@@ -8,6 +8,7 @@ import { createPusher } from "@/lib/pusher"
 import * as ExpoCrypto from "expo-crypto"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { useLocalSearchParams, router } from "expo-router"
+import { usePlus } from "@/lib/plus"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
@@ -237,6 +238,7 @@ function BarChart({ data, maxAmt, barHeight, symbol, code }: {
 
 export default function GroupDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { locked: chatLocked } = usePlus() // group chat is a Plus feature
   const insets = useSafeAreaInsets()
   const { height: windowH } = useWindowDimensions()
   const { user } = useAuthStore()
@@ -909,13 +911,21 @@ export default function GroupDetail() {
           <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Back">
             <Ionicons name="arrow-back" size={18} color={C.text} />
           </TouchableOpacity>
-          <GroupAvatar emoji={group?.emoji} imageUrl={group?.imageUrl} color={group?.color ?? tokens.accent} size={42} radius={13} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontSize: 19, fontWeight: "800" }} numberOfLines={1}>{group?.name}</Text>
-            <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
-              {members.length} member{members.length === 1 ? "" : "s"} · {gc.code}{group?.description ? ` · ${group.description}` : ""}
-            </Text>
-          </View>
+          {/* Tap the picture or name to edit the group */}
+          <TouchableOpacity
+            onPress={() => { haptic.tap(); openEditGroup() }}
+            activeOpacity={0.7}
+            style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}
+            accessibilityLabel="Edit group"
+          >
+            <GroupAvatar emoji={group?.emoji} imageUrl={group?.imageUrl} color={group?.color ?? tokens.accent} size={42} radius={13} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.text, fontSize: 19, fontWeight: "800" }} numberOfLines={1}>{group?.name}</Text>
+              <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+                {members.length} member{members.length === 1 ? "" : "s"} · {gc.code}{group?.description ? ` · ${group.description}` : ""}
+              </Text>
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => { haptic.tap(); if (tab !== "members") setPrevTab(tab); setTab(tab === "members" ? prevTab : "members") }}
             style={{ backgroundColor: tab === "members" ? tokens.accentSoft : C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
@@ -923,12 +933,18 @@ export default function GroupDetail() {
           >
             <Ionicons name="people-outline" size={18} color={tab === "members" ? C.accentText : C.text} />
           </TouchableOpacity>
+          {/* This group's chat (SplitIT Plus) */}
           <TouchableOpacity
-            onPress={() => { haptic.tap(); openEditGroup() }}
-            style={{ backgroundColor: tokens.accentSoft, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
-            accessibilityLabel="Edit group"
+            onPress={() => { haptic.tap(); router.push({ pathname: "/group-chat/[groupId]", params: { groupId: id, name: group?.name ?? "" } } as any) }}
+            style={{ backgroundColor: chatLocked ? C.iconBg : "rgba(34,197,94,0.15)", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+            accessibilityLabel={chatLocked ? "Group chat (SplitIT Plus)" : "Group chat"}
           >
-            <Ionicons name="pencil" size={16} color={C.accentText} />
+            <Ionicons name="chatbubbles" size={17} color={chatLocked ? C.textMuted : C.positive} />
+            {chatLocked ? (
+              <View style={{ position: "absolute", right: -3, top: -3, width: 16, height: 16, borderRadius: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="lock-closed" size={9} color={C.accentText} />
+              </View>
+            ) : null}
           </TouchableOpacity>
         </View>
 
