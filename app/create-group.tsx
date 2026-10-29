@@ -13,6 +13,7 @@ import { useTheme } from "@/lib/theme"
 import { GROUP_COLORS, GROUP_EMOJIS, toLocalDateKey } from "@/lib/utils"
 import { useAuthStore } from "@/store/auth"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
+import { AutoIconButton } from "@/components/AutoIconButton"
 
 export default function CreateGroup() {
   const C = useTheme()
@@ -227,9 +228,12 @@ export default function CreateGroup() {
               <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>
 
-            <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 6, marginTop: 2 }}>Icon</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, marginTop: 2 }}>
+              <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>Icon</Text>
+              <AutoIconButton name={name} location={location} onPick={(e, c) => { setEmoji(e); setColor(c) }} />
+            </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {GROUP_EMOJIS.map((e) => (
+              {(GROUP_EMOJIS.includes(emoji) ? GROUP_EMOJIS : [emoji, ...GROUP_EMOJIS]).map((e) => (
                 <TouchableOpacity key={e} onPress={() => setEmoji(e)} style={{ width: 46, height: 46, borderRadius: 13, backgroundColor: emoji === e ? "rgba(99,102,241,0.3)" : C.iconBg, borderWidth: emoji === e ? 2 : 1, borderColor: emoji === e ? "#6366f1" : C.border, alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 21 }}>{e}</Text>
                 </TouchableOpacity>
