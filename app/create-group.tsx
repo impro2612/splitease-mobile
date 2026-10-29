@@ -10,7 +10,7 @@ import Toast from "react-native-toast-message"
 import { groupsApi } from "@/lib/api"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
-import { GROUP_COLORS, toLocalDateKey } from "@/lib/utils"
+import { toLocalDateKey } from "@/lib/utils"
 import { useAuthStore } from "@/store/auth"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
 import { GroupIconPicker, type PickedImage } from "@/components/GroupIconPicker"
@@ -240,12 +240,6 @@ export default function CreateGroup() {
               onImage={setImage}
             />
 
-            <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Color</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {GROUP_COLORS.map((c) => (
-                <TouchableOpacity key={c} onPress={() => setColor(c)} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c, borderWidth: color === c ? 3 : 0, borderColor: C.isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)" }} />
-              ))}
-            </View>
           </ScrollView>
 
           <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(24, insets.bottom + 12), paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
