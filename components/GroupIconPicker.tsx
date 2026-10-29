@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { View, TouchableOpacity, ScrollView, ActivityIndicator, Linking } from "react-native"
+import { View, TouchableOpacity, ActivityIndicator, Linking } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Image } from "expo-image"
 import Toast from "react-native-toast-message"
@@ -28,9 +28,10 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
   onImage: (image: PickedImage | null) => void
 }) {
   const C = useTheme()
-  const [photos, setPhotos] = useState<GroupImage[]>([])
+  const [shown, setShown] = useState<GroupImage[]>([])
   const [loading, setLoading] = useState(false)
-  const state = useRef({ key: "", page: 0, hasMore: true, emojiIndex: -1 })
+  // wiki: the place photo (if any); pool: Unsplash photos; cursor: which pool photo is shown
+  const state = useRef({ key: "", page: 0, hasMore: true, emojiIndex: -1, wiki: null as GroupImage | null, pool: [] as GroupImage[], cursor: 0 })
 
   function choosePhoto(p: GroupImage) {
     haptic.tap()
@@ -38,6 +39,18 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
     if (p.downloadLocation) groupImageApi.select(p.downloadLocation).catch(() => {})
   }
 
+  async function fetchPage(page: number) {
+    const s = state.current
+    const res = await groupImageApi.search({ name, location: location ?? undefined, theme: groupTheme(name) || undefined, page })
+    s.page = page
+    s.hasMore = res.data.hasMore
+    if (page === 1) s.wiki = res.data.images.find((i) => i.credit.source === "wikipedia") ?? null
+    s.pool = res.data.images.filter((i) => i.credit.source === "unsplash")
+    s.cursor = 0
+  }
+
+  // Two choices per tap: the Wikipedia photo of the place + one Unsplash photo,
+  // or two Unsplash photos when the name isn't a place
   async function generate() {
     if (loading) return
     if (!name.trim() && !location?.trim()) {
@@ -47,9 +60,8 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
     haptic.tap()
     const key = `${name.trim().toLowerCase()}|${(location ?? "").trim().toLowerCase()}`
     const s = state.current
-    if (s.key !== key) Object.assign(s, { key, page: 0, hasMore: true, emojiIndex: -1 })
-    // Next page of photos, wrapping back to the first once we run out
-    s.page = s.hasMore ? s.page + 1 : 1
+    const fresh = s.key !== key
+    if (fresh) Object.assign(s, { key, page: 0, hasMore: true, emojiIndex: -1, wiki: null, pool: [], cursor: 0 })
 
     // The emoji updates instantly and is the fallback when there's no photo
     const icons = suggestGroupIcons(name, location)
@@ -59,13 +71,20 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
 
     setLoading(true)
     try {
-      const res = await groupImageApi.search({ name, location: location ?? undefined, theme: groupTheme(name) || undefined, page: s.page })
-      s.hasMore = res.data.hasMore
-      if (res.data.images.length > 0) {
-        setPhotos(res.data.images)
-        choosePhoto(res.data.images[0])
-      } else if (s.page === 1) {
-        setPhotos([])
+      const step = s.wiki ? 1 : 2
+      if (fresh) {
+        await fetchPage(1)
+      } else if (s.cursor + step * 2 <= s.pool.length) {
+        s.cursor += step // next photo(s) from what we already have — no extra search
+      } else {
+        await fetchPage(s.hasMore ? s.page + 1 : 1) // more photos, or start over
+      }
+      const unsplash = s.pool.slice(s.cursor, s.cursor + (s.wiki ? 1 : 2))
+      const next = [...(s.wiki ? [s.wiki] : []), ...unsplash]
+      setShown(next)
+      if (next.length > 0) {
+        choosePhoto(next[0])
+      } else {
         onImage(null)
         Toast.show({ type: "info", text1: "No photo found", text2: "Picked the best emoji instead." })
       }
@@ -91,19 +110,27 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
         </TouchableOpacity>
       </View>
 
-      {photos.length > 0 && (
-        <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 6 }}>
-            {photos.map((p) => {
-              const selected = image?.url === p.url
-              return (
-                <TouchableOpacity key={p.url} onPress={() => choosePhoto(p)} style={{ borderRadius: 14, borderWidth: 2, borderColor: selected ? "#6366f1" : "transparent", padding: 2 }}>
-                  <Image source={{ uri: p.thumb }} style={{ width: 64, height: 64, borderRadius: 11, backgroundColor: C.iconBg }} contentFit="cover" transition={150} />
-                </TouchableOpacity>
-              )
-            })}
-          </ScrollView>
-        </>
+      {shown.length > 0 && (
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 8 }}>
+          {shown.map((p) => {
+            const selected = image?.url === p.url
+            return (
+              <TouchableOpacity key={p.url} onPress={() => choosePhoto(p)} style={{ alignItems: "center", gap: 4 }}>
+                <View style={{ borderRadius: 18, borderWidth: 2.5, borderColor: selected ? "#6366f1" : "transparent", padding: 2 }}>
+                  <Image source={{ uri: p.thumb }} style={{ width: 92, height: 92, borderRadius: 14, backgroundColor: C.iconBg }} contentFit="cover" transition={150} />
+                  {selected && (
+                    <View style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="checkmark" size={14} color="#fff" />
+                    </View>
+                  )}
+                </View>
+                <Text style={{ color: selected ? C.text : C.textMuted, fontSize: 11, fontWeight: "600" }}>
+                  {p.credit.source === "wikipedia" ? "Wikipedia" : "Unsplash"}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
       )}
       {credit && (
         // Unsplash requires the photographer and Unsplash to be credited and linked separately
