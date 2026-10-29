@@ -2,6 +2,8 @@ import { useRef, useState } from "react"
 import { View, TouchableOpacity, ActivityIndicator, Linking } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Image } from "expo-image"
+import * as ImagePicker from "expo-image-picker"
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator"
 import Toast from "react-native-toast-message"
 import { Text } from "@/components/ui/Typography"
 import { useTheme } from "@/lib/theme"
@@ -12,6 +14,9 @@ import { groupImageApi, type GroupImage, type GroupImageCredit } from "@/lib/api
 
 const UNSPLASH_HOME = "https://unsplash.com/?utm_source=splitit&utm_medium=referral"
 const open = (url: string) => Linking.openURL(url).catch(() => {})
+
+// A photo the user can pick: a suggestion, or their own upload (no credit)
+type Choice = Omit<GroupImage, "credit"> & { credit: GroupImageCredit | null }
 
 export type PickedImage = { url: string; credit: GroupImageCredit | null }
 
@@ -28,12 +33,13 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
   onImage: (image: PickedImage | null) => void
 }) {
   const C = useTheme()
-  const [shown, setShown] = useState<GroupImage[]>([])
+  const [shown, setShown] = useState<Choice[]>([])
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   // wiki: the place photo (if any); pool: Unsplash photos; cursor: which pool photo is shown
   const state = useRef({ key: "", page: 0, hasMore: true, emojiIndex: -1, wiki: null as GroupImage | null, pool: [] as GroupImage[], cursor: 0 })
 
-  function choosePhoto(p: GroupImage) {
+  function choosePhoto(p: Choice) {
     haptic.tap()
     onImage({ url: p.url, credit: p.credit })
     if (p.downloadLocation) groupImageApi.select(p.downloadLocation).catch(() => {})
@@ -95,19 +101,56 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
     }
   }
 
+  // Upload photo: the user's own picture, cropped square and shrunk on the phone first
+  async function uploadPhoto() {
+    if (uploading) return
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== "granted") {
+      Toast.show({ type: "error", text1: "Permission required", text2: "Allow photo access to choose a group picture" })
+      return
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 1 })
+    if (picked.canceled || !picked.assets?.[0]?.uri) return
+    setUploading(true)
+    try {
+      const rendered = await ImageManipulator.manipulate(picked.assets[0].uri).resize({ width: 400, height: 400 }).renderAsync()
+      const small = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.75, base64: true })
+      if (!small.base64) throw new Error("no image data")
+      const res = await groupImageApi.upload(small.base64)
+      const mine: Choice = { url: res.data.url, thumb: res.data.url, credit: null }
+      setShown((prev) => [mine, ...prev.filter((p) => p.credit)])
+      haptic.tap()
+      onImage({ url: res.data.url, credit: null })
+    } catch (err: any) {
+      Toast.show({ type: "error", text1: "Couldn't upload the photo", text2: err?.response?.data?.error ?? "Please try again" })
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const credit = image?.credit
   return (
     <View style={{ marginBottom: 16 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, marginTop: 2 }}>
         <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>Icon</Text>
-        <TouchableOpacity
-          onPress={generate}
-          accessibilityLabel="Auto generate icon"
-          style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}
-        >
-          {loading ? <ActivityIndicator size="small" color={C.accentText} /> : <Ionicons name="sparkles" size={13} color={C.accentText} />}
-          <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "700" }}>Auto generate</Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: "flex-end", gap: 6 }}>
+          <TouchableOpacity
+            onPress={generate}
+            accessibilityLabel="Auto generate icon"
+            style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 128, justifyContent: "center" }}
+          >
+            {loading ? <ActivityIndicator size="small" color={C.accentText} /> : <Ionicons name="sparkles" size={13} color={C.accentText} />}
+            <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "700" }}>Auto generate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={uploadPhoto}
+            accessibilityLabel="Upload photo from gallery"
+            style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 128, justifyContent: "center" }}
+          >
+            {uploading ? <ActivityIndicator size="small" color={C.accentText} /> : <Ionicons name="image-outline" size={13} color={C.accentText} />}
+            <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "700" }}>Upload photo</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {shown.length > 0 && (
@@ -125,7 +168,7 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
                   )}
                 </View>
                 <Text style={{ color: selected ? C.text : C.textMuted, fontSize: 11, fontWeight: "600" }}>
-                  {p.credit.source === "wikipedia" ? "Wikipedia" : "Unsplash"}
+                  {!p.credit ? "Your photo" : p.credit.source === "wikipedia" ? "Wikipedia" : "Unsplash"}
                 </Text>
               </TouchableOpacity>
             )

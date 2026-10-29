@@ -131,6 +131,7 @@ export const groupImageApi = {
   search: (params: { name: string; location?: string; theme?: string; page?: number }) =>
     api.get<{ images: GroupImage[]; hasMore: boolean }>("/api/group-image", { params }),
   select: (downloadLocation: string) => api.post("/api/group-image/select", { downloadLocation }),
+  upload: (base64: string) => api.post<{ url: string }>("/api/group-photo", { data: base64 }),
 }
 
 // Members
