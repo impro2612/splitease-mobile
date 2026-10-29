@@ -78,6 +78,7 @@ export default function FloatingContextMenu({
         onPress={onDismiss}
       >
         {/* Emoji bar */}
+        {(emojis.length > 0 || onMoreEmoji) && (
         <Animated.View
           style={{
             position: "absolute",
@@ -144,6 +145,7 @@ export default function FloatingContextMenu({
             )}
           </Pressable>
         </Animated.View>
+        )}
 
         {/* Action items */}
         {actions.length > 0 && (

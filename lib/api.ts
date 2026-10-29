@@ -239,6 +239,22 @@ export const reactionsApi = {
     api.post(`/api/groups/${groupId}/expenses/${expenseId}/reactions`, { emoji }),
 }
 
+// Group chat — one chat per group
+export const groupChatsApi = {
+  list: () => api.get("/api/group-chats"),
+  info: (groupId: string) => api.get(`/api/group-chats/${groupId}`),
+  update: (groupId: string, data: { muted?: boolean; left?: boolean }) =>
+    api.patch(`/api/group-chats/${groupId}`, data),
+  history: (groupId: string, params?: { after?: string; before?: string; limit?: number }) =>
+    api.get(`/api/group-chats/${groupId}/messages`, { params }),
+  send: (groupId: string, data: { content: string; clientId: string }) =>
+    api.post(`/api/group-chats/${groupId}/messages`, data),
+  delete: (groupId: string, ids: string[]) =>
+    api.delete(`/api/group-chats/${groupId}/messages`, { data: { ids } }),
+  react: (groupId: string, messageId: string, emoji: string) =>
+    api.post(`/api/group-chats/${groupId}/reactions`, { messageId, emoji }),
+}
+
 export const messageReactionsApi = {
   toggle: (messageId: string, emoji: string) =>
     api.post(`/api/messages/${messageId}/reactions`, { emoji }),

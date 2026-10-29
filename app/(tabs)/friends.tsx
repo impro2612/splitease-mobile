@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import { View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Linking, Platform, FlatList, AppState, AppStateStatus } from "react-native"
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Linking, Platform, FlatList, AppState, AppStateStatus, BackHandler } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import * as Contacts from "expo-contacts"
 import * as SecureStore from "expo-secure-store"
@@ -9,7 +9,8 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, type Href, useFocusEffect } from "expo-router"
 import type Pusher from "pusher-js/react-native"
 import { createPusher } from "@/lib/pusher"
-import { friendsApi, usersApi, blocksApi } from "@/lib/api"
+import { friendsApi, usersApi, blocksApi, groupChatsApi } from "@/lib/api"
+import { GroupChatsList, type GroupChatRow } from "@/components/GroupChatsList"
 import { useAuthStore } from "@/store/auth"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Avatar } from "@/components/ui/Avatar"
@@ -20,7 +21,7 @@ import { usePlus } from "@/lib/plus"
 
 const SIGNUP_URL = "https://splitwithease.vercel.app/signup"
 
-type Tab = "friends" | "requests" | "search"
+type Tab = "friends" | "requests" | "groups" | "search"
 
 type Contact = {
   id: string
@@ -85,6 +86,15 @@ export default function Friends() {
     },
   })
 
+  // Group chats — one per group (Plus)
+  const { data: groupChatsData, isLoading: groupChatsLoading, refetch: refetchGroupChats } = useQuery({
+    queryKey: ["group-chats"],
+    queryFn: async () => (await groupChatsApi.list()).data.chats as GroupChatRow[],
+    enabled: !chatLocked,
+  })
+  const groupChats = chatLocked ? [] : groupChatsData ?? []
+  const groupUnread = groupChats.reduce((n, c) => n + (c.left || c.muted ? 0 : c.unread), 0)
+
   const friends: any[] = friendsData?.friends ?? []
   const incoming: any[] = friendsData?.incoming ?? []
   const outgoing: any[] = friendsData?.outgoing ?? []
@@ -93,7 +103,17 @@ export default function Friends() {
   useFocusEffect(
     useCallback(() => {
       refetch()
-    }, [refetch])
+      if (!chatLocked) refetchGroupChats()
+    }, [refetch, refetchGroupChats, chatLocked])
+  )
+
+  // Hardware back on the Add friends view returns to the friends list
+  useFocusEffect(
+    useCallback(() => {
+      if (tab !== "search") return
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => { setTab("friends"); return true })
+      return () => sub.remove()
+    }, [tab])
   )
 
   // Real-time unread badge updates via Pusher
@@ -135,6 +155,7 @@ export default function Friends() {
     channel.bind("new-message", invalidateFriends)
     channel.bind("friend-request", invalidateFriends)
     channel.bind("friend-update", invalidateFriends)
+    channel.bind("group-message", () => queryClient.invalidateQueries({ queryKey: ["group-chats"] }))
     channel.bind("pusher:subscription_succeeded", markLive)
     channel.bind("pusher:subscription_error", markPaused)
     ;(pusher.connection as any).bind?.("connected", markLive)
@@ -372,17 +393,30 @@ export default function Friends() {
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "friends", label: "Friends", badge: friends.length },
     { key: "requests", label: "Requests", badge: incoming.length || undefined },
-    { key: "search", label: "Add" },
+    { key: "groups", label: "Group Chats", badge: groupUnread || undefined },
   ]
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
-        <View>
-          <Text style={{ color: C.text, fontSize: 24, fontWeight: "800" }}>Friends</Text>
-          <Text style={{ color: C.textMuted, fontSize: 13 }}>{friends.length} friend{friends.length !== 1 ? "s" : ""}</Text>
-        </View>
+        {tab === "search" ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => setTab("friends")}
+              accessibilityLabel="Back to friends"
+              style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
+            >
+              <Ionicons name="arrow-back" size={18} color={C.text} />
+            </TouchableOpacity>
+            <Text style={{ color: C.text, fontSize: 24, fontWeight: "800" }}>Add friends</Text>
+          </View>
+        ) : (
+          <View>
+            <Text style={{ color: C.text, fontSize: 24, fontWeight: "800" }}>Friends</Text>
+            <Text style={{ color: C.textMuted, fontSize: 13 }}>{friends.length} friend{friends.length !== 1 ? "s" : ""}</Text>
+          </View>
+        )}
         {tab === "search" && contactsPermission === "granted" && (
           <TouchableOpacity
             onPress={loadContacts}
@@ -399,6 +433,7 @@ export default function Friends() {
 
       {/* Tabs + Content — greyed when offline */}
       <View style={{ flex: 1, opacity: isOnline ? 1 : 0.4 }} pointerEvents={isOnline ? "auto" : "none"}>
+      {tab !== "search" && (
       <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 8, marginBottom: 16 }}>
         {tabs.map((t) => (
           <TouchableOpacity
@@ -421,6 +456,7 @@ export default function Friends() {
           </TouchableOpacity>
         ))}
       </View>
+      )}
 
       {liveUpdatesPaused && (
         <View style={{ marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: "rgba(245,158,11,0.28)", backgroundColor: "rgba(245,158,11,0.12)", flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -435,6 +471,7 @@ export default function Friends() {
       {tab === "friends" && (
         <ScrollView
           style={{ flex: 1, paddingHorizontal: 20 }}
+          contentContainerStyle={{ paddingBottom: 90 }}
           showsVerticalScrollIndicator={false}
         >
           {isLoading ? (
@@ -504,7 +541,7 @@ export default function Friends() {
       {/* Requests Tab */}
       {tab === "requests" && (
         <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
-          <View style={{ gap: 16, paddingBottom: 32 }}>
+          <View style={{ gap: 16, paddingBottom: 90 }}>
             {incoming.length > 0 && (
               <View>
                 <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Incoming ({incoming.length})</Text>
@@ -575,6 +612,11 @@ export default function Friends() {
             )}
           </View>
         </ScrollView>
+      )}
+
+      {/* Group Chats Tab */}
+      {tab === "groups" && (
+        <GroupChatsList chats={groupChats} loading={groupChatsLoading} locked={chatLocked} myId={user?.id ?? ""} />
       )}
 
       {/* Add / Search Tab */}
@@ -852,6 +894,21 @@ export default function Friends() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+      {/* Add friend — floating + button */}
+      {tab !== "search" && (
+        <TouchableOpacity
+          onPress={() => setTab("search")}
+          activeOpacity={0.85}
+          accessibilityLabel="Add friends"
+          style={{
+            position: "absolute", right: 20, bottom: 20, width: 58, height: 58, borderRadius: 29,
+            backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center",
+            shadowColor: "#6366f1", shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8,
+          }}
+        >
+          <Ionicons name="add" size={30} color="#fff" />
+        </TouchableOpacity>
+      )}
       </View>{/* end offline wrapper */}
     </SafeAreaView>
   )

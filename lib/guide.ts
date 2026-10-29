@@ -198,12 +198,14 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     summary: "Add friends, invite people and chat privately",
     about: "Your friends list is who you can add to groups, record IOUs with and chat with.",
     steps: [
-      "Go to the Friends tab and tap Add.",
+      "Go to the Friends tab and tap the + button at the bottom.",
       "Search by name, email or phone number and send a friend request.",
       "Or tap Sync Contacts to see which of your contacts are already on SplitIT — invite the rest by WhatsApp or text message.",
       "Incoming requests appear under Requests — accept or decline them there.",
       "Tap the chat icon next to a friend to message them (chat is part of SplitIT Plus).",
       "In a chat, long-press a message to react, copy it or delete it.",
+      "Every group has its own group chat with all its members. Open it from Friends → Group Chats (also part of SplitIT Plus).",
+      "Tap ⋮ in a group chat to mute it or exit it. Exiting keeps you in the group, and you can rejoin the chat any time.",
     ],
     tips: [
       "Messages are encrypted in transit and at rest.",

@@ -242,6 +242,12 @@ function handleAppUrl(url?: string) {
     return
   }
 
+  if (path.startsWith("group-chat/")) {
+    const groupId = path.split("/")[1]
+    if (groupId) router.push({ pathname: "/group-chat/[groupId]", params: { groupId } } as any)
+    return
+  }
+
   if (path.startsWith("group/")) {
     const groupId = path.split("/")[1]
     if (groupId) router.push(`/group/${groupId}` as any)
