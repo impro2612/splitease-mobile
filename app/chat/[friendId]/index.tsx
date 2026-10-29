@@ -75,13 +75,16 @@ function ChatScreen() {
   const actionMsg = actionState?.msg ?? null
   const reactionTargetRef = useRef<Message | null>(null)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
-  const composerTranslateY = useRef(new Animated.Value(0)).current
+  // Android: the screen doesn't resize for the keyboard (edge-to-edge), so we lift the
+  // whole chat by the keyboard's height — the list shrinks and the last message stays visible
+  const [kbHeight, setKbHeight] = useState(0)
+  const listRef = useRef<FlatList>(null)
+  const nearBottomRef = useRef(true)
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string; message: string; confirmText: string; onConfirm: () => void
   } | null>(null)
   const isSelecting = selectedIds.size > 0
 
-  const flatListRef = useRef<FlatList>(null)
   const msgRefs = useRef<Record<string, any>>({})
   const lastFetchRef = useRef<string | null>(null)
   const pusherRef = useRef<Pusher | null>(null)
@@ -232,29 +235,13 @@ function ChatScreen() {
   }, [])
 
   useEffect(() => {
-    if (Platform.OS !== "android") return
-
-    const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
-      const keyboardHeight = Math.max(0, event.endCoordinates?.height ?? 0)
-      Animated.timing(composerTranslateY, {
-        toValue: -keyboardHeight,
-        duration: 180,
-        useNativeDriver: true,
-      }).start()
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      if (Platform.OS === "android") setKbHeight(Math.max(0, e.endCoordinates?.height ?? 0))
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50)
     })
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      Animated.timing(composerTranslateY, {
-        toValue: 0,
-        duration: 160,
-        useNativeDriver: true,
-      }).start()
-    })
-
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
-  }, [composerTranslateY])
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
+    return () => { showSub.remove(); hideSub.remove() }
+  }, [])
 
   // ── Send message ─────────────────────────────────────────────────────────────
   async function sendMessage() {
@@ -425,7 +412,7 @@ function ChatScreen() {
       </View>
 
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, paddingBottom: kbHeight }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : undefined}
       >
@@ -435,8 +422,9 @@ function ChatScreen() {
           </View>
         ) : (
           <FlatList
-            ref={flatListRef}
-            data={listItems}
+            ref={listRef}
+            onContentSizeChange={() => { if (nearBottomRef.current) listRef.current?.scrollToEnd({ animated: false }) }}
+                        data={listItems}
             keyExtractor={(item) => ("clientId" in item ? item.clientId : item.key)}
             contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16, flexGrow: 1, justifyContent: "flex-end" }}
             showsVerticalScrollIndicator={false}
@@ -455,6 +443,8 @@ function ChatScreen() {
               </View>
             }
             onScroll={(e) => {
+              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent
+              nearBottomRef.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120
               scheduleMarkRead()
               if (e.nativeEvent.contentOffset.y <= 80) loadOlderMessages()
             }}
@@ -580,7 +570,7 @@ function ChatScreen() {
 
         {/* Input / Selection action bar */}
         {isSelecting ? (
-          <Animated.View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 12, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg, transform: Platform.OS === "android" ? [{ translateY: composerTranslateY }] : undefined }}>
+          <Animated.View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 12, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
             <TouchableOpacity
               onPress={cancelSelection}
               style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}
@@ -607,7 +597,7 @@ function ChatScreen() {
             </TouchableOpacity>
           </Animated.View>
         ) : (
-          <Animated.View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg, transform: Platform.OS === "android" ? [{ translateY: composerTranslateY }] : undefined }}>
+          <Animated.View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
             <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 24, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 16, paddingVertical: 10, minHeight: 46, maxHeight: 120, justifyContent: "center" }}>
               <TextInput
                 style={{ color: C.text, fontSize: 15, lineHeight: 20 }}

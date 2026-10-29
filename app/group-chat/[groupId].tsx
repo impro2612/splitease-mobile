@@ -109,7 +109,11 @@ function GroupChatScreen() {
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string; message: string; confirmText: string; icon: keyof typeof Ionicons.glyphMap; onConfirm: () => void
   } | null>(null)
-  const composerTranslateY = useRef(new Animated.Value(0)).current
+  // Android: the screen doesn't resize for the keyboard (edge-to-edge), so we lift the
+  // whole chat by the keyboard's height — the list shrinks and the last message stays visible
+  const [kbHeight, setKbHeight] = useState(0)
+  const listRef = useRef<FlatList>(null)
+  const nearBottomRef = useRef(true)
 
   const msgRefs = useRef<Record<string, any>>({})
   const lastFetchRef = useRef<string | null>(null)
@@ -250,15 +254,13 @@ function GroupChatScreen() {
   }, [myId, groupId, fetchDelta])
 
   useEffect(() => {
-    if (Platform.OS !== "android") return
     const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
-      Animated.timing(composerTranslateY, { toValue: -Math.max(0, e.endCoordinates?.height ?? 0), duration: 180, useNativeDriver: true }).start()
+      if (Platform.OS === "android") setKbHeight(Math.max(0, e.endCoordinates?.height ?? 0))
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50)
     })
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      Animated.timing(composerTranslateY, { toValue: 0, duration: 160, useNativeDriver: true }).start()
-    })
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
     return () => { showSub.remove(); hideSub.remove() }
-  }, [composerTranslateY])
+  }, [])
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   async function sendMessage() {
@@ -373,7 +375,6 @@ function GroupChatScreen() {
     flexDirection: "row" as const, alignItems: "flex-end" as const, paddingHorizontal: 16, paddingTop: 12,
     paddingBottom: 12 + (insets.bottom > 0 ? insets.bottom : 0), gap: 10,
     borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg,
-    transform: Platform.OS === "android" ? [{ translateY: composerTranslateY }] : undefined,
   }
 
   return (
@@ -408,13 +409,15 @@ function GroupChatScreen() {
         )}
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, paddingBottom: kbHeight }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {loading && messages.length === 0 ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <ActivityIndicator color="#6366f1" size="large" />
           </View>
         ) : (
           <FlatList
+            ref={listRef}
+            onContentSizeChange={() => { if (nearBottomRef.current) listRef.current?.scrollToEnd({ animated: false }) }}
             data={listItems}
             keyExtractor={(item) => ("clientId" in item ? item.clientId : item.key)}
             contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16, flexGrow: 1, justifyContent: "flex-end" }}
@@ -429,7 +432,11 @@ function GroupChatScreen() {
                 <Text style={{ color: C.textMuted, fontSize: 13, textAlign: "center" }}>Say hi to everyone in {title}!</Text>
               </View>
             }
-            onScroll={(e) => { if (e.nativeEvent.contentOffset.y <= 80) loadOlderMessages() }}
+            onScroll={(e) => {
+              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent
+              nearBottomRef.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120
+              if (contentOffset.y <= 80) loadOlderMessages()
+            }}
             scrollEventThrottle={300}
             renderItem={({ item, index }) => {
               if ("type" in item && item.type === "date") {
