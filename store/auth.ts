@@ -44,14 +44,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   loading: true,
   currency: "INR",
-  theme: "dark",
+  theme: "system",
 
   loadSession: async () => {
     try {
       const token = await SecureStore.getItemAsync("session_token")
       const userJson = await SecureStore.getItemAsync("user_data")
       const currency = await SecureStore.getItemAsync("currency") ?? "INR"
-      const theme = (await SecureStore.getItemAsync("theme") as ThemePref) ?? "dark"
+      const theme = (await SecureStore.getItemAsync("theme") as ThemePref) ?? "system"
       applyAppearance(theme)
       if (token && userJson) {
         set({ user: JSON.parse(userJson), token, loading: false, currency, theme })
