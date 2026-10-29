@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { GroupAvatar } from "@/components/GroupAvatar"
 import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
@@ -908,9 +909,7 @@ export default function GroupDetail() {
           <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Back">
             <Ionicons name="arrow-back" size={18} color={C.text} />
           </TouchableOpacity>
-          <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: (group?.color ?? tokens.accent) + "2e", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 21 }}>{group?.emoji}</Text>
-          </View>
+          <GroupAvatar emoji={group?.emoji} imageUrl={group?.imageUrl} color={group?.color ?? tokens.accent} size={42} radius={13} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontSize: 19, fontWeight: "800" }} numberOfLines={1}>{group?.name}</Text>
             <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>

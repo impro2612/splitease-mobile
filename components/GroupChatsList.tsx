@@ -1,4 +1,5 @@
 import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native"
+import { GroupAvatar } from "@/components/GroupAvatar"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import { Text } from "@/components/ui/Typography"
@@ -9,6 +10,7 @@ export type GroupChatRow = {
   groupId: string
   name: string
   emoji: string
+  imageUrl?: string | null
   color: string
   memberCount: number
   muted: boolean
@@ -74,9 +76,7 @@ export function GroupChatsList({ chats, loading, locked, myId }: { chats: GroupC
         onPress={() => router.push({ pathname: "/group-chat/[groupId]", params: { groupId: c.groupId, name: c.name } } as any)}
         style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 10, opacity: c.left ? 0.6 : 1 }}
       >
-        <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: `${c.color}33`, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
-        </View>
+        <GroupAvatar emoji={c.emoji} imageUrl={c.imageUrl} color={c.color} size={46} />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, flexShrink: 1 }} numberOfLines={1}>{c.name}</Text>

@@ -141,3 +141,15 @@ export function suggestGroupIcons(name: string, location?: string | null): IconS
   for (const f of FALLBACK) add(f.emoji, f.color)
   return out
 }
+
+/** The words in the name that say what the group is about ("Rahul's birthday" → "birthday"),
+ *  used to search for a matching photo. Empty when nothing matched. */
+export function groupTheme(name: string): string {
+  const text = ` ${name.toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, " ")} `
+  const words: string[] = []
+  RULES.slice(PLACE_RULES).forEach((r) => {
+    const m = text.match(r.re)
+    if (m && !words.includes(m[0].trim())) words.push(m[0].trim())
+  })
+  return words.slice(0, 2).join(" ")
+}

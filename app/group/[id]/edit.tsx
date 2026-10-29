@@ -10,9 +10,10 @@ import Toast from "react-native-toast-message"
 import { groupsApi } from "@/lib/api"
 import { CURRENCIES } from "@/lib/currencies"
 import { useTheme } from "@/lib/theme"
-import { GROUP_COLORS, GROUP_EMOJIS, toLocalDateKey } from "@/lib/utils"
+import { GROUP_COLORS, toLocalDateKey } from "@/lib/utils"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
-import { AutoIconButton } from "@/components/AutoIconButton"
+import { GroupIconPicker, type PickedImage } from "@/components/GroupIconPicker"
+import { GroupAvatar } from "@/components/GroupAvatar"
 import { useAuthStore } from "@/store/auth"
 import { tokens } from "@/lib/theme"
 import { haptic } from "@/lib/haptics"
@@ -20,6 +21,7 @@ import { haptic } from "@/lib/haptics"
 type GroupFormSnapshot = {
   name: string
   emoji: string
+  image: PickedImage | null
   color: string
   currency: string
   location: string
@@ -27,6 +29,10 @@ type GroupFormSnapshot = {
   lng: number | null
   startDate: string | null
   endDate: string | null
+}
+
+function parseCredit(raw: string | null | undefined) {
+  try { return raw ? JSON.parse(raw) : null } catch { return null }
 }
 
 function toDateOnly(date: Date | null) {
@@ -55,6 +61,7 @@ export default function EditGroup() {
   const locationDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [emoji, setEmoji] = useState("💰")
   const [color, setColor] = useState("#6366f1")
+  const [image, setImage] = useState<PickedImage | null>(null)
   const [groupCurrency, setGroupCurrency] = useState("INR")
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [currencySearch, setCurrencySearch] = useState("")
@@ -73,6 +80,7 @@ export default function EditGroup() {
     const snapshot: GroupFormSnapshot = {
       name: group.name ?? "",
       emoji: group.emoji ?? "💰",
+      image: group.imageUrl ? { url: group.imageUrl, credit: parseCredit(group.imageCredit) } : null,
       color: group.color ?? "#6366f1",
       currency: group.currency ?? "INR",
       location: group.location ?? "",
@@ -84,6 +92,7 @@ export default function EditGroup() {
     setInitialSnapshot(snapshot)
     setName(snapshot.name)
     setEmoji(snapshot.emoji)
+    setImage(snapshot.image)
     setColor(snapshot.color)
     setGroupCurrency(snapshot.currency)
     setLocation(snapshot.location)
@@ -96,6 +105,7 @@ export default function EditGroup() {
   const currentSnapshot = useMemo<GroupFormSnapshot>(() => ({
     name: name.trim(),
     emoji,
+    image,
     color,
     currency: groupCurrency,
     location: location.trim(),
@@ -103,7 +113,7 @@ export default function EditGroup() {
     lng: location.trim() ? locationLng : null,
     startDate: toDateOnly(startDate),
     endDate: toDateOnly(endDate),
-  }), [name, emoji, color, groupCurrency, location, locationLat, locationLng, startDate, endDate])
+  }), [name, emoji, image, color, groupCurrency, location, locationLat, locationLng, startDate, endDate])
 
   const hasChanges = !!initialSnapshot && JSON.stringify(currentSnapshot) !== JSON.stringify(initialSnapshot)
   const canSave = hasChanges && !!name.trim()
@@ -173,6 +183,8 @@ export default function EditGroup() {
     mutationFn: () => groupsApi.update(id, {
       name: currentSnapshot.name,
       emoji: currentSnapshot.emoji,
+      imageUrl: currentSnapshot.image?.url ?? null,
+      imageCredit: currentSnapshot.image?.credit ?? null,
       color: currentSnapshot.color,
       currency: currentSnapshot.currency,
       location: currentSnapshot.location || null,
@@ -236,9 +248,7 @@ export default function EditGroup() {
               </TouchableOpacity>
             </View>
             <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
-              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 22 }}>{emoji}</Text>
-              </View>
+              <GroupAvatar emoji={emoji} imageUrl={image?.url} color={color} size={48} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }}>{name || "Group name"}</Text>
                 <Text style={{ color: C.textSub, fontSize: 12 }}>
@@ -332,17 +342,15 @@ export default function EditGroup() {
               <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>
 
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, marginTop: 2 }}>
-              <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>Icon</Text>
-              <AutoIconButton name={name} location={location} onPick={(e, c) => { setEmoji(e); setColor(c) }} />
-            </View>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {(GROUP_EMOJIS.includes(emoji) ? GROUP_EMOJIS : [emoji, ...GROUP_EMOJIS]).map((e) => (
-                <TouchableOpacity key={e} onPress={() => setEmoji(e)} style={{ width: 46, height: 46, borderRadius: 13, backgroundColor: emoji === e ? "rgba(99,102,241,0.3)" : C.iconBg, borderWidth: emoji === e ? 2 : 1, borderColor: emoji === e ? "#6366f1" : C.border, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 21 }}>{e}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <GroupIconPicker
+              name={name}
+              location={location}
+              emoji={emoji}
+              image={image}
+              onEmoji={setEmoji}
+              onColor={setColor}
+              onImage={setImage}
+            />
 
             <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 8 }}>Color</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>

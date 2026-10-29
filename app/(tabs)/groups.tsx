@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { GroupAvatar } from "@/components/GroupAvatar"
 import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { router } from "expo-router"
@@ -135,9 +136,7 @@ export default function Groups() {
                     activeOpacity={0.7}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                      <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: group.color + "33", alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ fontSize: 24 }}>{group.emoji}</Text>
-                      </View>
+                      <GroupAvatar emoji={group.emoji} imageUrl={group.imageUrl} color={group.color} size={52} radius={16} />
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }} numberOfLines={1}>{group.name}</Text>
                         {group.description ? <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{group.description}</Text> : null}

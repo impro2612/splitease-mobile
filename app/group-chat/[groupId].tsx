@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+import { GroupAvatar } from "@/components/GroupAvatar"
 import { View, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Keyboard, Animated, ScrollView } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
@@ -32,6 +33,7 @@ type ChatInfo = {
   groupId: string
   name: string
   emoji: string
+  imageUrl?: string | null
   color: string
   muted: boolean
   left: boolean
@@ -387,9 +389,7 @@ function GroupChatScreen() {
         >
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
-        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: `${info?.color ?? "#6366f1"}33`, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 19 }}>{info?.emoji ?? "👥"}</Text>
-        </View>
+        <GroupAvatar emoji={info?.emoji ?? "👥"} imageUrl={info?.imageUrl} color={info?.color} size={38} radius={12} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }} numberOfLines={1}>{title}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

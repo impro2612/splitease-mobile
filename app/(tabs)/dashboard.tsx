@@ -1,4 +1,5 @@
 import { View, ScrollView, TouchableOpacity, RefreshControl } from "react-native"
+import { GroupAvatar } from "@/components/GroupAvatar"
 import { Text } from "@/components/ui/Typography"
 import { useState, useEffect, useCallback } from "react"
 import { router } from "expo-router"
@@ -286,8 +287,8 @@ export default function Home() {
                   onPress={() => router.push(`/group/${g.id}` as any)}
                   style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.md + 2, width: 140 }}
                 >
-                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: (g.color ?? tokens.accent) + "26", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-                    <Text style={{ fontSize: 20 }}>{g.emoji}</Text>
+                  <View style={{ marginBottom: 10 }}>
+                    <GroupAvatar emoji={g.emoji} imageUrl={g.imageUrl} color={g.color ?? tokens.accent} size={40} radius={12} />
                   </View>
                   <Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }} numberOfLines={1}>{g.name}</Text>
                   <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{g.members?.length ?? 0} members</Text>

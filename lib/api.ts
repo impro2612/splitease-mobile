@@ -117,11 +117,20 @@ export const authApi = {
 export const groupsApi = {
   list: () => api.get("/api/groups"),
   get: (id: string) => api.get(`/api/groups/${id}`),
-  create: (data: { name: string; color: string; emoji: string; currency: string; location?: string; lat?: number; lng?: number; startDate?: string; endDate?: string }) =>
+  create: (data: { name: string; color: string; emoji: string; imageUrl?: string | null; imageCredit?: GroupImageCredit | null; currency: string; location?: string; lat?: number; lng?: number; startDate?: string; endDate?: string }) =>
     api.post("/api/groups", data),
-  update: (id: string, data: { name?: string; description?: string; emoji?: string; color?: string; currency?: string; location?: string | null; lat?: number | null; lng?: number | null; startDate?: string | null; endDate?: string | null }) =>
+  update: (id: string, data: { name?: string; description?: string; emoji?: string; imageUrl?: string | null; imageCredit?: GroupImageCredit | null; color?: string; currency?: string; location?: string | null; lat?: number | null; lng?: number | null; startDate?: string | null; endDate?: string | null }) =>
     api.patch(`/api/groups/${id}`, data),
   delete: (id: string) => api.delete(`/api/groups/${id}`),
+}
+
+// Group photo suggestions (Wikipedia for places, Unsplash for the rest)
+export type GroupImageCredit = { source: "wikipedia" | "unsplash"; name: string; link: string }
+export type GroupImage = { url: string; thumb: string; credit: GroupImageCredit; downloadLocation?: string }
+export const groupImageApi = {
+  search: (params: { name: string; location?: string; theme?: string; page?: number }) =>
+    api.get<{ images: GroupImage[]; hasMore: boolean }>("/api/group-image", { params }),
+  select: (downloadLocation: string) => api.post("/api/group-image/select", { downloadLocation }),
 }
 
 // Members
