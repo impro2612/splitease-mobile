@@ -10,6 +10,9 @@ import { GROUP_EMOJIS } from "@/lib/utils"
 import { groupTheme, suggestGroupIcons } from "@/lib/group-icon"
 import { groupImageApi, type GroupImage, type GroupImageCredit } from "@/lib/api"
 
+const UNSPLASH_HOME = "https://unsplash.com/?utm_source=splitit&utm_medium=referral"
+const open = (url: string) => Linking.openURL(url).catch(() => {})
+
 export type PickedImage = { url: string; credit: GroupImageCredit | null }
 
 // The Icon section of Create / Edit Group: emoji grid plus "Auto generate", which finds
@@ -103,11 +106,18 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
         </>
       )}
       {credit && (
-        <TouchableOpacity onPress={() => Linking.openURL(credit.link).catch(() => {})} style={{ marginBottom: 10 }}>
-          <Text style={{ color: C.textMuted, fontSize: 11 }}>
-            {credit.source === "unsplash" ? `Photo by ${credit.name} on Unsplash` : `Photo: ${credit.name} · Wikipedia`}
+        // Unsplash requires the photographer and Unsplash to be credited and linked separately
+        <Text style={{ color: C.textMuted, fontSize: 11, marginBottom: 10 }}>
+          {credit.source === "unsplash" ? "Photo by " : "Photo: "}
+          <Text style={{ color: C.textSub, fontSize: 11, textDecorationLine: "underline" }} onPress={() => open(credit.link)}>{credit.name}</Text>
+          {credit.source === "unsplash" ? " on " : " · "}
+          <Text
+            style={{ color: C.textSub, fontSize: 11, textDecorationLine: "underline" }}
+            onPress={() => open(credit.source === "unsplash" ? UNSPLASH_HOME : credit.link)}
+          >
+            {credit.source === "unsplash" ? "Unsplash" : "Wikipedia"}
           </Text>
-        </TouchableOpacity>
+        </Text>
       )}
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
