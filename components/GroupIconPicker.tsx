@@ -131,26 +131,24 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
   const credit = image?.credit
   return (
     <View style={{ marginBottom: 16 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, marginTop: 2 }}>
-        <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500" }}>Icon</Text>
-        <View style={{ alignItems: "flex-end", gap: 6 }}>
-          <TouchableOpacity
-            onPress={generate}
-            accessibilityLabel="Auto generate icon"
-            style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 128, justifyContent: "center" }}
-          >
-            {loading ? <ActivityIndicator size="small" color={C.accentText} /> : <Ionicons name="sparkles" size={13} color={C.accentText} />}
-            <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "700" }}>Auto generate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={uploadPhoto}
-            accessibilityLabel="Upload photo from gallery"
-            style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 128, justifyContent: "center" }}
-          >
-            {uploading ? <ActivityIndicator size="small" color={C.accentText} /> : <Ionicons name="image-outline" size={13} color={C.accentText} />}
-            <Text style={{ color: C.accentText, fontSize: 12, fontWeight: "700" }}>Upload photo</Text>
-          </TouchableOpacity>
-        </View>
+      <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "500", marginBottom: 8, marginTop: 2 }}>Icon</Text>
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+        <TouchableOpacity
+          onPress={generate}
+          accessibilityLabel="Auto generate icon"
+          style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, flex: 1, justifyContent: "center" }}
+        >
+          {loading ? <ActivityIndicator size="small" color={C.accentText} /> : <Ionicons name="sparkles" size={15} color={C.accentText} />}
+          <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "700" }}>Auto generate</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={uploadPhoto}
+          accessibilityLabel="Upload photo from gallery"
+          style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, flex: 1, justifyContent: "center" }}
+        >
+          {uploading ? <ActivityIndicator size="small" color={C.accentText} /> : <Ionicons name="image-outline" size={15} color={C.accentText} />}
+          <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "700" }}>Upload photo</Text>
+        </TouchableOpacity>
       </View>
 
       {shown.length > 0 && (
