@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, type Href, useFocusEffect } from "expo-router"
 import type Pusher from "pusher-js/react-native"
-import { createPusher } from "@/lib/pusher"
+import { getPusher, subscribeChannel } from "@/lib/pusher"
 import { friendsApi, usersApi, blocksApi, groupChatsApi } from "@/lib/api"
 import { QueryError } from "@/components/ui/QueryError"
 import { GroupChatsList, type GroupChatRow } from "@/components/GroupChatsList"
@@ -127,7 +127,7 @@ export default function Friends() {
     const myId = user?.id
     if (!myId) return
     let isMounted = true
-    const pusher = createPusher()
+    const pusher = getPusher()
 
     const invalidateFriends = () => {
       queryClient.invalidateQueries({ queryKey: ["friends"] })
@@ -157,11 +157,12 @@ export default function Friends() {
       setLiveUpdatesPaused(false)
     }
 
-    const channel = pusher.subscribe(`private-user-${myId}`)
+    const { channel, release } = subscribeChannel(`private-user-${myId}`)
+    const invalidateGroupChats = () => queryClient.invalidateQueries({ queryKey: ["group-chats"] })
     channel.bind("new-message", invalidateFriends)
     channel.bind("friend-request", invalidateFriends)
     channel.bind("friend-update", invalidateFriends)
-    channel.bind("group-message", () => queryClient.invalidateQueries({ queryKey: ["group-chats"] }))
+    channel.bind("group-message", invalidateGroupChats)
     channel.bind("pusher:subscription_succeeded", markLive)
     channel.bind("pusher:subscription_error", markPaused)
     ;(pusher.connection as any).bind?.("connected", markLive)
@@ -174,12 +175,17 @@ export default function Friends() {
         clearTimeout(reconnectTimerRef.current)
         reconnectTimerRef.current = null
       }
-      channel.unbind_all()
+      // Only our own handlers: the channel is shared with the chat screens
+      channel.unbind("new-message", invalidateFriends)
+      channel.unbind("friend-request", invalidateFriends)
+      channel.unbind("friend-update", invalidateFriends)
+      channel.unbind("group-message", invalidateGroupChats)
+      channel.unbind("pusher:subscription_succeeded", markLive)
+      channel.unbind("pusher:subscription_error", markPaused)
       ;(pusher.connection as any).unbind?.("connected", markLive)
       ;(pusher.connection as any).unbind?.("disconnected", markPaused)
       ;(pusher.connection as any).unbind?.("error", markPaused)
-      pusher.unsubscribe(`private-user-${myId}`)
-      pusher.disconnect()
+      release()
     }
   }, [user?.id, queryClient])
 

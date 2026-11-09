@@ -54,6 +54,10 @@ export default function Profile() {
   const [showCurrentPw, setShowCurrentPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
+  // Changing the email: the server mails a code to the new address, confirmed here
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
+  const [emailCode, setEmailCode] = useState("")
+  const emailChanged = editEmail.trim().toLowerCase() !== (user?.email ?? "").toLowerCase()
 
   // Appearance picker
   const [showAppearance, setShowAppearance] = useState(false)
@@ -135,7 +139,11 @@ export default function Profile() {
     mutationFn: async () => {
       const body: Record<string, any> = {}
       if (editName.trim() !== (user?.name ?? "")) body.name = editName.trim()
-      if (editEmail.trim().toLowerCase() !== user?.email) body.email = editEmail.trim()
+      if (emailChanged) {
+        if (!currentPassword) throw new Error("pw_needed")
+        body.email = editEmail.trim()
+        body.currentPassword = currentPassword
+      }
       if (showPasswordSection && newPassword) {
         if (newPassword !== confirmPassword) throw new Error("pw_mismatch")
         body.currentPassword = currentPassword
@@ -145,17 +153,39 @@ export default function Profile() {
       return api.patch("/api/auth/me", body)
     },
     onSuccess: (res) => {
-      setUser(res.data)
+      const { pendingEmail: masked, verificationRequired, ...me } = res.data
+      setUser(me)
       setShowEdit(false)
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("")
       setShowPasswordSection(false)
+      if (verificationRequired) {
+        // The email only changes once the code sent to the new address is entered
+        setEmailCode("")
+        setPendingEmail(editEmail.trim())
+        Toast.show({ type: "info", text1: "Check your new inbox", text2: `We sent a code to ${masked}` })
+        return
+      }
       Toast.show({ type: "success", text1: "Profile updated!" })
     },
     onError: (e: any) => {
       if (e.message === "no_change") { setShowEdit(false); return }
       if (e.message === "pw_mismatch") { Toast.show({ type: "error", text1: "Passwords don't match" }); return }
+      if (e.message === "pw_needed") { Toast.show({ type: "error", text1: "Enter your password to change your email" }); return }
       const msg = e?.response?.data?.error ?? "Failed to update profile"
       Toast.show({ type: "error", text1: msg })
+    },
+  })
+
+  const confirmEmailMutation = useMutation({
+    mutationFn: () => api.post("/api/auth/me/confirm-email", { email: pendingEmail, code: emailCode.trim() }),
+    onSuccess: (res) => {
+      setUser(res.data)
+      setPendingEmail(null)
+      setEmailCode("")
+      Toast.show({ type: "success", text1: "Email updated!" })
+    },
+    onError: (e: any) => {
+      Toast.show({ type: "error", text1: e?.response?.data?.error ?? "Couldn't verify that code" })
     },
   })
 
@@ -416,9 +446,21 @@ export default function Profile() {
 
             {/* Email */}
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Email Address</Text>
-            <View style={{ backgroundColor: C.inputBg, borderRadius: 12, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 14, height: 48, justifyContent: "center", marginBottom: 24 }}>
+            <View style={{ backgroundColor: C.inputBg, borderRadius: 12, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 14, height: 48, justifyContent: "center", marginBottom: emailChanged && !showPasswordSection ? 10 : 24 }}>
               <TextInput style={{ color: C.text, fontSize: 15 }} value={editEmail} onChangeText={setEditEmail} placeholder="you@email.com" placeholderTextColor={C.textMuted} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             </View>
+            {emailChanged && !showPasswordSection && (
+              // A new email needs the password (so a stolen session can't take the account) and a code sent to it
+              <View style={{ marginBottom: 24 }}>
+                <View style={{ backgroundColor: C.inputBg, borderRadius: 12, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 14, height: 48, flexDirection: "row", alignItems: "center" }}>
+                  <TextInput style={{ flex: 1, color: C.text, fontSize: 15 }} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Your password (to change email)" placeholderTextColor={C.textMuted} secureTextEntry={!showCurrentPw} />
+                  <TouchableOpacity onPress={() => setShowCurrentPw(!showCurrentPw)} accessibilityLabel={showCurrentPw ? "Hide password" : "Show password"}>
+                    <Ionicons name={showCurrentPw ? "eye-off-outline" : "eye-outline"} size={18} color={C.textSub} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ color: C.textMuted, fontSize: 11, marginTop: 6 }}>We'll send a 6-digit code to the new address to confirm it.</Text>
+              </View>
+            )}
 
             {/* Divider */}
             <View style={{ borderTopWidth: 1, borderTopColor: C.border, marginBottom: 20 }} />
@@ -483,6 +525,41 @@ export default function Profile() {
           </ScrollView>
         </View>
       </InAppFullScreenModal>
+
+      {/* ── Verify new email ─────────────────────────────────────────────────────── */}
+      <Modal visible={!!pendingEmail} transparent animationType="fade" onRequestClose={() => setPendingEmail(null)}>
+        <View style={{ flex: 1, backgroundColor: C.overlay, justifyContent: "center", alignItems: "center", padding: 28 }}>
+          <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 24, width: "100%", borderWidth: 1, borderColor: C.border }}>
+            <Text style={{ color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 4 }}>Verify your new email</Text>
+            <Text style={{ color: C.textSub, fontSize: 13, marginBottom: 18, lineHeight: 19 }}>
+              Enter the 6-digit code we sent to {pendingEmail}. It expires in 15 minutes.
+            </Text>
+            <View style={{ backgroundColor: C.inputBg, borderRadius: 12, borderWidth: 1, borderColor: C.inputBorder, paddingHorizontal: 14, height: 52, justifyContent: "center", marginBottom: 16 }}>
+              <TextInput
+                style={{ color: C.text, fontSize: 22, letterSpacing: 8, textAlign: "center" }}
+                value={emailCode}
+                onChangeText={(t) => setEmailCode(t.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                placeholderTextColor={C.textMuted}
+                keyboardType="number-pad"
+                maxLength={6}
+                autoFocus
+                accessibilityLabel="Verification code"
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => confirmEmailMutation.mutate()}
+              disabled={emailCode.length !== 6 || confirmEmailMutation.isPending}
+              style={{ height: 48, backgroundColor: "#6366f1", borderRadius: 12, alignItems: "center", justifyContent: "center", opacity: emailCode.length !== 6 || confirmEmailMutation.isPending ? 0.6 : 1 }}
+            >
+              {confirmEmailMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Confirm</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setPendingEmail(null)} style={{ marginTop: 12, height: 44, borderRadius: 12, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: C.textSub, fontWeight: "600" }}>Later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Appearance Picker Modal ──────────────────────────────────────────────── */}
       <Modal visible={showAppearance} transparent animationType="fade" onRequestClose={() => setShowAppearance(false)}>

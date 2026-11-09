@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { router, useLocalSearchParams } from "expo-router"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useQueryClient } from "@tanstack/react-query"
-import { createPusher } from "@/lib/pusher"
+import { getPusher, subscribeChannel } from "@/lib/pusher"
 import { useAuthStore } from "@/store/auth"
 import { groupChatsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
@@ -209,7 +209,7 @@ function GroupChatScreen() {
   // ── Realtime ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!myId) return
-    const pusher = createPusher()
+    const pusher = getPusher()
     const startPolling = () => {
       if (!pollIntervalRef.current) pollIntervalRef.current = setInterval(() => { fetchDelta() }, 8000)
     }
@@ -221,20 +221,19 @@ function GroupChatScreen() {
     pusher.connection.bind("failed", startPolling)
     pusher.connection.bind("error", startPolling)
 
-    const channel = pusher.subscribe(`private-user-${myId}`)
-    channel.bind("pusher:subscription_error", startPolling)
-    channel.bind("group-message", (data: { groupId: string }) => {
+    const { channel, release } = subscribeChannel(`private-user-${myId}`)
+    const onGroupMessage = (data: { groupId: string }) => {
       if (data.groupId === groupId) fetchDelta()
-    })
-    channel.bind("group-message-deleted", (data: { groupId: string; ids: string[] }) => {
+    }
+    const onDeleted = (data: { groupId: string; ids: string[] }) => {
       if (data.groupId !== groupId) return
       setMessages((prev) => {
         const updated = prev.filter((m) => !m.id || !data.ids.includes(m.id))
         saveCache(ck, updated)
         return updated
       })
-    })
-    channel.bind("group-message-reaction", (data: { groupId: string; messageId: string; emoji: string; userId: string; action: "added" | "removed" }) => {
+    }
+    const onReaction = (data: { groupId: string; messageId: string; emoji: string; userId: string; action: "added" | "removed" }) => {
       if (data.groupId !== groupId || data.userId === myId) return // our own taps are applied optimistically
       setMessages((prev) => {
         const updated = prev.map((m) => {
@@ -245,13 +244,24 @@ function GroupChatScreen() {
         saveCache(ck, updated)
         return updated
       })
-    })
+    }
+    channel.bind("pusher:subscription_error", startPolling)
+    channel.bind("group-message", onGroupMessage)
+    channel.bind("group-message-deleted", onDeleted)
+    channel.bind("group-message-reaction", onReaction)
 
     return () => {
       stopPolling()
-      channel.unbind_all()
-      pusher.unsubscribe(`private-user-${myId}`)
-      pusher.disconnect()
+      // Only our own handlers: the channel and socket are shared with other screens
+      channel.unbind("pusher:subscription_error", startPolling)
+      channel.unbind("group-message", onGroupMessage)
+      channel.unbind("group-message-deleted", onDeleted)
+      channel.unbind("group-message-reaction", onReaction)
+      pusher.connection.unbind("connected", stopPolling)
+      pusher.connection.unbind("disconnected", startPolling)
+      pusher.connection.unbind("failed", startPolling)
+      pusher.connection.unbind("error", startPolling)
+      release()
     }
   }, [myId, groupId, fetchDelta])
 

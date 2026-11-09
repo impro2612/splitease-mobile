@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { AppState, Platform } from "react-native"
 import { useQuery } from "@tanstack/react-query"
 import Purchases, { type PurchasesPackage } from "react-native-purchases"
 import { plusApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
-import { createPusher } from "@/lib/pusher"
+import { subscribeChannel } from "@/lib/pusher"
 import queryClient from "@/lib/query-client"
 
 /**
@@ -71,7 +71,25 @@ function nextChange(s: PlusStatus, now: number): number | null {
   return times.length ? Math.min(...times) : null
 }
 
-export function usePlus() {
+export type PlusContextValue = {
+  status: PlusStatus | undefined
+  locked: boolean
+  refetch: () => unknown
+}
+
+// Unknown status (first load, offline with no cache) counts as unlocked: the server
+// still enforces it, and a lock flashing on and off is worse than a rare 402.
+const noop = () => {}
+const FALLBACK: PlusContextValue = { status: undefined, locked: false, refetch: noop }
+
+const PlusContext = createContext<PlusContextValue>(FALLBACK)
+
+/**
+ * Owns the single plus-status query and its "something just ended" timer. Mounted once
+ * in the root layout (inside the query provider) so ~9 usePlus() callers share one
+ * query subscription and one timer instead of each running their own.
+ */
+export function PlusProvider({ children }: { children: ReactNode }) {
   const token = useAuthStore((s) => s.token)
   const q = useQuery<PlusStatus>({
     queryKey: ["plus-status"],
@@ -91,9 +109,13 @@ export function usePlus() {
     return () => clearTimeout(t)
   }, [next, now])
   const status = q.data ? liveStatus(q.data, now) : undefined
-  // Unknown status (first load, offline with no cache) counts as unlocked: the server
-  // still enforces it, and a lock flashing on and off is worse than a rare 402.
-  return { status, locked: status ? !status.access : false, refetch: q.refetch }
+  const value: PlusContextValue = { status, locked: status ? !status.access : false, refetch: q.refetch }
+  return <PlusContext.Provider value={value}>{children}</PlusContext.Provider>
+}
+
+/** Plus status for the UI. Without a PlusProvider above it, reads as unlocked/unknown. */
+export function usePlus(): PlusContextValue {
+  return useContext(PlusContext)
 }
 
 /**
@@ -108,8 +130,7 @@ export function usePlusSync(userId: string | undefined) {
     if (!userId) return
     const refresh = () => qc.invalidateQueries({ queryKey: ["plus-status"] })
     refresh()
-    const pusher = createPusher()
-    const channel = pusher.subscribe(`private-user-${userId}`)
+    const { channel, release } = subscribeChannel(`private-user-${userId}`)
     channel.bind("plus-updated", refresh)
     const app = AppState.addEventListener("change", (next) => { if (next === "active") refresh() })
     const poll = setInterval(() => { if (AppState.currentState === "active") refresh() }, 60_000)
@@ -117,8 +138,7 @@ export function usePlusSync(userId: string | undefined) {
       clearInterval(poll)
       app.remove()
       channel.unbind("plus-updated", refresh)
-      pusher.unsubscribe(`private-user-${userId}`)
-      pusher.disconnect()
+      release()
     }
   }, [userId, qc])
 }

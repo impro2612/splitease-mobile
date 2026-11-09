@@ -10,7 +10,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { router, useLocalSearchParams } from "expo-router"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import type Pusher from "pusher-js/react-native"
-import { createPusher } from "@/lib/pusher"
+import { getPusher, subscribeChannel } from "@/lib/pusher"
 import { useAuthStore } from "@/store/auth"
 import { messagesApi, messageReactionsApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
@@ -181,7 +181,7 @@ function ChatScreen() {
   useEffect(() => {
     if (!myId) return
 
-    const pusher = createPusher()
+    const pusher = getPusher()
     pusherRef.current = pusher
 
     function startPolling() {
@@ -192,17 +192,22 @@ function ChatScreen() {
       if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
     }
 
-    pusher.connection.bind("connected", () => { pusherConnectedRef.current = true; stopPolling() })
-    pusher.connection.bind("disconnected", () => { pusherConnectedRef.current = false; startPolling() })
-    pusher.connection.bind("failed", () => { pusherConnectedRef.current = false; startPolling() })
-    pusher.connection.bind("error", (err: unknown) => { pusherConnectedRef.current = false; startPolling(); console.warn("Pusher error", err) })
+    // Named so they can be unbound: the socket is shared and outlives this screen
+    const onConnected = () => { pusherConnectedRef.current = true; stopPolling() }
+    const onDisconnected = () => { pusherConnectedRef.current = false; startPolling() }
+    const onFailed = () => { pusherConnectedRef.current = false; startPolling() }
+    const onError = (err: unknown) => { pusherConnectedRef.current = false; startPolling(); console.warn("Pusher error", err) }
+    pusher.connection.bind("connected", onConnected)
+    pusher.connection.bind("disconnected", onDisconnected)
+    pusher.connection.bind("failed", onFailed)
+    pusher.connection.bind("error", onError)
 
-    const channel = pusher.subscribe(`private-user-${myId}`)
-    channel.bind("pusher:subscription_error", (err: unknown) => { console.warn("Pusher subscription error", err); startPolling() })
-    channel.bind("new-message", (data: { senderId: string }) => {
+    const { channel, release } = subscribeChannel(`private-user-${myId}`)
+    const onSubError = (err: unknown) => { console.warn("Pusher subscription error", err); startPolling() }
+    const onNewMessage = (data: { senderId: string }) => {
       if (data.senderId === friendId) fetchDelta()
-    })
-    channel.bind("message-reaction", (data: { messageId: string; emoji: string; userId: string; action: "added" | "removed" }) => {
+    }
+    const onReaction = (data: { messageId: string; emoji: string; userId: string; action: "added" | "removed" }) => {
       setMessages((prev) => {
         const updated = prev.map((m) => {
           if (m.id !== data.messageId) return m
@@ -217,13 +222,22 @@ function ChatScreen() {
         saveCache(ck, updated)
         return updated
       })
-    })
+    }
+    channel.bind("pusher:subscription_error", onSubError)
+    channel.bind("new-message", onNewMessage)
+    channel.bind("message-reaction", onReaction)
 
     return () => {
       stopPolling()
-      channel.unbind_all()
-      pusher.unsubscribe(`private-user-${myId}`)
-      pusher.disconnect()
+      // Only our own handlers: other screens share this channel
+      channel.unbind("pusher:subscription_error", onSubError)
+      channel.unbind("new-message", onNewMessage)
+      channel.unbind("message-reaction", onReaction)
+      pusher.connection.unbind("connected", onConnected)
+      pusher.connection.unbind("disconnected", onDisconnected)
+      pusher.connection.unbind("failed", onFailed)
+      pusher.connection.unbind("error", onError)
+      release()
     }
   }, [myId, friendId, fetchDelta])
 

@@ -14,6 +14,7 @@ export const api = axios.create({
 api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync("session_token")
   if (token) config.headers["Authorization"] = `Bearer ${token}`
+  config.headers["x-tz-offset"] = String(new Date().getTimezoneOffset()) // server buckets months/years in local time
   return config
 })
 
@@ -125,7 +126,8 @@ export const groupsApi = {
 }
 
 // Group photo suggestions (Wikipedia for places, Unsplash for the rest)
-export type GroupImageCredit = { source: "wikipedia" | "unsplash"; name: string; link: string }
+// Wikipedia photos carry the CC BY-SA author + licence; Unsplash ones only need name + link
+export type GroupImageCredit = { source: "wikipedia" | "unsplash"; name: string; link: string; author?: string; license?: string; licenseLink?: string }
 export type GroupImage = { url: string; thumb: string; credit: GroupImageCredit; downloadLocation?: string }
 export const groupImageApi = {
   search: (params: { name: string; location?: string; theme?: string; page?: number }) =>

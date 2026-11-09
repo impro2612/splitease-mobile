@@ -20,7 +20,7 @@ import { syncTrackConfigToNative } from "@/lib/nativeTrackExpense"
 import { LaunchIntro } from "@/components/LaunchIntro"
 import { OfflineProvider, useOffline } from "@/context/OfflineContext"
 import queryClient from "@/lib/query-client"
-import { usePlusSync } from "@/lib/plus"
+import { PlusProvider, usePlusSync } from "@/lib/plus"
 import { useTheme } from "@/lib/theme"
 
 // ── Custom Toast UI ───────────────────────────────────────────────────────────
@@ -398,6 +398,7 @@ export default function RootLayout() {
 
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
+      <PlusProvider>
       <OfflineProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ErrorBoundary>
@@ -424,6 +425,7 @@ export default function RootLayout() {
           </ErrorBoundary>
         </GestureHandlerRootView>
       </OfflineProvider>
+      </PlusProvider>
     </PersistQueryClientProvider>
   )
 }

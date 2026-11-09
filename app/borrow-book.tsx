@@ -19,7 +19,7 @@ import { borrowBookApi, friendsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import Toast from "react-native-toast-message"
 import { CURRENCIES } from "@/lib/currencies"
-import { createPusher } from "@/lib/pusher"
+import { subscribeChannel } from "@/lib/pusher"
 import { BlurView } from "expo-blur"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
 import { goHome, useBackToHome } from "@/lib/go-home"
@@ -277,13 +277,12 @@ export default function BorrowBook() {
   // Real-time: subscribe to Pusher and invalidate on any IOU change
   useEffect(() => {
     if (!user?.id) return
-    const pusher = createPusher()
-    const channel = pusher.subscribe(`private-user-${user.id}`)
-    channel.bind("iou-updated", () => { qc.invalidateQueries({ queryKey: ["borrow-book"] }) })
+    const { channel, release } = subscribeChannel(`private-user-${user.id}`)
+    const onIou = () => { qc.invalidateQueries({ queryKey: ["borrow-book"] }) }
+    channel.bind("iou-updated", onIou)
     return () => {
-      channel.unbind_all()
-      pusher.unsubscribe(`private-user-${user.id}`)
-      pusher.disconnect()
+      channel.unbind("iou-updated", onIou) // channel is shared: only drop our handler
+      release()
     }
   }, [user?.id])
 

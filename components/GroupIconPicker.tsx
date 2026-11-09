@@ -173,18 +173,28 @@ export function GroupIconPicker({ name, location, emoji, image, onEmoji, onColor
           })}
         </View>
       )}
-      {credit && (
+      {credit && credit.source === "unsplash" && (
         // Unsplash requires the photographer and Unsplash to be credited and linked separately
         <Text style={{ color: C.textMuted, fontSize: 11, marginBottom: 10 }}>
-          {credit.source === "unsplash" ? "Photo by " : "Photo: "}
+          Photo by{" "}
           <Text style={{ color: C.textSub, fontSize: 11, textDecorationLine: "underline" }} onPress={() => open(credit.link)}>{credit.name}</Text>
-          {credit.source === "unsplash" ? " on " : " · "}
+          {" "}on{" "}
+          <Text style={{ color: C.textSub, fontSize: 11, textDecorationLine: "underline" }} onPress={() => open(UNSPLASH_HOME)}>Unsplash</Text>
+        </Text>
+      )}
+      {credit && credit.source === "wikipedia" && (
+        // CC BY-SA needs the author and the licence named, not just the page the photo came from
+        <Text style={{ color: C.textMuted, fontSize: 11, marginBottom: 10 }}>
+          Photo by{" "}
+          <Text style={{ color: C.textSub, fontSize: 11, textDecorationLine: "underline" }} onPress={() => open(credit.link)}>{credit.author || credit.name}</Text>
+          {" · "}
           <Text
             style={{ color: C.textSub, fontSize: 11, textDecorationLine: "underline" }}
-            onPress={() => open(credit.source === "unsplash" ? UNSPLASH_HOME : credit.link)}
+            onPress={() => open(credit.licenseLink || credit.link)}
           >
-            {credit.source === "unsplash" ? "Unsplash" : "Wikipedia"}
+            {credit.license || "CC BY-SA"}
           </Text>
+          {" · via Wikipedia"}
         </Text>
       )}
 

@@ -7,7 +7,7 @@ import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList,
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
-import { createPusher } from "@/lib/pusher"
+import { subscribeChannel } from "@/lib/pusher"
 import * as ExpoCrypto from "expo-crypto"
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { InsightsTab } from "@/components/group/InsightsTab"
@@ -302,12 +302,12 @@ export default function GroupDetail() {
   // Real-time reaction updates via Pusher
   useEffect(() => {
     if (!user?.id || !id) return
-    const pusher = createPusher()
-    const channel = pusher.subscribe(`private-user-${user.id}`)
-    channel.bind("expense-reaction", (data: { groupId: string }) => {
+    const { channel, release } = subscribeChannel(`private-user-${user.id}`)
+    const onReaction = (data: { groupId: string }) => {
       if (data.groupId === id) queryClient.invalidateQueries({ queryKey: ["group", id] })
-    })
-    return () => { channel.unbind_all(); pusher.unsubscribe(`private-user-${user.id}`); pusher.disconnect() }
+    }
+    channel.bind("expense-reaction", onReaction)
+    return () => { channel.unbind("expense-reaction", onReaction); release() } // channel is shared: only drop our handler
   }, [user?.id, id])
 
   const { data: balancesData } = useQuery({

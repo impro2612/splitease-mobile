@@ -4,6 +4,7 @@ import { Appearance } from "react-native"
 import axios from "axios"
 import { API_BASE_URL, authApi } from "@/lib/api"
 import queryClient from "@/lib/query-client"
+import { resetPusher } from "@/lib/pusher"
 
 export type ThemePref = "light" | "dark" | "system"
 
@@ -107,6 +108,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.deleteItemAsync("refresh_token")
     await SecureStore.deleteItemAsync("user_data")
     queryClient.clear()
+    resetPusher() // drop the socket so the next account never inherits this user's channels
     set({ user: null, token: null })
   },
 
