@@ -2127,7 +2127,7 @@ export default function GroupDetail() {
 
       {/* Add Member Modal — Friends Picker */}
       <InAppFullScreenModal visible={showAddMember} onRequestClose={() => { setShowAddMember(false); setFriendSearch("") }}>
-        <View style={{ height: windowH, backgroundColor: C.bg, paddingTop: insets.top + 16 }}>
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingBottom: insets.bottom, paddingTop: insets.top + 16 }}>
           {/* Header */}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: C.text, fontSize: 20, fontWeight: "700" }}>Add to {group?.name}</Text>
