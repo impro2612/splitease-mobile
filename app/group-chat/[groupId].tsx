@@ -389,6 +389,13 @@ function GroupChatScreen() {
         >
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          disabled={!info || removed}
+          onPress={() => setMembersOpen(true)}
+          accessibilityLabel="View members"
+          style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
+        >
         <GroupAvatar emoji={info?.emoji ?? "👥"} imageUrl={info?.imageUrl} color={info?.color} size={38} radius={12} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }} numberOfLines={1}>{title}</Text>
@@ -398,6 +405,7 @@ function GroupChatScreen() {
             {info?.muted ? <Ionicons name="notifications-off" size={11} color={C.textMuted} /> : null}
           </View>
         </View>
+        </TouchableOpacity>
         {!removed && info && (
           <TouchableOpacity
             onPress={() => setMenuOpen(true)}
@@ -615,10 +623,6 @@ function GroupChatScreen() {
             <MenuRow
               icon="people-outline" label="View group" color={C.text}
               onPress={() => { setMenuOpen(false); router.push(`/group/${groupId}` as any) }}
-            />
-            <MenuRow
-              icon="person-circle-outline" label="View members" color={C.text}
-              onPress={() => { setMenuOpen(false); setMembersOpen(true) }}
             />
             <MenuRow
               icon={info?.muted ? "notifications-outline" : "notifications-off-outline"}

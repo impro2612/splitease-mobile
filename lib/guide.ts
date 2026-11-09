@@ -206,6 +206,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       "Tap the chat icon next to a friend to message them (chat is part of SplitIT Plus).",
       "In a chat, long-press a message to react, copy it or delete it.",
       "Every group has its own group chat with all its members. Open it from Friends → Group Chats (also part of SplitIT Plus).",
+      "Tap the group name at the top of a group chat to see everyone in it.",
       "Tap ⋮ in a group chat to mute it or exit it. Exiting keeps you in the group, and you can rejoin the chat any time.",
     ],
     tips: [
