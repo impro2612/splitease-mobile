@@ -199,7 +199,7 @@ function Timeline() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity accessibilityLabel="Back" onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: PURPLE_BG, alignItems: "center", justifyContent: "center" }}>

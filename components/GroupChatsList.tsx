@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native"
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native"
 import { GroupAvatar } from "@/components/GroupAvatar"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
@@ -34,7 +34,7 @@ function relativeTime(iso: string) {
 }
 
 // Friends → Group Chats tab: one chat per group the user is in
-export function GroupChatsList({ chats, loading, locked, myId }: { chats: GroupChatRow[]; loading: boolean; locked: boolean; myId: string }) {
+export function GroupChatsList({ chats, loading, locked, myId, onRefresh, refreshing }: { chats: GroupChatRow[]; loading: boolean; locked: boolean; myId: string; onRefresh?: () => void; refreshing?: boolean }) {
   const C = useTheme()
   const [query, setQuery] = useState("")
 
@@ -146,7 +146,7 @@ export function GroupChatsList({ chats, loading, locked, myId }: { chats: GroupC
           </TouchableOpacity>
         ) : null}
       </View>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor="#6366f1" /> : undefined}>
         {visible.length === 0 ? (
           <Text style={{ color: C.textMuted, fontSize: 14, textAlign: "center", marginTop: 30 }}>No group chats match "{query.trim()}"</Text>
         ) : null}

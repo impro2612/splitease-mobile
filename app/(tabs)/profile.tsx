@@ -224,7 +224,7 @@ export default function Profile() {
               {user?.email}
             </Text>
 
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Edit profile"
               onPress={openEdit}
               style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 }}
             >

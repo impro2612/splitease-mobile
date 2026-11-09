@@ -1,4 +1,3 @@
-import "../global.css"
 import React, { useEffect, useRef, useState } from "react"
 import { Platform, View, TouchableOpacity, Pressable, useColorScheme, AppState, AppStateStatus } from "react-native"
 import { Text } from "@/components/ui/Typography"
@@ -22,6 +21,7 @@ import { LaunchIntro } from "@/components/LaunchIntro"
 import { OfflineProvider, useOffline } from "@/context/OfflineContext"
 import queryClient from "@/lib/query-client"
 import { usePlusSync } from "@/lib/plus"
+import { useTheme } from "@/lib/theme"
 
 // ── Custom Toast UI ───────────────────────────────────────────────────────────
 function ToastBase({
@@ -39,11 +39,12 @@ function ToastBase({
   bgColor: string
   borderColor: string
 }) {
+  const C = useTheme()
   return (
     <View style={{
       marginHorizontal: 16,
       borderRadius: 18,
-      backgroundColor: bgColor,
+      backgroundColor: C.isDark ? bgColor : C.card,
       borderWidth: 1,
       borderColor,
       flexDirection: "row",
@@ -74,13 +75,13 @@ function ToastBase({
       {/* Text */}
       <View style={{ flex: 1 }}>
         {text1 ? (
-          <Text style={{ color: "#f1f5f9", fontWeight: "700", fontSize: 14, lineHeight: 19 }}
+          <Text style={{ color: C.text, fontWeight: "700", fontSize: 14, lineHeight: 19 }}
             numberOfLines={2}>
             {text1}
           </Text>
         ) : null}
         {text2 ? (
-          <Text style={{ color: "#94a3b8", fontWeight: "400", fontSize: 12, marginTop: 2 }}
+          <Text style={{ color: C.textSub, fontWeight: "400", fontSize: 12, marginTop: 2 }}
             numberOfLines={2}>
             {text2}
           </Text>
@@ -138,6 +139,7 @@ const toastConfig = {
 function OfflineBanner() {
   const { top } = useSafeAreaInsets()
   const { isOnline, pendingCount, isSyncing } = useOffline()
+  const C = useTheme()
   if (isOnline) return null
 
   const label = isSyncing
@@ -146,9 +148,9 @@ function OfflineBanner() {
       ? `Offline — ${pendingCount} expense${pendingCount !== 1 ? "s" : ""} will sync on reconnect`
       : "No internet connection"
 
-  const color = isSyncing ? "#fbbf24" : "#f87171"
+  const color = isSyncing ? (C.isDark ? "#fbbf24" : "#b45309") : C.negative
   const icon = isSyncing ? "sync-outline" : "cloud-offline-outline"
-  const bg = isSyncing ? "#1f1a00" : "#1a1020"
+  const bg = C.isDark ? (isSyncing ? "#1f1a00" : "#1a1020") : (isSyncing ? "#fef3c7" : "#fee2e2")
   const border = isSyncing ? "rgba(251,191,36,0.3)" : "rgba(248,113,113,0.3)"
 
   return (
@@ -168,7 +170,7 @@ function OfflineBanner() {
         <Text style={{ color, fontSize: 12, fontWeight: "600" }}>{label}</Text>
       </View>
       {!isSyncing && (
-        <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "400" }}>Working in offline mode</Text>
+        <Text style={{ color: C.textSub, fontSize: 11, fontWeight: "400" }}>Working in offline mode</Text>
       )}
     </View>
   )
@@ -287,35 +289,52 @@ class ErrorBoundary extends React.Component<
   }
   render() {
     if (this.state.hasError) {
-      return (
-        <View style={{ flex: 1, backgroundColor: "#0a0a1a", alignItems: "center", justifyContent: "center", padding: 32 }}>
-          <Ionicons name="warning-outline" size={48} color="#f87171" />
-          <Text style={{ color: "#f1f5f9", fontSize: 20, fontWeight: "800", marginTop: 16, textAlign: "center" }}>
-            Something went wrong
-          </Text>
-          <Text style={{ color: "#94a3b8", fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
-            An unexpected error occurred. Please try again.
-          </Text>
-          <TouchableOpacity
-            onPress={() => this.setState({ hasError: false })}
-            style={{ marginTop: 24, backgroundColor: "#6366f1", paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12 }}
-          >
-            <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 15 }}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      )
+      return <ErrorFallback onRetry={() => this.setState({ hasError: false })} />
     }
     return this.props.children
   }
 }
 
+function ErrorFallback({ onRetry }: { onRetry: () => void }) {
+  const C = useTheme()
+  return (
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", padding: 32 }}>
+      <Ionicons name="warning-outline" size={48} color={C.negative} />
+      <Text style={{ color: C.text, fontSize: 20, fontWeight: "800", marginTop: 16, textAlign: "center" }}>
+        Something went wrong
+      </Text>
+      <Text style={{ color: C.textSub, fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
+        An unexpected error occurred. Please try again.
+      </Text>
+      <TouchableOpacity
+        onPress={onRetry}
+        style={{ marginTop: 24, backgroundColor: "#6366f1", paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12 }}
+        accessibilityLabel="Try again"
+      >
+        <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 15 }}>Try again</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+const INTRO_SEEN_KEY = "splitit:intro_seen"
+
 export default function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   usePlusSync(user?.id)
   const scheme = useColorScheme()
-  // Full intro on every launch (the animation needs ~2.8 s to reach its last line,
-  // plus time to read it); tap anywhere to skip
-  const [showLaunchIntro, setShowLaunchIntro] = useState(true)
+  // Animated intro on the first launch only (store reviewers flag intros that replay
+  // every cold start); tap anywhere to skip. null = still checking storage.
+  const [showLaunchIntro, setShowLaunchIntro] = useState<boolean | null>(null)
+  useEffect(() => {
+    AsyncStorage.getItem(INTRO_SEEN_KEY)
+      .then((v) => setShowLaunchIntro(v == null))
+      .catch(() => setShowLaunchIntro(false))
+  }, [])
+  const dismissIntro = () => {
+    setShowLaunchIntro(false)
+    AsyncStorage.setItem(INTRO_SEEN_KEY, "1").catch(() => {})
+  }
 
   useEffect(() => {
     loadSession()
@@ -341,7 +360,7 @@ export default function RootLayout() {
   // Handle notification taps — including the tap that cold-started the app, which the
   // listener alone misses. (Plain splitit:// links are routed by Expo Router itself.)
   // Waits until the session and navigator are ready.
-  const navReady = !loading && !showLaunchIntro && !!user
+  const navReady = !loading && showLaunchIntro === false && !!user
   useEffect(() => {
     if (!navReady) return
     Notifications.getLastNotificationResponseAsync()
@@ -367,24 +386,26 @@ export default function RootLayout() {
         SplashScreen.hideAsync().catch(() => {})
       })
 
-      const timer = setTimeout(() => {
-        setShowLaunchIntro(false)
-      }, 4000)
-
-      return () => clearTimeout(timer)
     }
   }, [loading])
+
+  // Let the intro play out, then dismiss it
+  useEffect(() => {
+    if (loading || showLaunchIntro !== true) return
+    const timer = setTimeout(dismissIntro, 4000)
+    return () => clearTimeout(timer)
+  }, [loading, showLaunchIntro])
 
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
       <OfflineProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ErrorBoundary>
-          {loading ? null : (
+          {loading || showLaunchIntro === null ? null : (
             <View style={{ flex: 1 }}>
               <StatusBar style={scheme === "light" ? "dark" : "light"} backgroundColor={scheme === "light" ? "#f8fafc" : "#0a0a1a"} />
               {showLaunchIntro ? (
-                <Pressable style={{ flex: 1 }} onPress={() => setShowLaunchIntro(false)} accessibilityLabel="Skip intro">
+                <Pressable style={{ flex: 1 }} onPress={dismissIntro} accessibilityLabel="Skip intro">
                   <LaunchIntro />
                 </Pressable>
               ) : (

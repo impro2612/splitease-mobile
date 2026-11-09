@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard, StyleSheet } from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
@@ -8,6 +8,7 @@ import { parseAmountInput, startOfLocalDay, endOfLocalDay, currencySymbol } from
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { useKeyboard } from "@/lib/useKeyboard"
 import { useTheme, useFeatureAccent } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -68,13 +69,7 @@ function SwipeSheet({
   const { height } = useWindowDimensions()
   const hidden = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
-  const [kbHeight, setKbHeight] = useState(0)
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height))
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
-    return () => { show.remove(); hide.remove() }
-  }, [])
+  const { height: kbHeight } = useKeyboard()
   const slideAnim = useRef(new Animated.Value(hidden)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
@@ -250,7 +245,7 @@ function TripPlanner() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity accessibilityLabel="Back" onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: TEAL_BG, alignItems: "center", justifyContent: "center" }}>

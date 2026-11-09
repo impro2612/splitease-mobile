@@ -412,7 +412,7 @@ function ScrapBook() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header row */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity accessibilityLabel="Back" onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: A.soft, alignItems: "center", justifyContent: "center" }}>

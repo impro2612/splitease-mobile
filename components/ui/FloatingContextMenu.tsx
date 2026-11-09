@@ -131,7 +131,7 @@ export default function FloatingContextMenu({
               )
             })}
             {onMoreEmoji && (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="More emojis"
                 onPress={onMoreEmoji}
                 activeOpacity={0.7}
                 style={{

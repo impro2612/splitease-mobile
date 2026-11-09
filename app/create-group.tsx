@@ -131,7 +131,7 @@ export default function CreateGroup() {
           <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <Text style={{ color: C.text, fontSize: 24, fontWeight: "700" }}>Create Group</Text>
-              <TouchableOpacity onPress={closeScreen} style={{ backgroundColor: C.iconBg, borderRadius: 22, padding: 10 }}>
+              <TouchableOpacity accessibilityLabel="Close" onPress={closeScreen} style={{ backgroundColor: C.iconBg, borderRadius: 22, padding: 10 }}>
                 <Ionicons name="close" size={20} color={C.text} />
               </TouchableOpacity>
             </View>

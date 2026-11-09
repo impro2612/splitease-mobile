@@ -1,4 +1,4 @@
-import { View } from "react-native"
+import { View, SectionList, type SectionListProps } from "react-native"
 import { Text } from "@/components/ui/Typography"
 import { Ionicons } from "@expo/vector-icons"
 import { formatCurrency } from "@/lib/utils"
@@ -283,31 +283,53 @@ function dayLabel(iso: string): string {
 }
 
 /** Activity list grouped under day headings ("Today", "Yesterday", "12 Oct"). */
-export function ActivityFeed({ items, userId, limit }: { items: ActivityItem[]; userId: string; limit?: number }) {
+type FeedSection = { label: string; data: ActivityItem[] }
+
+/**
+ * Day-grouped activity list. Renders a SectionList so long feeds only mount visible rows;
+ * each day's rows are drawn as one rounded card by styling the first/last row.
+ */
+export function ActivityFeed({ items, userId, limit, ...listProps }: {
+  items: ActivityItem[]
+  userId: string
+  limit?: number
+} & Omit<SectionListProps<ActivityItem, FeedSection>, "sections" | "renderItem" | "renderSectionHeader" | "keyExtractor">) {
   const C = useTheme()
   const shown = typeof limit === "number" ? items.slice(0, limit) : items
-  const sections: { label: string; items: ActivityItem[] }[] = []
+  const sections: FeedSection[] = []
   for (const item of shown) {
     const label = dayLabel(item.createdAt)
     const last = sections[sections.length - 1]
-    if (last && last.label === label) last.items.push(item)
-    else sections.push({ label, items: [item] })
+    if (last && last.label === label) last.data.push(item)
+    else sections.push({ label, data: [item] })
   }
+  const r = tokens.radius.lg
   return (
-    <View>
-      {sections.map((sec) => (
-        <View key={sec.label} style={{ marginBottom: 6 }}>
-          <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 8, marginTop: 4 }}>{sec.label}</Text>
-          <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, overflow: "hidden", marginBottom: 8 }}>
-            {sec.items.map((item, i) => (
-              <View key={item.id}>
-                {i > 0 && <View style={{ height: 1, backgroundColor: C.border, marginLeft: 68 }} />}
-                <ActivityRow item={item} userId={userId} C={C} />
-              </View>
-            ))}
+    <SectionList
+      sections={sections}
+      keyExtractor={(item) => item.id}
+      stickySectionHeadersEnabled={false}
+      showsVerticalScrollIndicator={false}
+      renderSectionHeader={({ section }) => (
+        <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 8, marginTop: 4 }}>{section.label}</Text>
+      )}
+      renderItem={({ item, index, section }) => {
+        const first = index === 0
+        const last = index === section.data.length - 1
+        return (
+          <View style={{
+            backgroundColor: C.card, borderColor: C.border, borderLeftWidth: 1, borderRightWidth: 1,
+            borderTopWidth: first ? 1 : 0, borderBottomWidth: last ? 1 : 0,
+            borderTopLeftRadius: first ? r : 0, borderTopRightRadius: first ? r : 0,
+            borderBottomLeftRadius: last ? r : 0, borderBottomRightRadius: last ? r : 0,
+            overflow: "hidden", marginBottom: last ? 14 : 0,
+          }}>
+            {!first && <View style={{ height: 1, backgroundColor: C.border, marginLeft: 68 }} />}
+            <ActivityRow item={item} userId={userId} C={C} />
           </View>
-        </View>
-      ))}
-    </View>
+        )
+      }}
+      {...listProps}
+    />
   )
 }

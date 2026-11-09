@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react"
-import { View, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Modal, FlatList, useWindowDimensions, RefreshControl, KeyboardAvoidingView, Platform, Animated, Keyboard } from "react-native"
+import { View, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Modal, FlatList, useWindowDimensions, RefreshControl, KeyboardAvoidingView, Platform, Animated } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { PieChart, BarChart } from "react-native-gifted-charts"
 import * as DocumentPicker from "expo-document-picker"
+import { useKeyboard } from "@/lib/useKeyboard"
 import { useTheme, useFeatureAccent } from "@/lib/theme"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
@@ -111,8 +112,7 @@ function Expenses() {
   const [pdfPasswordError, setPdfPasswordError] = useState("")
   const [pdfPasswordLoading, setPdfPasswordLoading] = useState(false)
   const [pdfQuoteIndex, setPdfQuoteIndex] = useState(0)
-  const [pdfKeyboardHeight, setPdfKeyboardHeight] = useState(0)
-  const [pdfKeyboardVisible, setPdfKeyboardVisible] = useState(false)
+  const { height: pdfKeyboardHeight } = useKeyboard({ androidOnly: true })
   const [pdfModalHeight, setPdfModalHeight] = useState(0)
   const quoteOpacity = useRef(new Animated.Value(1)).current
 
@@ -143,29 +143,7 @@ function Expenses() {
   }, [pdfPasswordLoading, pdfPasswordVisible, quoteOpacity])
 
   useEffect(() => {
-    if (Platform.OS !== "android" || !pdfPasswordVisible) return
-
-    const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
-      setPdfKeyboardHeight(event.endCoordinates.height)
-      setPdfKeyboardVisible(true)
-    })
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setPdfKeyboardVisible(false)
-      setPdfKeyboardHeight(0)
-    })
-
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
-  }, [pdfPasswordVisible])
-
-  useEffect(() => {
-    if (!pdfPasswordVisible) {
-      setPdfKeyboardVisible(false)
-      setPdfKeyboardHeight(0)
-      setPdfModalHeight(0)
-    }
+    if (!pdfPasswordVisible) setPdfModalHeight(0)
   }, [pdfPasswordVisible])
 
   useEffect(() => {
@@ -341,7 +319,7 @@ function Expenses() {
     return acc
   }, {})
 
-  const androidVisibleHeight = pdfKeyboardVisible ? Math.max(0, height - pdfKeyboardHeight) : height
+  const androidVisibleHeight = pdfPasswordVisible && pdfKeyboardHeight > 0 ? Math.max(0, height - pdfKeyboardHeight) : height
   const androidCenteredTop = Math.max(insets.top + 16, (androidVisibleHeight - pdfModalHeight) / 2)
   const androidCardStyle = Platform.OS === "android" && pdfModalHeight > 0
     ? {

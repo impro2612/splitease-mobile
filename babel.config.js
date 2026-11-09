@@ -1,10 +1,8 @@
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind", reanimated: false, worklets: false }],
-      "./babel-nativewind",
-    ],
+    // reanimated 3 ships its own Babel plugin; the preset's worklets plugin is for reanimated 4
+    presets: [["babel-preset-expo", { reanimated: false, worklets: false }]],
     plugins: ["react-native-reanimated/plugin"],
   };
 };

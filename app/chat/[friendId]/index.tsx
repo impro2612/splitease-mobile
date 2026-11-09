@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { View, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Keyboard, Animated } from "react-native"
+import { View, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Modal, Animated } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import * as Clipboard from "expo-clipboard"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
+import { useKeyboard } from "@/lib/useKeyboard"
 import { useTheme } from "@/lib/theme"
 import { Ionicons } from "@expo/vector-icons"
 import { router, useLocalSearchParams } from "expo-router"
@@ -77,7 +78,6 @@ function ChatScreen() {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   // Android: the screen doesn't resize for the keyboard (edge-to-edge), so we lift the
   // whole chat by the keyboard's height — the list shrinks and the last message stays visible
-  const [kbHeight, setKbHeight] = useState(0)
   const listRef = useRef<FlatList>(null)
   const nearBottomRef = useRef(true)
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -234,14 +234,8 @@ function ChatScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
-      if (Platform.OS === "android") setKbHeight(Math.max(0, e.endCoordinates?.height ?? 0))
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50)
-    })
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
-    return () => { showSub.remove(); hideSub.remove() }
-  }, [])
+  // Android is edge-to-edge, so pad for the keyboard ourselves; iOS uses KeyboardAvoidingView
+  const { height: kbHeight } = useKeyboard({ androidOnly: true, onShow: () => listRef.current?.scrollToEnd({ animated: true }) })
 
   // ── Send message ─────────────────────────────────────────────────────────────
   async function sendMessage() {

@@ -23,14 +23,12 @@ export function Avatar({ name, email, image, size = 40 }: Props) {
 
   return (
     <View
-      style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden" }}
-      className="items-center justify-center"
+      style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", alignItems: "center", justifyContent: "center" }}
     >
       {image ? (
         <Image source={{ uri: image }} style={{ width: size, height: size, borderRadius: size / 2 }} />
       ) : (
-        <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg }}
-          className="items-center justify-center">
+        <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ fontSize: size * 0.36, color: "#fff", fontWeight: "700" }}>{initials}</Text>
         </View>
       )}

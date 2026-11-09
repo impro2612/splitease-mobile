@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import { View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Linking, Platform, FlatList, AppState, AppStateStatus, BackHandler } from "react-native"
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Linking, Platform, FlatList, AppState, AppStateStatus, BackHandler, RefreshControl } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import * as Contacts from "expo-contacts"
 import * as SecureStore from "expo-secure-store"
@@ -10,6 +10,7 @@ import { router, type Href, useFocusEffect } from "expo-router"
 import type Pusher from "pusher-js/react-native"
 import { createPusher } from "@/lib/pusher"
 import { friendsApi, usersApi, blocksApi, groupChatsApi } from "@/lib/api"
+import { QueryError } from "@/components/ui/QueryError"
 import { GroupChatsList, type GroupChatRow } from "@/components/GroupChatsList"
 import { useAuthStore } from "@/store/auth"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -77,7 +78,7 @@ export default function Friends() {
   // Track AppState for auto-sync
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
 
-  const { data: friendsData, isLoading, refetch } = useQuery({
+  const { data: friendsData, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["friends"],
     queryFn: async () => {
       await friendsApi.sync().catch(() => {})
@@ -95,6 +96,12 @@ export default function Friends() {
   const groupChats = chatLocked ? [] : groupChatsData ?? []
 
   const friends: any[] = friendsData?.friends ?? []
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await Promise.all([refetch(), chatLocked ? null : refetchGroupChats()])
+    setRefreshing(false)
+  }, [refetch, refetchGroupChats, chatLocked])
   const incoming: any[] = friendsData?.incoming ?? []
   const outgoing: any[] = friendsData?.outgoing ?? []
   const unreadByFriend: Record<string, number> = friendsData?.unreadByFriend ?? {}
@@ -223,7 +230,7 @@ export default function Friends() {
         const phone = c.phoneNumbers[0].number ?? ""
         if (!phone) continue
         parsed.push({
-          id: c.id ?? Math.random().toString(),
+          id: c.id ?? `${c.name}:${phone}`,
           name: c.name,
           phone,
           initials: getInitials(c.name),
@@ -472,9 +479,12 @@ export default function Friends() {
           style={{ flex: 1, paddingHorizontal: 20 }}
           contentContainerStyle={{ paddingBottom: 90 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" />}
         >
           {isLoading ? (
             <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+          ) : isError && !friendsData ? (
+            <QueryError title="Couldn't load your friends" onRetry={() => refetch()} retrying={isFetching} />
           ) : friends.length === 0 ? (
             <EmptyState
               icon="people-outline"
@@ -539,7 +549,7 @@ export default function Friends() {
 
       {/* Requests Tab */}
       {tab === "requests" && (
-        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" />}>
           <View style={{ gap: 16, paddingBottom: 90 }}>
             {incoming.length > 0 && (
               <View>
@@ -615,7 +625,7 @@ export default function Friends() {
 
       {/* Group Chats Tab */}
       {tab === "groups" && (
-        <GroupChatsList chats={groupChats} loading={groupChatsLoading} locked={chatLocked} myId={user?.id ?? ""} />
+        <GroupChatsList chats={groupChats} loading={groupChatsLoading} locked={chatLocked} myId={user?.id ?? ""}  onRefresh={onRefresh} refreshing={refreshing} />
       )}
 
       {/* Add / Search Tab */}
@@ -658,7 +668,7 @@ export default function Friends() {
               <Text style={{ color: C.textMuted, fontSize: 14, textAlign: "center", lineHeight: 21, marginBottom: 32 }}>
                 Find friends already on SplitIT or invite your contacts to join you.
               </Text>
-              <TouchableOpacity onPress={requestContactsPermission} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 32, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <TouchableOpacity accessibilityLabel="Sync contacts" onPress={requestContactsPermission} style={{ backgroundColor: "#6366f1", borderRadius: 16, paddingHorizontal: 32, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Ionicons name="sync" size={18} color="#fff" />
                 <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Sync Contacts</Text>
               </TouchableOpacity>

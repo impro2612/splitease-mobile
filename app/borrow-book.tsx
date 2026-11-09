@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, AppState, AppStateStatus, Keyboard, StyleSheet } from "react-native"
+import { useKeyboard } from "@/lib/useKeyboard"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, AppState, AppStateStatus, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { Avatar as SharedAvatar } from "@/components/ui/Avatar"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -109,13 +110,7 @@ function SwipeDownSheet({
   const { height } = useWindowDimensions()
   const hiddenTranslateY = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
-  const [kbHeight, setKbHeight] = useState(0)
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height))
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
-    return () => { show.remove(); hide.remove() }
-  }, [])
+  const { height: kbHeight } = useKeyboard()
   const slideAnim = useRef(new Animated.Value(hiddenTranslateY)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
@@ -396,7 +391,7 @@ export default function BorrowBook() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
-        <TouchableOpacity onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity accessibilityLabel="Back" onPress={goHome} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={18} color={C.text} />
         </TouchableOpacity>
         <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT_BG, alignItems: "center", justifyContent: "center" }}>

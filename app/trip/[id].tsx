@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react"
-import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, RefreshControl, Alert, Animated, PanResponder, useWindowDimensions, Pressable, Keyboard } from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, RefreshControl, Alert, Animated, PanResponder, useWindowDimensions, Pressable } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { parseAmountInput, currencySymbol } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { router, useLocalSearchParams } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { useKeyboard } from "@/lib/useKeyboard"
 import { useTheme, featureAccents, useFeatureAccent } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { tripsApi, groupsApi } from "@/lib/api"
@@ -60,12 +61,7 @@ function SwipeSheet({
   const hidden = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
   // Modals don't get Android's adjustResize, so lift the sheet above the keyboard manually
-  const [kbHeight, setKbHeight] = useState(0)
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height))
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
-    return () => { show.remove(); hide.remove() }
-  }, [])
+  const { height: kbHeight } = useKeyboard()
   const slideAnim = useRef(new Animated.Value(hidden)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { GroupAvatar } from "@/components/GroupAvatar"
-import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native"
+import { View, FlatList, TouchableOpacity, RefreshControl } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { router } from "expo-router"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { groupsApi } from "@/lib/api"
@@ -16,6 +16,7 @@ import { useOffline } from "@/context/OfflineContext"
 import { getRate } from "@/lib/exchange"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
+import { QueryError } from "@/components/ui/QueryError"
 import { tokens } from "@/lib/theme"
 
 export default function Groups() {
@@ -24,10 +25,17 @@ export default function Groups() {
   const { isOnline } = useOffline()
   const [search, setSearch] = useState("")
 
-  const { data: groups = [], isLoading } = useQuery({
+  const queryClient = useQueryClient()
+  const { data: groups = [], isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["groups"],
     queryFn: () => groupsApi.list().then((r) => (Array.isArray(r.data) ? r.data : [])),
   })
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await queryClient.invalidateQueries({ queryKey: ["groups"] })
+    setRefreshing(false)
+  }, [queryClient])
 
   const [fxRates, setFxRates] = useState<Record<string, number>>({})
 
@@ -56,6 +64,8 @@ export default function Groups() {
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groups])
+
+  const filteredGroups = groups.filter((g: any) => !search.trim() || g.name?.toLowerCase().includes(search.toLowerCase()))
 
   function getGroupBalance(group: any): number {
     const defaultCode = group.currency ?? "USD"
@@ -108,83 +118,86 @@ export default function Groups() {
           </View>
         </View>
 
-        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
-          {isLoading ? (
-            <View style={{ paddingTop: 8 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /></View>
-          ) : groups.length === 0 ? (
-            <EmptyState
-              icon="people-outline"
-              title="No groups yet"
-              subtitle="Create a group for a trip, your flat, or anything you share costs on."
-              actionLabel="Create a group"
-              actionIcon="add"
-              onAction={() => router.push("/create-group" as any)}
-              disabled={!isOnline}
-            />
-          ) : (
-            <View style={{ gap: 12, paddingBottom: 24 }}>
-              {groups
-                .filter((g: any) => !search.trim() || g.name?.toLowerCase().includes(search.toLowerCase()))
-                .map((group: any) => {
-                const balance = getGroupBalance(group)
-                const gc = CURRENCIES.find(c => c.code === (group.currency ?? "USD")) ?? CURRENCIES[0]
-                return (
-                  <TouchableOpacity
-                    key={group.id}
-                    onPress={() => router.push(`/group/${group.id}`)}
-                    style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                      <GroupAvatar emoji={group.emoji} imageUrl={group.imageUrl} color={group.color} size={52} radius={16} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }} numberOfLines={1}>{group.name}</Text>
-                        {group.description ? <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{group.description}</Text> : null}
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
-                    </View>
-
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                          <Ionicons name="people-outline" size={12} color={C.textMuted} />
-                          <Text style={{ color: C.textSub, fontSize: 12 }}>{group.members?.length ?? 0}</Text>
-                        </View>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                          <Ionicons name="receipt-outline" size={12} color={C.textMuted} />
-                          <Text style={{ color: C.textSub, fontSize: 12 }}>{group._count?.expenses ?? 0}</Text>
-                        </View>
-                      </View>
-                      <Text style={{ color: balance > 0 ? C.positive : balance < 0 ? C.negative : C.textMuted, fontWeight: "700", fontSize: 14 }}>
-                        {describeBalance(balance, gc.symbol, gc.code)}
-                      </Text>
-                    </View>
-
-                    {/* Member avatars */}
-                    <View style={{ flexDirection: "row", marginTop: 8, marginLeft: 2 }}>
-                      {group.members?.slice(0, 5).map((m: any, i: number) => (
-                        <View key={m.id} style={{ marginLeft: i === 0 ? 0 : -8, borderRadius: 16, borderWidth: 2, borderColor: C.card }}>
-                          <Avatar name={m.user.name} email={m.user.email} image={m.user.image} size={26} />
-                        </View>
-                      ))}
-                      {(group.members?.length ?? 0) > 5 && (
-                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C.iconBg, marginLeft: -8, alignItems: "center", justifyContent: "center" }}>
-                          <Text style={{ fontSize: 9, color: C.textSub }}>+{group.members.length - 5}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                )
-              })}
-              {search.trim() && groups.filter((g: any) => g.name?.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-                <View style={{ alignItems: "center", paddingVertical: 40 }}>
-                  <Ionicons name="search-outline" size={40} color={C.textMuted} style={{ marginBottom: 12 }} />
-                  <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>No groups match "{search}"</Text>
+        <FlatList
+          data={isLoading || isError ? [] : filteredGroups}
+          keyExtractor={(g: any) => g.id}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 12, flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} />}
+          ListEmptyComponent={
+            isLoading ? (
+              <View style={{ paddingTop: 8 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /></View>
+            ) : isError ? (
+              <QueryError title="Couldn't load your groups" onRetry={() => refetch()} retrying={isFetching} />
+            ) : groups.length === 0 ? (
+              <EmptyState
+                icon="people-outline"
+                title="No groups yet"
+                subtitle="Create a group for a trip, your flat, or anything you share costs on."
+                actionLabel="Create a group"
+                actionIcon="add"
+                onAction={() => router.push("/create-group" as any)}
+                disabled={!isOnline}
+              />
+            ) : (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <Ionicons name="search-outline" size={40} color={C.textMuted} style={{ marginBottom: 12 }} />
+                <Text style={{ color: C.textSub, fontWeight: "600", fontSize: 15 }}>No groups match "{search}"</Text>
+              </View>
+            )
+          }
+          renderItem={({ item: group }: { item: any }) => {
+            const balance = getGroupBalance(group)
+            const gc = CURRENCIES.find(c => c.code === (group.currency ?? "USD")) ?? CURRENCIES[0]
+            return (
+              <TouchableOpacity
+                onPress={() => router.push(`/group/${group.id}`)}
+                style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <GroupAvatar emoji={group.emoji} imageUrl={group.imageUrl} color={group.color} size={52} radius={16} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: C.text, fontWeight: "600", fontSize: 15 }} numberOfLines={1}>{group.name}</Text>
+                    {group.description ? <Text style={{ color: C.textSub, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{group.description}</Text> : null}
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
                 </View>
-              )}
-            </View>
-          )}
-        </ScrollView>
+
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Ionicons name="people-outline" size={12} color={C.textMuted} />
+                      <Text style={{ color: C.textSub, fontSize: 12 }}>{group.members?.length ?? 0}</Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Ionicons name="receipt-outline" size={12} color={C.textMuted} />
+                      <Text style={{ color: C.textSub, fontSize: 12 }}>{group._count?.expenses ?? 0}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ color: balance > 0 ? C.positive : balance < 0 ? C.negative : C.textMuted, fontWeight: "700", fontSize: 14 }}>
+                    {describeBalance(balance, gc.symbol, gc.code)}
+                  </Text>
+                </View>
+
+                {/* Member avatars */}
+                <View style={{ flexDirection: "row", marginTop: 8, marginLeft: 2 }}>
+                  {group.members?.slice(0, 5).map((m: any, i: number) => (
+                    <View key={m.id} style={{ marginLeft: i === 0 ? 0 : -8, borderRadius: 16, borderWidth: 2, borderColor: C.card }}>
+                      <Avatar name={m.user.name} email={m.user.email} image={m.user.image} size={26} />
+                    </View>
+                  ))}
+                  {(group.members?.length ?? 0) > 5 && (
+                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C.iconBg, marginLeft: -8, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 9, color: C.textSub }}>+{group.members.length - 5}</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            )
+          }}
+        />
       </SafeAreaView>
     </View>
   )

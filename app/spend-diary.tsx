@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react"
-import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, Keyboard, StyleSheet } from "react-native"
+import { View, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Pressable, RefreshControl, Platform, Animated, PanResponder, useWindowDimensions, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
@@ -8,6 +8,7 @@ import { currencySymbol } from "@/lib/utils"
 import { parseAmountInput } from "@/lib/utils"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
+import { useKeyboard } from "@/lib/useKeyboard"
 import { useTheme } from "@/lib/theme"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
@@ -56,16 +57,11 @@ function BottomSheet({
   const { height } = useWindowDimensions()
   const hiddenTranslateY = Math.max(300, height)
   const [mounted, setMounted] = useState(visible)
-  const [kbHeight, setKbHeight] = useState(0)
+  const { height: kbHeight } = useKeyboard()
   const slideAnim = useRef(new Animated.Value(hiddenTranslateY)).current
   const panY = useRef(new Animated.Value(0)).current
   const overlayAnim = useRef(new Animated.Value(0)).current
 
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height))
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0))
-    return () => { show.remove(); hide.remove() }
-  }, [])
 
   const translateY = Animated.add(slideAnim, panY.interpolate({
     inputRange: [-9999, 0, 9999], outputRange: [0, 0, 9999],
@@ -489,7 +485,7 @@ function SpendDiary() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16, gap: 12 }}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel="Back"
           onPress={goHome}
           style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}
         >

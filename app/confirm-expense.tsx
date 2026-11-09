@@ -154,7 +154,7 @@ export default function ConfirmExpense() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12 }}>
-        <TouchableOpacity onPress={dismiss} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity accessibilityLabel="Close" onPress={dismiss} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="close" size={20} color={C.textSub} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -257,7 +257,7 @@ export default function ConfirmExpense() {
           {/* Date */}
           <View>
             <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600", marginBottom: 6 }}>Date</Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Pick date"
               onPress={openDatePicker}
               style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
             >

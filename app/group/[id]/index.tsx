@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
+import { useKeyboard } from "@/lib/useKeyboard"
 import { GroupAvatar } from "@/components/GroupAvatar"
-import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable, Keyboard, BackHandler, StyleSheet, StatusBar } from "react-native"
+import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable, BackHandler, StyleSheet, StatusBar, RefreshControl } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
@@ -29,6 +30,7 @@ import { Money } from "@/components/ui/Money"
 import { Celebration } from "@/components/ui/Celebration"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { SkeletonRow } from "@/components/ui/Skeleton"
+import { QueryError } from "@/components/ui/QueryError"
 import { haptic } from "@/lib/haptics"
 import { useOffline } from "@/context/OfflineContext"
 import { BottomTabBar } from "@/components/ui/BottomTabBar"
@@ -275,7 +277,6 @@ export default function GroupDetail() {
   const scrollYRef = useRef(0)
   const settleInputRef = useRef<any>(null)
   const kbTopRef = useRef(0)
-  const [kbHeight, setKbHeight] = useState(0)
   const revealSettleInput = () => {
     const input = settleInputRef.current
     if (!input || !kbTopRef.current) return
@@ -284,17 +285,8 @@ export default function GroupDetail() {
       if (overlap > 0) scrollRef.current?.scrollTo({ y: scrollYRef.current + overlap, animated: true })
     })
   }
-  useEffect(() => {
-    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow"
-    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide"
-    const show = Keyboard.addListener(showEvt, (e) => {
-      kbTopRef.current = e.endCoordinates.screenY
-      setKbHeight(e.endCoordinates.height)
-      setTimeout(revealSettleInput, Platform.OS === "ios" ? 250 : 50)
-    })
-    const hide = Keyboard.addListener(hideEvt, () => { kbTopRef.current = 0; setKbHeight(0) })
-    return () => { show.remove(); hide.remove() }
-  }, [])
+  const { height: kbHeight, top: kbTop } = useKeyboard({ onShow: revealSettleInput })
+  kbTopRef.current = kbTop
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }) }, [tab])
 
   // Add Expense modal
@@ -512,11 +504,20 @@ export default function GroupDetail() {
     Toast.show({ type: "success", text1: "Note saved!" })
   }
 
-  const { data: group, isLoading } = useQuery({
+  const { data: group, isLoading, isError: groupError, refetch: refetchGroup, isFetching: groupFetching } = useQuery({
     queryKey: ["group", id],
     queryFn: () => groupsApi.get(id).then((r) => r.data),
     enabled: !!id,
   })
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["group", id] }),
+      queryClient.invalidateQueries({ queryKey: ["balances", id] }),
+    ])
+    setRefreshing(false)
+  }
 
   // Real-time reaction updates via Pusher
   useEffect(() => {
@@ -936,6 +937,14 @@ export default function GroupDetail() {
     )
   }
 
+  if (!group && groupError) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center" }} edges={["top"]}>
+        <QueryError title="Couldn't load this group" onRetry={() => refetchGroup()} retrying={groupFetching} />
+      </SafeAreaView>
+    )
+  }
+
   if (!group) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", padding: 32 }} edges={["top"]}>
@@ -1079,6 +1088,7 @@ export default function GroupDetail() {
         keyboardShouldPersistTaps="handled"
         onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y }}
         scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} />}
       >
         {/* Expenses Tab */}
         {tab === "expenses" && (
@@ -1092,7 +1102,7 @@ export default function GroupDetail() {
               onAction={() => { resetAddForm(); setShowAddExpense(true) }}
             />
           ) : (
-            <View className="gap-2 py-3">
+            <View style={{ gap: 8, paddingVertical: 12 }}>
               {(() => {
                 const first = filteredExpenses[0]
                 return (
@@ -1546,7 +1556,7 @@ export default function GroupDetail() {
             .filter((d) => d.amount > 0)
 
           return (
-            <View className="py-3 gap-4">
+            <View style={{ gap: 16, paddingVertical: 12 }}>
               {/* Summary cards */}
               <View style={{ flexDirection: "row", gap: 12 }}>
                 {/* GROUP TOTAL */}
@@ -1661,7 +1671,7 @@ export default function GroupDetail() {
 
         {/* Utility Tab */}
         {tab === "utility" && (
-          <View className="py-3 gap-3">
+          <View style={{ gap: 12, paddingVertical: 12 }}>
             {/* Who should pay next */}
             {nextPayer && (
               <View style={{ backgroundColor: "rgba(99,102,241,0.1)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -1862,7 +1872,7 @@ export default function GroupDetail() {
               </View>
 
               {isTracking ? (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="Stop tracking"
                   onPress={confirmStopTracking}
                   style={{ backgroundColor: "rgba(244,63,94,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(244,63,94,0.25)", paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                 >
@@ -1879,7 +1889,7 @@ export default function GroupDetail() {
                   </Text>
                 </View>
               ) : (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="Pick tracking end date"
                   onPress={openTrackDatePicker}
                   style={{ backgroundColor: "#6366f1", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                 >
@@ -2091,7 +2101,7 @@ export default function GroupDetail() {
             </View>
             <Text style={{ color: C.text, fontSize: 18, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Enable Expense Tracking</Text>
             <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginBottom: 24, textAlign: "center" }}>Auto-detect debit SMS for this group. Pick an end date to begin.</Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Pick end date"
               onPress={pickTrackEndDate}
               style={{ height: 50, borderRadius: 14, backgroundColor: "#6366f1", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginBottom: 10 }}
             >
@@ -2401,7 +2411,7 @@ export default function GroupDetail() {
                 >
                   <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={44} />
                   <View style={{ flex: 1 }}>
-                    <View className="flex-row items-center gap-2">
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                       <Text style={{ color: C.text, fontWeight: "600" }}>{m.user?.name ?? "Unknown"}</Text>
                       {isMe && <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "600" }}>(you)</Text>}
                     </View>
@@ -2593,7 +2603,7 @@ function ExpenseFormFields({
 
       {/* Paid by */}
       <Text style={{ color: C.textSub, fontSize: 13, fontWeight: "600", marginBottom: 8 }}>Paid by</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
         {members.map((m: any) => (
           <TouchableOpacity
             key={m.userId}
