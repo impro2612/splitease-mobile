@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { GroupAvatar } from "@/components/GroupAvatar"
-import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable, Keyboard, BackHandler, StyleSheet } from "react-native"
+import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable, Keyboard, BackHandler, StyleSheet, StatusBar } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
@@ -241,13 +241,29 @@ export default function GroupDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { locked: chatLocked } = usePlus() // group chat is a Plus feature
   const insets = useSafeAreaInsets()
-  const { height: windowH } = useWindowDimensions()
+  const { height: windowH, width: windowW } = useWindowDimensions()
   const { user } = useAuthStore()
   const C = useTheme()
   const queryClient = useQueryClient()
   const { isOnline, enqueueExpense } = useOffline()
   const [tab, setTab] = useState<Tab>("expenses")
   const [showMembers, setShowMembers] = useState(false) // members popup over the current tab
+  // Expenses filter: by member (paid or shares in it) and by day
+  const [filterMembers, setFilterMembers] = useState<string[]>([])
+  const [filterDays, setFilterDays] = useState<string[]>([])
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filterPane, setFilterPane] = useState<"member" | "date">("member")
+  const [filterAnchor, setFilterAnchor] = useState<{ top: number; right: number } | null>(null)
+  const filterBtnRef = useRef<View>(null)
+  const filterCount = filterMembers.length + filterDays.length
+  const openFilter = () => {
+    filterBtnRef.current?.measureInWindow((x, y, w, h) => {
+      // Android's measureInWindow is relative to the area below the status bar; the modal isn't
+      const statusBar = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0
+      setFilterAnchor({ top: y + h + 6 + statusBar, right: Math.max(12, windowW - (x + w)) })
+      setFilterOpen(true)
+    })
+  }
   useEffect(() => {
     if (!showMembers) return
     const sub = BackHandler.addEventListener("hardwareBackPress", () => { setShowMembers(false); return true })
@@ -933,6 +949,29 @@ export default function GroupDetail() {
     )
   }
 
+  const dayKey = (e: any) => new Date(e.date ?? e.createdAt).toDateString()
+  const dayLabel = (e: any) => {
+    const d = new Date(e.date ?? e.createdAt)
+    return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" })
+  }
+  const sortedExpenses = expenses.slice().sort((a: any, b: any) => {
+    const dateDiff = new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()
+    if (dateDiff !== 0) return dateDiff
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+  const filteredExpenses = sortedExpenses.filter((e: any) =>
+    (filterMembers.length === 0 || filterMembers.some((uid) => e.paidById === uid || e.splits?.some((s: any) => s.userId === uid))) &&
+    (filterDays.length === 0 || filterDays.includes(dayKey(e))))
+  // Distinct days for the date filter, newest first
+  const expenseDays: { key: string; label: string; count: number }[] = []
+  for (const e of sortedExpenses) {
+    const k = dayKey(e)
+    const last = expenseDays[expenseDays.length - 1]
+    if (last?.key === k) last.count++
+    else expenseDays.push({ key: k, label: dayLabel(e), count: 1 })
+  }
+  const toggleIn = (list: string[], v: string) => list.includes(v) ? list.filter((x) => x !== v) : [...list, v]
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top"]}>
       {/* Header */}
@@ -1054,13 +1093,33 @@ export default function GroupDetail() {
             />
           ) : (
             <View className="gap-2 py-3">
-              {expenses.slice().sort((a: any, b: any) => {
-                const dateDiff = new Date(b.date ?? b.createdAt).getTime() - new Date(a.date ?? a.createdAt).getTime()
-                if (dateDiff !== 0) return dateDiff
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              }).map((exp: any, idx: number, sortedList: any[]) => {
-                const dayOf = (e: any) => new Date(e.date ?? e.createdAt).toDateString()
-                const showDay = idx === 0 || dayOf(sortedList[idx - 1]) !== dayOf(exp)
+              {(() => {
+                const first = filteredExpenses[0]
+                return (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600" }}>
+                      {first ? dayLabel(first) : "No matching expenses"}
+                    </Text>
+                    <TouchableOpacity
+                      ref={filterBtnRef as any}
+                      onPress={() => { haptic.tap(); openFilter() }}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: filterCount ? tokens.accent : C.iconBg, borderRadius: 10, paddingHorizontal: 10, height: 30 }}
+                      accessibilityLabel="Filter expenses"
+                    >
+                      <Ionicons name="filter" size={15} color={filterCount ? "#fff" : C.text} />
+                      {filterCount > 0 && <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{filterCount}</Text>}
+                    </TouchableOpacity>
+                  </View>
+                )
+              })()}
+              {filteredExpenses.length === 0 && (
+                <TouchableOpacity onPress={() => { setFilterMembers([]); setFilterDays([]) }} style={{ alignItems: "center", paddingVertical: 30 }}>
+                  <Text style={{ color: C.textSub, fontSize: 13 }}>No expenses match these filters.</Text>
+                  <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "700", marginTop: 6 }}>Clear filters</Text>
+                </TouchableOpacity>
+              )}
+              {filteredExpenses.map((exp: any, idx: number, sortedList: any[]) => {
+                const showDay = idx > 0 && dayKey(sortedList[idx - 1]) !== dayKey(exp)
                 const mySplit = exp.splits?.find((s: any) => s.userId === user?.id)
                 const isPayer = exp.paidById === user?.id
                 const payer = members.find((m: any) => m.userId === exp.paidById)
@@ -1078,8 +1137,8 @@ export default function GroupDetail() {
                 return (
                   <View key={exp.id}>
                   {showDay && (
-                    <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600", marginTop: idx === 0 ? 0 : 10, marginBottom: 6 }}>
-                      {new Date(exp.date ?? exp.createdAt).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: new Date(exp.date ?? exp.createdAt).getFullYear() === new Date().getFullYear() ? undefined : "numeric" })}
+                    <Text style={{ color: C.textMuted, fontSize: 12, fontWeight: "600", marginTop: 10, marginBottom: 6 }}>
+                      {dayLabel(exp)}
                     </Text>
                   )}
                   <TouchableOpacity
@@ -1875,6 +1934,73 @@ export default function GroupDetail() {
           emoji: { selected: "rgba(99,102,241,0.2)" },
         }}
       />
+
+      {/* Expenses filter popup — anchored under the filter button */}
+      <Modal visible={filterOpen} transparent animationType="fade" onRequestClose={() => setFilterOpen(false)}>
+        <Pressable onPress={() => setFilterOpen(false)} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.25)" }}>
+          {filterAnchor && (
+            <Pressable
+              onPress={() => {}}
+              style={{ position: "absolute", top: Math.min(filterAnchor.top, windowH - 320), right: filterAnchor.right, width: Math.min(330, windowW - 24), height: 300, backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: "hidden", elevation: 10, shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } }}
+            >
+              <View style={{ flex: 1, flexDirection: "row" }}>
+                {/* Left: what to filter by */}
+                <View style={{ width: 128, backgroundColor: C.iconBg, paddingVertical: 8 }}>
+                  {([["member", "Member", "people-outline", filterMembers.length], ["date", "Date", "calendar-outline", filterDays.length]] as const).map(([key, label, icon, n]) => {
+                    const active = filterPane === key
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => setFilterPane(key)}
+                        style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: active ? C.card : "transparent", borderLeftWidth: 3, borderLeftColor: active ? tokens.accent : "transparent" }}
+                      >
+                        <Ionicons name={icon} size={16} color={active ? C.accentText : C.textSub} />
+                        <Text style={{ flex: 1, color: active ? C.text : C.textSub, fontWeight: active ? "700" : "500", fontSize: 13 }} numberOfLines={1}>{label}</Text>
+                        {n > 0 && (
+                          <View style={{ backgroundColor: tokens.accent, borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
+                            <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>{n}</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+                {/* Right: the choices for the selected filter */}
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: 6 }}>
+                  {(filterPane === "member"
+                    ? members.map((m: any) => ({ key: m.userId as string, label: m.userId === user?.id ? "You" : (m.user?.name ?? "Unknown"), sub: undefined as string | undefined }))
+                    : expenseDays.map((d) => ({ key: d.key, label: d.label, sub: `${d.count} expense${d.count === 1 ? "" : "s"}` }))
+                  ).map((o) => {
+                    const list = filterPane === "member" ? filterMembers : filterDays
+                    const on = list.includes(o.key)
+                    return (
+                      <TouchableOpacity
+                        key={o.key}
+                        onPress={() => { haptic.tap(); filterPane === "member" ? setFilterMembers(toggleIn(filterMembers, o.key)) : setFilterDays(toggleIn(filterDays, o.key)) }}
+                        style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 10 }}
+                      >
+                        <Ionicons name={on ? "checkbox" : "square-outline"} size={20} color={on ? tokens.accent : C.textMuted} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: C.text, fontSize: 13, fontWeight: on ? "700" : "500" }} numberOfLines={1}>{o.label}</Text>
+                          {o.sub ? <Text style={{ color: C.textMuted, fontSize: 11 }}>{o.sub}</Text> : null}
+                        </View>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </ScrollView>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: C.border, paddingHorizontal: 14, paddingVertical: 10 }}>
+                <TouchableOpacity onPress={() => { setFilterMembers([]); setFilterDays([]) }} disabled={!filterCount}>
+                  <Text style={{ color: filterCount ? C.negative : C.textMuted, fontWeight: "600", fontSize: 13 }}>Clear all</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setFilterOpen(false)} style={{ backgroundColor: tokens.accent, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 7 }}>
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Show {filteredExpenses.length}</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          )}
+        </Pressable>
+      </Modal>
 
       {/* Custom Confirm Dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>
