@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { GroupAvatar } from "@/components/GroupAvatar"
-import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable } from "react-native"
+import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable, Keyboard } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
@@ -249,6 +249,30 @@ export default function GroupDetail() {
   const [prevTab, setPrevTab] = useState<Tab>("expenses") // where "Done" returns from tools/members
   // Each tab/panel starts at the top — otherwise switching kept the previous scroll offset
   const scrollRef = useRef<ScrollView>(null)
+  // Keep the inline settle-up amount field above the keyboard
+  const scrollYRef = useRef(0)
+  const settleInputRef = useRef<any>(null)
+  const kbTopRef = useRef(0)
+  const [kbHeight, setKbHeight] = useState(0)
+  const revealSettleInput = () => {
+    const input = settleInputRef.current
+    if (!input || !kbTopRef.current) return
+    input.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+      const overlap = y + h + 100 - kbTopRef.current // 100 leaves room for the hint line below
+      if (overlap > 0) scrollRef.current?.scrollTo({ y: scrollYRef.current + overlap, animated: true })
+    })
+  }
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow"
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide"
+    const show = Keyboard.addListener(showEvt, (e) => {
+      kbTopRef.current = e.endCoordinates.screenY
+      setKbHeight(e.endCoordinates.height)
+      setTimeout(revealSettleInput, Platform.OS === "ios" ? 250 : 50)
+    })
+    const hide = Keyboard.addListener(hideEvt, () => { kbTopRef.current = 0; setKbHeight(0) })
+    return () => { show.remove(); hide.remove() }
+  }, [])
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }) }, [tab])
 
   // Add Expense modal
@@ -1014,8 +1038,11 @@ export default function GroupDetail() {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1, paddingHorizontal: 20 }}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 24 + kbHeight }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y }}
+        scrollEventThrottle={16}
       >
         {/* Expenses Tab */}
         {tab === "expenses" && (
@@ -1339,6 +1366,8 @@ export default function GroupDetail() {
                                         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: C.iconBg, borderRadius: 10, borderWidth: 1, borderColor: "rgba(99,102,241,0.5)", paddingHorizontal: 12, height: 40 }}>
                                           <Text style={{ color: C.textSub, fontSize: 14, marginRight: 4 }}>{ci.symbol}</Text>
                                           <TextInput
+                                            ref={settleInputRef}
+                                            onFocus={() => setTimeout(revealSettleInput, 300)}
                                             style={{ flex: 1, color: C.text, fontSize: 14 }}
                                             keyboardType="decimal-pad"
                                             value={inlineSettleAmount}
