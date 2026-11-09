@@ -158,7 +158,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     summary: "Add people, manage admins, edit or delete a group",
     about: "Group admins manage who's in the group. The person who creates a group is its first admin.",
     steps: [
-      "Inside a group, tap the people icon at the top to see members. Tap it again (or Done) to go back.",
+      "Inside a group, tap the people icon at the top to see members in a popup. Tap ✕, outside it, or Back to close it.",
       "Tap Add members to add more friends.",
       "Admins can make another member an admin or remove a member.",
       "Tap the group's name at the top to edit its name, picture, currency and location.",
