@@ -248,7 +248,7 @@ export default function GroupDetail() {
   const { isOnline, enqueueExpense } = useOffline()
   const [tab, setTab] = useState<Tab>("expenses")
   const [showMembers, setShowMembers] = useState(false) // members popup over the current tab
-  // Expenses filter: by member (paid or shares in it) and by day
+  // Expenses filter: by who paid and by day
   const [filterMembers, setFilterMembers] = useState<string[]>([])
   const [filterDays, setFilterDays] = useState<string[]>([])
   const [filterOpen, setFilterOpen] = useState(false)
@@ -960,7 +960,7 @@ export default function GroupDetail() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
   const filteredExpenses = sortedExpenses.filter((e: any) =>
-    (filterMembers.length === 0 || filterMembers.some((uid) => e.paidById === uid || e.splits?.some((s: any) => s.userId === uid))) &&
+    (filterMembers.length === 0 || filterMembers.includes(e.paidById)) &&
     (filterDays.length === 0 || filterDays.includes(dayKey(e))))
   // Distinct days for the date filter, newest first
   const expenseDays: { key: string; label: string; count: number }[] = []
@@ -1945,7 +1945,7 @@ export default function GroupDetail() {
             >
               <View style={{ flex: 1, flexDirection: "row" }}>
                 {/* Left: what to filter by */}
-                <View style={{ width: 128, backgroundColor: C.iconBg, paddingVertical: 8 }}>
+                <View style={{ width: 142, backgroundColor: C.iconBg, paddingVertical: 8 }}>
                   {([["member", "Member", "people-outline", filterMembers.length], ["date", "Date", "calendar-outline", filterDays.length]] as const).map(([key, label, icon, n]) => {
                     const active = filterPane === key
                     return (
@@ -1993,8 +1993,8 @@ export default function GroupDetail() {
                 <TouchableOpacity onPress={() => { setFilterMembers([]); setFilterDays([]) }} disabled={!filterCount}>
                   <Text style={{ color: filterCount ? C.negative : C.textMuted, fontWeight: "600", fontSize: 13 }}>Clear all</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setFilterOpen(false)} style={{ backgroundColor: tokens.accent, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 7 }}>
-                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Show {filteredExpenses.length}</Text>
+                <TouchableOpacity onPress={() => setFilterOpen(false)} style={{ backgroundColor: tokens.accent, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 7 }}>
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>OK</Text>
                 </TouchableOpacity>
               </View>
             </Pressable>

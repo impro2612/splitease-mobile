@@ -163,7 +163,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       "Admins can make another member an admin or remove a member.",
       "Tap the group's name at the top to edit its name, picture, currency and location.",
       "Tap the chat button next to it to open the group's chat (SplitIT Plus).",
-      "In the Expenses tab, tap the filter button on the right to show only expenses for certain members (who paid or share in them) or certain days.",
+      "In the Expenses tab, tap the filter button on the right to show only expenses paid by certain members or on certain days.",
       "Admins can delete the whole group at the bottom of the edit screen.",
     ],
     tips: [
