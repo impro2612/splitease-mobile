@@ -12,9 +12,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import type Pusher from "pusher-js/react-native"
 import { getPusher, subscribeChannel } from "@/lib/pusher"
 import { useAuthStore } from "@/store/auth"
-import { messagesApi, messageReactionsApi } from "@/lib/api"
+import { messagesApi, messageReactionsApi, blocksApi } from "@/lib/api"
+import { useQueryClient } from "@tanstack/react-query"
 import Toast from "react-native-toast-message"
 import { withPlus } from "@/components/PlusGate"
+import { ReportSheet, type ReportTarget } from "@/components/ReportSheet"
 import { uuidv4, QUICK_EMOJIS, EmojiReactionSheet, encrypt, decrypt } from "@/components/chat/ChatShared"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -76,6 +78,8 @@ function ChatScreen() {
   const actionMsg = actionState?.msg ?? null
   const reactionTargetRef = useRef<Message | null>(null)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
+  const queryClient = useQueryClient()
   // Android: the screen doesn't resize for the keyboard (edge-to-edge), so we lift the
   // whole chat by the keyboard's height — the list shrinks and the last message stays visible
   const listRef = useRef<FlatList>(null)
@@ -340,6 +344,19 @@ function ChatScreen() {
       Toast.show({ type: "error", text1: "Delete failed", text2: "Could not delete messages" })
     } finally {
       setDeleting(false)
+    }
+  }
+
+  // Block from the report flow: mirrors friends.tsx confirmBlock's post-block behaviour,
+  // then leaves the chat since the friendship is gone
+  async function blockFriend() {
+    try {
+      await blocksApi.block(friendId)
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+      Toast.show({ type: "success", text1: "User blocked" })
+      router.back()
+    } catch {
+      Toast.show({ type: "error", text1: "Failed to block user" })
     }
   }
 
@@ -663,9 +680,22 @@ function ChatScreen() {
               setSelectedIds(new Set([id]))
             },
           }] : []),
+          // Only the other person's messages can be reported
+          ...(actionMsg?.id && actionMsg.senderId !== myId ? [{
+            label: "Report",
+            icon: "flag-outline",
+            color: C.negative,
+            bgColor: "rgba(239,68,68,0.15)",
+            onPress: () => {
+              if (!actionMsg?.id) return
+              setReportTarget({ userId: friendId, name: friendName, messageId: actionMsg.id, preview: actionMsg.content })
+            },
+          }] : []),
         ]}
         onDismiss={() => { setActionState(null); setEmojiPickerOpen(false) }}
       />
+
+      <ReportSheet visible={!!reportTarget} onClose={() => setReportTarget(null)} target={reportTarget} onBlock={blockFriend} />
 
       {/* Full emoji picker — app-controlled bottom sheet */}
       <EmojiReactionSheet

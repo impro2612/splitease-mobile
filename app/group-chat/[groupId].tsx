@@ -13,9 +13,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useQueryClient } from "@tanstack/react-query"
 import { getPusher, subscribeChannel } from "@/lib/pusher"
 import { useAuthStore } from "@/store/auth"
-import { groupChatsApi } from "@/lib/api"
+import { groupChatsApi, blocksApi } from "@/lib/api"
 import Toast from "react-native-toast-message"
 import { withPlus } from "@/components/PlusGate"
+import { ReportSheet, type ReportTarget } from "@/components/ReportSheet"
 import { uuidv4, QUICK_EMOJIS, EmojiReactionSheet, encrypt, decrypt } from "@/components/chat/ChatShared"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -107,7 +108,19 @@ function GroupChatScreen() {
   const [membersOpen, setMembersOpen] = useState(false)
   const [actionState, setActionState] = useState<{ msg: Message; anchor: MenuAnchor } | null>(null)
   const actionMsg = actionState?.msg ?? null
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
   const reactionTargetRef = useRef<Message | null>(null)
+
+  // Block from the report flow; we stay in the group chat since the group itself is unaffected
+  async function blockMember(userId: string) {
+    try {
+      await blocksApi.block(userId)
+      queryClient.invalidateQueries({ queryKey: ["friends"] })
+      Toast.show({ type: "success", text1: "User blocked" })
+    } catch {
+      Toast.show({ type: "error", text1: "Failed to block user" })
+    }
+  }
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string; message: string; confirmText: string; icon: keyof typeof Ionicons.glyphMap; onConfirm: () => void
@@ -605,8 +618,26 @@ function GroupChatScreen() {
               })
             },
           }] : []),
+          // Only other members' messages can be reported
+          ...(actionMsg?.id && actionMsg.senderId !== myId ? [{
+            label: "Report",
+            icon: "flag-outline",
+            color: C.negative,
+            bgColor: "rgba(239,68,68,0.15)",
+            onPress: () => {
+              if (!actionMsg?.id) return
+              setReportTarget({ userId: actionMsg.senderId, name: actionMsg.senderName ?? "Member", groupMessageId: actionMsg.id, groupId, preview: actionMsg.content })
+            },
+          }] : []),
         ]}
         onDismiss={() => { setActionState(null); setEmojiPickerOpen(false) }}
+      />
+
+      <ReportSheet
+        visible={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        target={reportTarget}
+        onBlock={() => { if (reportTarget) blockMember(reportTarget.userId) }}
       />
 
       <EmojiReactionSheet

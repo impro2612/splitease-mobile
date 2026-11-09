@@ -15,6 +15,7 @@ import { GroupChatsList, type GroupChatRow } from "@/components/GroupChatsList"
 import { useAuthStore } from "@/store/auth"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Avatar } from "@/components/ui/Avatar"
+import { ReportSheet, type ReportTarget } from "@/components/ReportSheet"
 import Toast from "react-native-toast-message"
 import { tokens, useTheme } from "@/lib/theme"
 import { useOffline } from "@/context/OfflineContext"
@@ -70,6 +71,7 @@ export default function Friends() {
 
   // Friend action menu (3-dot)
   const [actionFriend, setActionFriend] = useState<{ friendshipId: string; userId: string; name: string; email?: string; image?: string | null } | null>(null)
+  const [reportFriend, setReportFriend] = useState<ReportTarget | null>(null)
 
   // Search auto-focus
   const searchInputRef = useRef<any>(null)
@@ -821,6 +823,14 @@ export default function Friends() {
                 <Text style={{ color: C.negative, fontWeight: "700", fontSize: 15 }}>Remove friend</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                onPress={() => { const f = actionFriend; setActionFriend(null); if (f) setReportFriend({ userId: f.userId, name: f.name }) }}
+                accessibilityLabel={`Report ${actionFriend?.name ?? "user"}`}
+                style={{ height: 48, borderRadius: tokens.radius.md, backgroundColor: tokens.negativeSoft, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                <Ionicons name="flag-outline" size={18} color={C.negative} />
+                <Text style={{ color: C.negative, fontWeight: "700", fontSize: 15 }}>Report user</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => { const f = actionFriend; setActionFriend(null); if (f) confirmBlock(f.userId, f.name) }}
                 style={{ height: 48, borderRadius: tokens.radius.md, backgroundColor: "#dc2626", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
               >
@@ -837,6 +847,14 @@ export default function Friends() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Report a friend; "Also block?" step hands off to the existing block confirm */}
+      <ReportSheet
+        visible={!!reportFriend}
+        onClose={() => setReportFriend(null)}
+        target={reportFriend}
+        onBlock={() => { if (reportFriend) confirmBlock(reportFriend.userId, reportFriend.name) }}
+      />
 
       {/* Remove / block confirm dialog */}
       <Modal visible={!!confirmDialog} transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}>

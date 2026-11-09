@@ -205,7 +205,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       "Or tap Sync Contacts to see which of your contacts are already on SplitIT — invite the rest by WhatsApp or text message.",
       "Incoming requests appear under Requests — accept or decline them there.",
       "Tap the chat icon next to a friend to message them (chat is part of SplitIT Plus).",
-      "In a chat, long-press a message to react, copy it or delete it.",
+      "In a chat, long-press a message to react, copy it, delete it or report it.",
       "Every group has its own group chat with all its members. Open it from Friends → Group Chats (also part of SplitIT Plus).",
       "Tap the group name at the top of a group chat to see everyone in it.",
       "Tap ⋮ in a group chat to mute it or exit it. Exiting keeps you in the group, and you can rejoin the chat any time.",
@@ -213,6 +213,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     tips: [
       "Messages are encrypted in transit and at rest.",
       "Use the ⋮ menu next to a friend to remove or block them. Unblock people from Profile & settings → Blocked Users.",
+      "To report someone, long-press one of their messages and choose Report, or open the ⋮ menu next to a friend and tap Report user. Reports are confidential, and you can block them in the same step.",
     ],
     route: "/(tabs)/friends",
     routeLabel: "Go to Friends",

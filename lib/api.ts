@@ -333,3 +333,25 @@ export const plusApi = {
 export const wrappedApi = {
   get: (year?: number) => api.get("/api/wrapped", { params: year ? { year } : {} }),
 }
+
+// Reports — Google UGC policy / Apple 1.2 require a way to report users and content
+export type ReportReason = "spam" | "harassment" | "inappropriate" | "scam" | "other"
+export type ReportPayload = {
+  targetUserId: string
+  reason: ReportReason
+  /** Free text, server caps at 500 chars */
+  details?: string
+  messageId?: string
+  groupMessageId?: string
+  groupId?: string
+}
+export const REPORT_REASONS: { key: ReportReason; label: string }[] = [
+  { key: "spam", label: "Spam" },
+  { key: "harassment", label: "Harassment or bullying" },
+  { key: "inappropriate", label: "Inappropriate content" },
+  { key: "scam", label: "Scam or fraud" },
+  { key: "other", label: "Something else" },
+]
+export const reportsApi = {
+  create: (data: ReportPayload) => api.post("/api/reports", data),
+}
