@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { GroupAvatar } from "@/components/GroupAvatar"
-import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable, Keyboard } from "react-native"
+import { View, ScrollView, TouchableOpacity, Modal, ActivityIndicator, FlatList, Platform, useWindowDimensions, Animated, Pressable, Keyboard, BackHandler, StyleSheet } from "react-native"
 import { Text, TextInput } from "@/components/ui/Typography"
 import FloatingContextMenu, { MenuAnchor } from "@/components/ui/FloatingContextMenu"
 import { InAppFullScreenModal } from "@/components/ui/InAppModal"
@@ -22,6 +22,7 @@ import { Avatar } from "@/components/ui/Avatar"
 import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import EmojiKeyboard from "rn-emoji-keyboard"
+import { BlurView } from "expo-blur"
 import { syncTrackConfigToNative, checkNotificationAccess, openNotificationAccessSettings } from "@/lib/nativeTrackExpense"
 import { tokens, useTheme } from "@/lib/theme"
 import { Money } from "@/components/ui/Money"
@@ -37,7 +38,7 @@ const AnimatedPath = Animated.createAnimatedComponent(Path)
 import * as Print from "expo-print"
 import * as Sharing from "expo-sharing"
 
-type Tab = "expenses" | "balances" | "members" | "analytics" | "utility"
+type Tab = "expenses" | "balances" | "analytics" | "utility"
 
 const PIE_COLORS = ["#6366f1", "#f59e0b", "#10b981", "#f87171", "#38bdf8", "#a78bfa", "#fb923c", "#34d399"]
 
@@ -246,7 +247,12 @@ export default function GroupDetail() {
   const queryClient = useQueryClient()
   const { isOnline, enqueueExpense } = useOffline()
   const [tab, setTab] = useState<Tab>("expenses")
-  const [prevTab, setPrevTab] = useState<Tab>("expenses") // where "Done" returns from tools/members
+  const [showMembers, setShowMembers] = useState(false) // members popup over the current tab
+  useEffect(() => {
+    if (!showMembers) return
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => { setShowMembers(false); return true })
+    return () => sub.remove()
+  }, [showMembers])
   // Each tab/panel starts at the top — otherwise switching kept the previous scroll offset
   const scrollRef = useRef<ScrollView>(null)
   // Keep the inline settle-up amount field above the keyboard
@@ -951,11 +957,11 @@ export default function GroupDetail() {
             </View>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => { haptic.tap(); if (tab !== "members") setPrevTab(tab); setTab(tab === "members" ? prevTab : "members") }}
-            style={{ backgroundColor: tab === "members" ? tokens.accentSoft : C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+            onPress={() => { haptic.tap(); setShowMembers(true) }}
+            style={{ backgroundColor: C.iconBg, borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
             accessibilityLabel="Members"
           >
-            <Ionicons name="people-outline" size={18} color={tab === "members" ? C.accentText : C.text} />
+            <Ionicons name="people-outline" size={18} color={C.text} />
           </TouchableOpacity>
           {/* This group's chat (SplitIT Plus) */}
           <TouchableOpacity
@@ -1004,14 +1010,6 @@ export default function GroupDetail() {
           </TouchableOpacity>
         </View>
 
-        {tab === "members" ? (
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 40 }}>
-            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Members</Text>
-            <TouchableOpacity onPress={() => setTab(prevTab)} style={{ flexDirection: "row", alignItems: "center", gap: 4, padding: 6 }}>
-              <Text style={{ color: C.accentText, fontSize: 13, fontWeight: "600" }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
           <View style={{ flexDirection: "row", backgroundColor: C.iconBg, borderRadius: 12, padding: 3, gap: 4 }}>
             {([["expenses", "Expenses"], ["balances", "Balances"], ["analytics", "Insights"], ["utility", "Utility"]] as [Tab, string][]).map(([t, label]) => (
               <TouchableOpacity
@@ -1023,7 +1021,6 @@ export default function GroupDetail() {
               </TouchableOpacity>
             ))}
           </View>
-        )}
       </View>
 
       {/* Tracking Banner */}
@@ -1435,83 +1432,6 @@ export default function GroupDetail() {
             </View>
           )
         })()}
-
-        {/* Members Tab */}
-        {tab === "members" && (
-          <View className="py-3 gap-2">
-            {/* Add members — admin only */}
-            {isAdmin && (
-              <TouchableOpacity
-                onPress={() => setShowAddMember(true)}
-                style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}
-              >
-                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="person-add" size={20} color={C.accentText} />
-                </View>
-                <Text style={{ color: C.accentText, fontWeight: "600" }}>Add members</Text>
-              </TouchableOpacity>
-            )}
-
-            {members.map((m: any) => {
-              const isMemberAdmin = m.role === "ADMIN"
-              const isMe = m.userId === user?.id
-              return (
-                <View
-                  key={m.id}
-                  style={{ backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
-                >
-                  <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={44} />
-                  <View style={{ flex: 1 }}>
-                    <View className="flex-row items-center gap-2">
-                      <Text style={{ color: C.text, fontWeight: "600" }}>{m.user?.name ?? "Unknown"}</Text>
-                      {isMe && <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "600" }}>(you)</Text>}
-                    </View>
-                    <Text style={{ color: C.textSub, fontSize: 12 }}>{m.user?.email}</Text>
-                  </View>
-                  {/* Admin badge */}
-                  {isMemberAdmin && (
-                    <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                      <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Admin</Text>
-                    </View>
-                  )}
-                  {/* Admin-only actions */}
-                  {isAdmin && !isMe && (
-                    <View style={{ flexDirection: "column", alignItems: "center", gap: 6 }}>
-                      <TouchableOpacity
-                        onPress={() => showConfirm({
-                          title: "Remove Member",
-                          message: `Remove ${m.user?.name} from this group?`,
-                          confirmText: "Remove",
-                          danger: true,
-                          onConfirm: () => removeMemberMutation.mutate(m.userId),
-                        })}
-                        disabled={removeMemberMutation.isPending}
-                        style={{ padding: 4 }}
-                      >
-                        <Ionicons name="person-remove-outline" size={18} color={C.negative} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => showConfirm({
-                          title: isMemberAdmin ? "Remove Admin" : "Make Admin",
-                          message: isMemberAdmin
-                            ? `Remove admin rights from ${m.user?.name}?`
-                            : `Make ${m.user?.name} an admin of this group?`,
-                          confirmText: isMemberAdmin ? "Remove Admin" : "Make Admin",
-                          danger: false,
-                          onConfirm: () => makeAdminMutation.mutate({ userId: m.userId, role: isMemberAdmin ? "MEMBER" : "ADMIN" }),
-                        })}
-                        disabled={makeAdminMutation.isPending}
-                        style={{ padding: 4 }}
-                      >
-                        <Ionicons name={isMemberAdmin ? "shield" : "shield-outline"} size={16} color={isMemberAdmin ? "#fbbf24" : "#64748b"} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              )
-            })}
-          </View>
-        )}
 
         {/* Analytics Tab */}
         {tab === "analytics" && (() => {
@@ -2315,6 +2235,99 @@ export default function GroupDetail() {
 
       <Celebration visible={celebrate} message="Paid in full" onDone={() => setCelebrate(false)} />
       <BottomTabBar activeTab="groups" />
+      {/* Members popup — floats over the current tab with the screen blurred behind */}
+      {showMembers && (
+        <View style={StyleSheet.absoluteFill}>
+          <BlurView intensity={40} tint={C.isDark ? "dark" : "light"} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+          <Pressable onPress={() => setShowMembers(false)} style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.3)" }]} accessibilityLabel="Close members" />
+          <View pointerEvents="box-none" style={{ flex: 1, justifyContent: "center", paddingHorizontal: 20 }}>
+            <View style={{ maxHeight: "78%", backgroundColor: C.card, borderRadius: 24, borderWidth: 1, borderColor: C.border, paddingTop: 20, paddingBottom: 12, shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontSize: 20, fontWeight: "800" }}>Members</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 2 }} numberOfLines={1}>{members.length} in {group?.name}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowMembers(false)} style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.iconBg, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Close">
+                  <Ionicons name="close" size={18} color={C.text} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
+            {/* Add members — admin only */}
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => { setShowMembers(false); setShowAddMember(true) }}
+                style={{ backgroundColor: "rgba(99,102,241,0.15)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(99,102,241,0.3)", padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(99,102,241,0.2)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="person-add" size={20} color={C.accentText} />
+                </View>
+                <Text style={{ color: C.accentText, fontWeight: "600" }}>Add members</Text>
+              </TouchableOpacity>
+            )}
+
+            {members.map((m: any) => {
+              const isMemberAdmin = m.role === "ADMIN"
+              const isMe = m.userId === user?.id
+              return (
+                <View
+                  key={m.id}
+                  style={{ backgroundColor: C.bg, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
+                >
+                  <Avatar name={m.user?.name} email={m.user?.email} image={m.user?.image} size={44} />
+                  <View style={{ flex: 1 }}>
+                    <View className="flex-row items-center gap-2">
+                      <Text style={{ color: C.text, fontWeight: "600" }}>{m.user?.name ?? "Unknown"}</Text>
+                      {isMe && <Text style={{ color: C.accentText, fontSize: 10, fontWeight: "600" }}>(you)</Text>}
+                    </View>
+                    <Text style={{ color: C.textSub, fontSize: 12 }}>{m.user?.email}</Text>
+                  </View>
+                  {/* Admin badge */}
+                  {isMemberAdmin && (
+                    <View style={{ backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ color: "#fcd34d", fontSize: 11, fontWeight: "600" }}>Admin</Text>
+                    </View>
+                  )}
+                  {/* Admin-only actions */}
+                  {isAdmin && !isMe && (
+                    <View style={{ flexDirection: "column", alignItems: "center", gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() => showConfirm({
+                          title: "Remove Member",
+                          message: `Remove ${m.user?.name} from this group?`,
+                          confirmText: "Remove",
+                          danger: true,
+                          onConfirm: () => removeMemberMutation.mutate(m.userId),
+                        })}
+                        disabled={removeMemberMutation.isPending}
+                        style={{ padding: 4 }}
+                      >
+                        <Ionicons name="person-remove-outline" size={18} color={C.negative} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => showConfirm({
+                          title: isMemberAdmin ? "Remove Admin" : "Make Admin",
+                          message: isMemberAdmin
+                            ? `Remove admin rights from ${m.user?.name}?`
+                            : `Make ${m.user?.name} an admin of this group?`,
+                          confirmText: isMemberAdmin ? "Remove Admin" : "Make Admin",
+                          danger: false,
+                          onConfirm: () => makeAdminMutation.mutate({ userId: m.userId, role: isMemberAdmin ? "MEMBER" : "ADMIN" }),
+                        })}
+                        disabled={makeAdminMutation.isPending}
+                        style={{ padding: 4 }}
+                      >
+                        <Ionicons name={isMemberAdmin ? "shield" : "shield-outline"} size={16} color={isMemberAdmin ? "#fbbf24" : "#64748b"} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )
+            })}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   )
 }
