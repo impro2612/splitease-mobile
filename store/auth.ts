@@ -6,6 +6,7 @@ import axios from "axios"
 import { API_BASE_URL, authApi } from "@/lib/api"
 import queryClient from "@/lib/query-client"
 import { resetPusher } from "@/lib/pusher"
+import { captureError } from "@/lib/monitoring"
 
 export type ThemePref = "light" | "dark" | "system"
 
@@ -60,7 +61,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       } else {
         set({ loading: false, currency, theme })
       }
-    } catch {
+    } catch (e) {
+      // Corrupt SecureStore data silently logs the user out; worth knowing about
+      captureError(e, { where: "auth.loadSession" })
       set({ loading: false })
     }
   },

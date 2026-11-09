@@ -6,6 +6,7 @@ import { plusApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { subscribeChannel } from "@/lib/pusher"
 import queryClient from "@/lib/query-client"
+import { captureError } from "@/lib/monitoring"
 
 /**
  * SplitIT Plus. Everyone gets the whole app free for 3 months; after that splitting
@@ -179,6 +180,7 @@ export async function buyPlan(userId: string, pkg: PurchasesPackage): Promise<bo
     await Purchases.purchasePackage(pkg)
   } catch (e: any) {
     if (e?.userCancelled) return false
+    captureError(e, { where: "plus.buyPlan", pkg: pkg.identifier })
     throw e
   }
   await plusApi.sync()
@@ -187,8 +189,13 @@ export async function buyPlan(userId: string, pkg: PurchasesPackage): Promise<bo
 
 export async function restorePurchases(userId: string) {
   await ensurePurchases(userId)
-  await Purchases.restorePurchases()
-  await plusApi.sync()
+  try {
+    await Purchases.restorePurchases()
+    await plusApi.sync()
+  } catch (e) {
+    captureError(e, { where: "plus.restorePurchases" })
+    throw e
+  }
 }
 
 export type PlusSubscription = {

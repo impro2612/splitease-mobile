@@ -1,6 +1,7 @@
 import axios from "axios"
 import * as SecureStore from "expo-secure-store"
 import { router } from "expo-router"
+import { captureError } from "@/lib/monitoring"
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "https://splitwithease.vercel.app"
 
@@ -33,7 +34,10 @@ async function tryRefresh(): Promise<string | null> {
     await SecureStore.setItemAsync("refresh_token", newRefresh)
     await SecureStore.setItemAsync("session_token", token)
     return token
-  } catch {
+  } catch (e) {
+    // A 401 just means the refresh token expired (normal sign-out); anything else is a bug
+    const status = axios.isAxiosError(e) ? e.response?.status : undefined
+    if (status !== 401) captureError(e, { where: "api.tryRefresh", status })
     return null
   }
 }

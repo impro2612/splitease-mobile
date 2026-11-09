@@ -22,6 +22,10 @@ import { OfflineProvider, useOffline } from "@/context/OfflineContext"
 import queryClient from "@/lib/query-client"
 import { PlusProvider, usePlusSync } from "@/lib/plus"
 import { useTheme } from "@/lib/theme"
+import { initMonitoring, captureError, setMonitoringUser, wrapRoot } from "@/lib/monitoring"
+
+// Before any other module-level work so early crashes are reported too
+initMonitoring()
 
 // ── Custom Toast UI ───────────────────────────────────────────────────────────
 function ToastBase({
@@ -286,6 +290,7 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary]", error, info.componentStack)
+    captureError(error, { where: "ErrorBoundary", componentStack: info.componentStack })
   }
   render() {
     if (this.state.hasError) {
@@ -319,10 +324,14 @@ function ErrorFallback({ onRetry }: { onRetry: () => void }) {
 
 const INTRO_SEEN_KEY = "splitit:intro_seen"
 
-export default function RootLayout() {
+function RootLayout() {
   const { loadSession, loading, user } = useAuthStore()
   usePlusSync(user?.id)
   const scheme = useColorScheme()
+  // Id only; beforeSend strips anything else
+  useEffect(() => {
+    setMonitoringUser(user ? { id: user.id } : null)
+  }, [user?.id])
   // Animated intro on the first launch only (store reviewers flag intros that replay
   // every cold start); tap anywhere to skip. null = still checking storage.
   const [showLaunchIntro, setShowLaunchIntro] = useState<boolean | null>(null)
@@ -429,3 +438,5 @@ export default function RootLayout() {
     </PersistQueryClientProvider>
   )
 }
+
+export default wrapRoot(RootLayout)

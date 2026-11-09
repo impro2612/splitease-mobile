@@ -1,5 +1,6 @@
 import Pusher, { type Channel } from "pusher-js/react-native"
 import { api } from "@/lib/api"
+import { captureError } from "@/lib/monitoring"
 
 const PusherCtor = ((Pusher as any)?.Pusher ?? Pusher) as typeof Pusher
 
@@ -27,6 +28,8 @@ function create(): Pusher {
           const res = await api.post("/api/pusher/auth", { socket_id: socketId, channel_name: channelName })
           callback(null, res.data)
         } catch (e) {
+          // A failed auth leaves the screen silently without live updates
+          captureError(e, { where: "pusher.channelAuth", channelName })
           callback(e as Error, null)
         }
       },
