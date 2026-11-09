@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.splititapp.ios",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "SplitIT uses your photo library to set your profile photo.",
-        "NSCameraUsageDescription": "SplitIT uses your camera to take a profile photo."
+        "NSCameraUsageDescription": "SplitIT uses your camera to take a profile photo.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "usesAppleSignIn": true,
       "appleTeamId": "4V82QJ7BD5",
@@ -129,7 +130,8 @@
             ]
           }
         ]
-      }
+      },
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -214,6 +216,14 @@
           }
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SplitIT uses your photo library to set your profile photo or a group photo.",
+          "cameraPermission": "SplitIT uses your camera to take a profile photo.",
+          "microphonePermission": false
+        }
+      ],
       "expo-secure-store",
       [
         "expo-contacts",
@@ -258,10 +268,15 @@
                 "modular_headers": true
               }
             ]
+          },
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ],
-      "./plugins/release-signing"
+      "./plugins/release-signing",
+      "./plugins/trim-info-plist"
     ],
     "experiments": {
       "typedRoutes": true

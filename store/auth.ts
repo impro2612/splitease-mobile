@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import * as SecureStore from "expo-secure-store"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Appearance } from "react-native"
 import axios from "axios"
 import { API_BASE_URL, authApi } from "@/lib/api"
@@ -108,6 +109,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.deleteItemAsync("refresh_token")
     await SecureStore.deleteItemAsync("user_data")
     queryClient.clear()
+    // Decrypted chat history, queued offline expenses and group notes are per-account data:
+    // wipe them so the next person on a shared phone can't read them
+    try {
+      const keys = await AsyncStorage.getAllKeys()
+      const mine = keys.filter((k) => /^(chat_cache_|group_chat_cache_|group-note-|splitit:offline_expenses)/.test(k))
+      if (mine.length) await AsyncStorage.multiRemove(mine)
+    } catch {}
     resetPusher() // drop the socket so the next account never inherits this user's channels
     set({ user: null, token: null })
   },
